@@ -1,0 +1,77 @@
+"""
+ContractEx: Modern Contract Intelligence for Python
+
+A comprehensive library for LLM-powered contract analysis and legal document intelligence.
+"""
+
+from contractex.__version__ import __version__
+from contractex.core.models import (
+    Contract,
+    Party,
+    Clause,
+    FinancialTerm,
+    RiskFlag,
+    ContractMetadata,
+)
+from contractex.core.extractors import ContractExtractor
+from contractex.core.classifiers import CUADClassifier
+from contractex.core.analyzers import RiskAnalyzer
+
+# Simple API for 80% use case
+def extract_contract(
+    document_path: str,
+    llm: str = "gpt-4o",
+    confidence_threshold: float = 0.7,
+    analyze_risks: bool = True,
+    extract_financial: bool = True,
+) -> Contract:
+    """
+    Extract contract data from a document with a simple one-line API.
+    
+    Args:
+        document_path: Path to the contract document (PDF, DOCX, etc.)
+        llm: LLM provider to use ("gpt-4o", "claude-3.5-sonnet", "llama-3.1-70b")
+        confidence_threshold: Minimum confidence score for extractions (0.0-1.0)
+        analyze_risks: Whether to perform risk analysis
+        extract_financial: Whether to extract financial terms
+    
+    Returns:
+        Contract: Extracted contract data with parties, clauses, risks, etc.
+    
+    Example:
+        >>> contract = extract_contract("contract.pdf")
+        >>> print(contract.parties)
+        >>> print(contract.clauses)
+        >>> print(contract.risks)
+    """
+    extractor = ContractExtractor(
+        llm_provider_name=llm,
+        confidence_threshold=confidence_threshold,
+    )
+    
+    contract = extractor.extract(
+        document_path,
+        analyze_risks=analyze_risks,
+        extract_financial=extract_financial,
+    )
+    
+    return contract
+
+
+__all__ = [
+    "__version__",
+    "extract_contract",
+    "Contract",
+    "Party",
+    "Clause",
+    "FinancialTerm",
+    "RiskFlag",
+    "ContractMetadata",
+    "ContractExtractor",
+    "CUADClassifier",
+    "RiskAnalyzer",
+]
+
+# Optional modules (require additional dependencies):
+# - contractex.storage: PostgreSQL persistence (install with: pip install contractex[storage])
+# - contractex.retrieval: Search and ranking capabilities (future implementation)

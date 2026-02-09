@@ -1,0 +1,3 @@
+# Database layer dependencies
+psycopg2-binary==2.9.9  # PostgreSQL adapter (binary package for easier installation)
+# psycopg2==2.9.9  # Use this instead if you have PostgreSQL development headers installed

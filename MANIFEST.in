@@ -1,0 +1,19 @@
+include README.md
+include LICENSE
+include CHANGELOG.md
+include CONTRIBUTING.md
+include QUICKSTART.md
+include requirements.txt
+include requirements-dev.txt
+include requirements-optional.txt
+include .env.example
+recursive-include contractex *.py
+recursive-include docs *.md
+recursive-include examples *.py
+recursive-exclude tests *
+recursive-exclude benchmarks *
+recursive-exclude htmlcov *
+recursive-exclude .github *
+global-exclude __pycache__
+global-exclude *.py[co]
+global-exclude .DS_Store
