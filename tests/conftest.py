@@ -37,6 +37,39 @@ if PSYCOPG2_AVAILABLE:
     )
 
 
+def _postgres_available() -> bool:
+    """Check if PostgreSQL is available for integration tests."""
+    if not PSYCOPG2_AVAILABLE:
+        return False
+    try:
+        config = get_db_config()
+        conn = psycopg2.connect(
+            dbname='postgres',
+            user=config['user'],
+            password=config['password'],
+            host=config['host'],
+            port=config['port'],
+            connect_timeout=3,
+        )
+        conn.close()
+        return True
+    except Exception:
+        return False
+
+
+POSTGRES_AVAILABLE = _postgres_available()
+
+
+def pytest_collection_modifyitems(config, items):
+    """Skip integration tests if PostgreSQL is not available."""
+    if POSTGRES_AVAILABLE:
+        return
+    skip_integration = pytest.mark.skip(reason="PostgreSQL not available")
+    for item in items:
+        if "integration" in item.keywords:
+            item.add_marker(skip_integration)
+
+
 # ============================================================================
 # Configuration Fixtures
 # ============================================================================
@@ -177,7 +210,7 @@ def clean_db(db_connection):
 @pytest.fixture
 def doc_repo(clean_db):
     """Document repository with clean database."""
-    with patch('dbase.repository.get_cursor') as mock_cursor:
+    with patch('contractex.storage.repository.get_cursor') as mock_cursor:
         # Make mock_cursor return a context manager that yields the real cursor
         def cursor_context(*args, **kwargs):
             from contextlib import contextmanager
@@ -198,7 +231,7 @@ def doc_repo(clean_db):
 @pytest.fixture
 def clause_repo(clean_db):
     """Clause repository with clean database."""
-    with patch('dbase.repository.get_cursor') as mock_cursor:
+    with patch('contractex.storage.repository.get_cursor') as mock_cursor:
         def cursor_context(*args, **kwargs):
             from contextlib import contextmanager
             @contextmanager
@@ -218,7 +251,7 @@ def clause_repo(clean_db):
 @pytest.fixture
 def log_repo(clean_db):
     """Processing log repository with clean database."""
-    with patch('dbase.repository.get_cursor') as mock_cursor:
+    with patch('contractex.storage.repository.get_cursor') as mock_cursor:
         def cursor_context(*args, **kwargs):
             from contextlib import contextmanager
             @contextmanager

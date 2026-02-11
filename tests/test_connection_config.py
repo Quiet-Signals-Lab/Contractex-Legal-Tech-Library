@@ -79,7 +79,7 @@ class TestConfiguration:
 class TestDatabaseConnection:
     """Test DatabaseConnection context manager."""
 
-    @patch('dbase.connection.psycopg2.connect')
+    @patch('contractex.storage.connection.psycopg2.connect')
     def test_connection_context_manager_success(self, mock_connect):
         """Test successful connection context manager."""
         mock_conn = MagicMock()
@@ -91,7 +91,7 @@ class TestDatabaseConnection:
         mock_conn.commit.assert_called_once()
         mock_conn.close.assert_called_once()
 
-    @patch('dbase.connection.psycopg2.connect')
+    @patch('contractex.storage.connection.psycopg2.connect')
     def test_connection_context_manager_exception(self, mock_connect):
         """Test connection context manager with exception."""
         mock_conn = MagicMock()
@@ -107,7 +107,7 @@ class TestDatabaseConnection:
         mock_conn.commit.assert_not_called()
         mock_conn.close.assert_called_once()
 
-    @patch('dbase.connection.psycopg2.connect')
+    @patch('contractex.storage.connection.psycopg2.connect')
     def test_connection_with_custom_config(self, mock_connect):
         """Test connection with custom configuration."""
         custom_config = {
@@ -138,7 +138,7 @@ class TestDatabaseConnection:
 class TestConnectionFunctions:
     """Test connection utility functions."""
 
-    @patch('dbase.connection.psycopg2.connect')
+    @patch('contractex.storage.connection.psycopg2.connect')
     def test_get_connection_success(self, mock_connect):
         """Test get_connection context manager."""
         mock_conn = MagicMock()
@@ -150,7 +150,7 @@ class TestConnectionFunctions:
         mock_conn.commit.assert_called_once()
         mock_conn.close.assert_called_once()
 
-    @patch('dbase.connection.psycopg2.connect')
+    @patch('contractex.storage.connection.psycopg2.connect')
     def test_get_connection_exception(self, mock_connect):
         """Test get_connection with exception."""
         mock_conn = MagicMock()
@@ -166,7 +166,7 @@ class TestConnectionFunctions:
         mock_conn.rollback.assert_not_called()
         mock_conn.close.assert_called_once()
 
-    @patch('dbase.connection.psycopg2.connect')
+    @patch('contractex.storage.connection.psycopg2.connect')
     def test_get_cursor(self, mock_connect):
         """Test get_cursor context manager."""
         mock_conn = MagicMock()
@@ -180,7 +180,7 @@ class TestConnectionFunctions:
         mock_cursor.close.assert_called_once()
         mock_conn.commit.assert_called_once()
 
-    @patch('dbase.connection.psycopg2.connect')
+    @patch('contractex.storage.connection.psycopg2.connect')
     def test_get_cursor_dict_cursor(self, mock_connect):
         """Test get_cursor with dict cursor."""
         mock_conn = MagicMock()
@@ -194,7 +194,7 @@ class TestConnectionFunctions:
         call_args = mock_conn.cursor.call_args
         assert call_args is not None
 
-    @patch('dbase.connection.psycopg2.connect')
+    @patch('contractex.storage.connection.psycopg2.connect')
     def test_connect_to_postgres_server(self, mock_connect):
         """Test connecting to postgres server."""
         mock_conn = MagicMock()
@@ -219,7 +219,7 @@ class TestConnectionFunctions:
 class TestConnectionTesting:
     """Test connection testing utilities."""
 
-    @patch('dbase.connection.get_connection')
+    @patch('contractex.storage.connection.get_connection')
     def test_test_connection_success(self, mock_get_conn):
         """Test successful connection test."""
         mock_conn = MagicMock()
@@ -236,7 +236,7 @@ class TestConnectionTesting:
         assert result is True
         mock_cursor.execute.assert_called_once_with("SELECT 1")
 
-    @patch('dbase.connection.get_connection')
+    @patch('contractex.storage.connection.get_connection')
     def test_test_connection_failure(self, mock_get_conn):
         """Test failed connection test."""
         mock_get_conn.side_effect = psycopg2.OperationalError("Connection failed")
@@ -334,7 +334,7 @@ class TestConnectionIntegration:
 class TestConnectionErrorHandling:
     """Test connection error handling."""
 
-    @patch('dbase.connection.psycopg2.connect')
+    @patch('contractex.storage.connection.psycopg2.connect')
     def test_connection_error_raises(self, mock_connect):
         """Test that connection errors are properly raised."""
         mock_connect.side_effect = psycopg2.OperationalError("Cannot connect")
@@ -343,7 +343,7 @@ class TestConnectionErrorHandling:
             with get_connection():
                 pass
 
-    @patch('dbase.connection.psycopg2.connect')
+    @patch('contractex.storage.connection.psycopg2.connect')
     def test_connection_error_in_context(self, mock_connect):
         """Test error handling within connection context."""
         mock_conn = MagicMock()
