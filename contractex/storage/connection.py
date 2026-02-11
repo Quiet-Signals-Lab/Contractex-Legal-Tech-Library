@@ -4,11 +4,12 @@ PostgreSQL connection management with context managers.
 Provides connection lifecycle management and will support connection pooling
 when scaling to API serving.
 """
+import logging
+from contextlib import contextmanager
+from typing import Optional
+
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from typing import Optional
-from contextlib import contextmanager
-import logging
 
 from contractex.storage.config import get_db_config
 
@@ -18,24 +19,24 @@ logger = logging.getLogger(__name__)
 class DatabaseConnection:
     """
     Manages PostgreSQL database connections with context manager support.
-    
+
     Usage:
         with DatabaseConnection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM documents")
     """
-    
+
     def __init__(self, config: Optional[dict] = None):
         """
         Initialize connection manager.
-        
+
         Args:
             config: Optional database configuration dict.
                    If None, loads from get_db_config()
         """
         self.config = config or get_db_config()
         self.conn: Optional[psycopg2.extensions.connection] = None
-    
+
     def __enter__(self):
         """Context manager entry - establish connection."""
         try:
@@ -51,7 +52,7 @@ class DatabaseConnection:
         except psycopg2.Error as e:
             logger.error(f"Database connection failed: {e}")
             raise
-    
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager exit - close connection."""
         if self.conn:
@@ -72,12 +73,12 @@ class DatabaseConnection:
 def get_connection(config: Optional[dict] = None):
     """
     Context manager for database connections.
-    
+
     Usage:
         with get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM documents")
-    
+
     Args:
         config: Optional database configuration dict
     """
@@ -109,12 +110,12 @@ def get_connection(config: Optional[dict] = None):
 def get_cursor(dict_cursor: bool = False, config: Optional[dict] = None):
     """
     Context manager for database cursor with automatic connection management.
-    
+
     Usage:
         with get_cursor() as cur:
             cur.execute("SELECT * FROM documents")
             results = cur.fetchall()
-    
+
     Args:
         dict_cursor: If True, returns RealDictCursor for dict-like row access
         config: Optional database configuration dict
@@ -131,10 +132,10 @@ def get_cursor(dict_cursor: bool = False, config: Optional[dict] = None):
 def test_connection(config: Optional[dict] = None) -> bool:
     """
     Test database connectivity.
-    
+
     Args:
         config: Optional database configuration dict
-    
+
     Returns:
         True if connection successful, False otherwise
     """
@@ -155,10 +156,10 @@ def connect_to_postgres_server(config: Optional[dict] = None):
     """
     Connect to PostgreSQL server (not specific database).
     Used for database creation tasks.
-    
+
     Args:
         config: Optional configuration dict with server connection info
-    
+
     Returns:
         psycopg2 connection object to 'postgres' database
     """

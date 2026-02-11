@@ -2,27 +2,27 @@
 Risk analyzer for detecting potential risks and issues in contracts.
 """
 
-from typing import List, Optional, Dict, Any
-from pathlib import Path
 import json
+from pathlib import Path
+from typing import Any, Optional
 
-from contractex.core.models import Contract, RiskFlag, RiskSeverity, Clause
+from contractex.core.models import Clause, Contract, RiskFlag, RiskSeverity
 
 
 class RiskAnalyzer:
     """
     Analyzer for detecting risks in contracts using rule-based and LLM approaches.
     """
-    
+
     def __init__(
         self,
         playbook_path: Optional[str] = None,
-        severity_thresholds: Optional[Dict[str, float]] = None,
+        severity_thresholds: Optional[dict[str, float]] = None,
         use_llm: bool = True,
     ):
         """
         Initialize the risk analyzer.
-        
+
         Args:
             playbook_path: Path to custom risk playbook JSON
             severity_thresholds: Custom severity level thresholds
@@ -36,13 +36,13 @@ class RiskAnalyzer:
             "low": 0.3,
         }
         self.use_llm = use_llm
-    
-    def _load_playbook(self, playbook_path: Optional[str]) -> Dict[str, Any]:
+
+    def _load_playbook(self, playbook_path: Optional[str]) -> dict[str, Any]:
         """Load risk detection playbook."""
         if playbook_path and Path(playbook_path).exists():
-            with open(playbook_path, 'r') as f:
+            with open(playbook_path) as f:
                 return json.load(f)
-        
+
         # Default playbook with common risks
         return {
             "unlimited_liability": {
@@ -70,26 +70,26 @@ class RiskAnalyzer:
                 "recommendation": "Require mutual consent for changes"
             },
         }
-    
-    def analyze(self, contract: Contract) -> List[RiskFlag]:
+
+    def analyze(self, contract: Contract) -> list[RiskFlag]:
         """
         Analyze a contract for risks.
-        
+
         Args:
             contract: Contract to analyze
-        
+
         Returns:
             List of identified risk flags
         """
         risks = []
-        
+
         # Rule-based risk detection
         risks.extend(self._rule_based_analysis(contract))
-        
+
         # LLM-based risk detection (if enabled)
         if self.use_llm:
             risks.extend(self._llm_based_analysis(contract))
-        
+
         # Sort by severity
         severity_order = {
             RiskSeverity.CRITICAL: 0,
@@ -99,27 +99,27 @@ class RiskAnalyzer:
             RiskSeverity.INFO: 4,
         }
         risks.sort(key=lambda r: severity_order[r.severity])
-        
+
         return risks
-    
-    def _rule_based_analysis(self, contract: Contract) -> List[RiskFlag]:
+
+    def _rule_based_analysis(self, contract: Contract) -> list[RiskFlag]:
         """
         Perform rule-based risk detection using playbook.
-        
+
         Args:
             contract: Contract to analyze
-        
+
         Returns:
             List of detected risks
         """
         risks = []
-        
+
         for clause in contract.clauses:
             for risk_type, risk_config in self.playbook.items():
                 # Check if any keywords match
                 keywords = risk_config.get("keywords", [])
                 text_lower = clause.text.lower()
-                
+
                 if any(keyword.lower() in text_lower for keyword in keywords):
                     risk = RiskFlag(  # type: ignore[call-arg]
                         risk_type=risk_type,
@@ -131,30 +131,30 @@ class RiskAnalyzer:
                         confidence=0.8,  # Rule-based has lower confidence
                     )
                     risks.append(risk)
-        
+
         return risks
-    
-    def _llm_based_analysis(self, contract: Contract) -> List[RiskFlag]:
+
+    def _llm_based_analysis(self, contract: Contract) -> list[RiskFlag]:
         """
         Perform LLM-based risk detection for complex risks.
-        
+
         Args:
             contract: Contract to analyze
-        
+
         Returns:
             List of detected risks
         """
         # Placeholder for LLM-based analysis
         # Would use prompts to identify subtle risks that rules miss
         return []
-    
-    def analyze_clause(self, clause: Clause) -> List[RiskFlag]:
+
+    def analyze_clause(self, clause: Clause) -> list[RiskFlag]:
         """
         Analyze a single clause for risks.
-        
+
         Args:
             clause: Clause to analyze
-        
+
         Returns:
             List of risks in this clause
         """

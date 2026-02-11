@@ -4,12 +4,13 @@ FastAPI Service Example
 Wrap ContractEx in a REST API for web applications.
 """
 
-from fastapi import FastAPI, File, UploadFile, HTTPException
-from fastapi.responses import JSONResponse
-from contractex import ContractExtractor, Contract
-from pathlib import Path
 import tempfile
+from pathlib import Path
+
 import uvicorn
+from fastapi import FastAPI, File, HTTPException, UploadFile
+
+from contractex import ContractExtractor
 
 app = FastAPI(
     title="ContractEx API",
@@ -32,7 +33,7 @@ async def extract_contract(
 ):
     """
     Extract contract data from uploaded document.
-    
+
     Supports PDF and DOCX files.
     """
     # Check file type
@@ -41,36 +42,36 @@ async def extract_contract(
             status_code=400,
             detail="Only PDF and DOCX files are supported"
         )
-    
+
     try:
         # Save uploaded file temporarily
         with tempfile.NamedTemporaryFile(delete=False, suffix=Path(file.filename).suffix) as tmp:
             content = await file.read()
             tmp.write(content)
             tmp_path = tmp.name
-        
+
         # Extract contract
         contract = extractor.extract(
             tmp_path,
             analyze_risks=analyze_risks,
             extract_financial=extract_financial
         )
-        
+
         # Clean up temp file
         Path(tmp_path).unlink()
-        
+
         # Return as JSON
         return contract.model_dump()
-        
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.post("/extract/batch")
 async def extract_batch(files: list[UploadFile] = File(...)):
     """Extract multiple contracts in batch."""
     results = []
-    
+
     for file in files:
         try:
             # Save temp file
@@ -78,26 +79,26 @@ async def extract_batch(files: list[UploadFile] = File(...)):
                 content = await file.read()
                 tmp.write(content)
                 tmp_path = tmp.name
-            
+
             # Extract
             contract = extractor.extract(tmp_path)
-            
+
             # Clean up
             Path(tmp_path).unlink()
-            
+
             results.append({
                 "filename": file.filename,
                 "success": True,
                 "data": contract.model_dump()
             })
-            
+
         except Exception as e:
             results.append({
                 "filename": file.filename,
                 "success": False,
                 "error": str(e)
             })
-    
+
     return {"results": results}
 
 
@@ -127,6 +128,6 @@ async def get_info():
 if __name__ == "__main__":
     # Run with: python fastapi_service.py
     uvicorn.run(app, host="0.0.0.0", port=8000)
-    
+
     # Access API docs at: http://localhost:8000/docs
     # Test endpoint: curl -X POST -F "file=@contract.pdf" http://localhost:8000/extract

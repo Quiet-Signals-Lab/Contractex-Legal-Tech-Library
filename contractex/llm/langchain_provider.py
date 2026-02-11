@@ -1,47 +1,48 @@
 """LangChain LLM provider adapter for compatibility."""
 
-from typing import Type, Optional
+from typing import Optional
+
 from pydantic import BaseModel
 
-from contractex.llm.base import LLMProvider
 from contractex.exceptions import LLMProviderError
+from contractex.llm.base import LLMProvider
 
 
 class LangChainProvider(LLMProvider):
     """
     Adapter to use LangChain LLMs with ContractEx.
-    
+
     This allows using any LangChain-compatible LLM with ContractEx.
     """
-    
+
     def __init__(self, langchain_llm, default_max_tokens: int = 4000):
         """
         Initialize LangChain provider adapter.
-        
+
         Args:
             langchain_llm: Any LangChain LLM instance
             default_max_tokens: Default max tokens for completions
         """
         self.langchain_llm = langchain_llm
         self._default_max_tokens = default_max_tokens
-        
+
         # Get model name if available
         self._model_name = getattr(
             langchain_llm,
             'model_name',
             langchain_llm.__class__.__name__
         )
-    
+
     def extract_structured(
         self,
         prompt: str,
-        schema: Type[BaseModel],
+        schema: type[BaseModel],
         temperature: float = 0.0,
         max_tokens: Optional[int] = None,
     ) -> BaseModel:
         """
         Extract structured data using LangChain LLM.
-        
+
         Uses LangChain's structured output if available, otherwise falls back
         to JSON parsing.
         """
@@ -54,7 +55,7 @@ class LangChainProvider(LLMProvider):
             else:
                 # Fallback to JSON parsing
                 import json
-                
+
                 json_schema = schema.model_json_schema()
                 enhanced_prompt = f"""
 {prompt}
@@ -62,22 +63,22 @@ class LangChainProvider(LLMProvider):
 Respond with valid JSON matching this schema:
 {json.dumps(json_schema, indent=2)}
 """
-                
+
                 response = self.complete(enhanced_prompt, temperature, max_tokens)
-                
+
                 # Try to extract JSON
                 if not response.strip().startswith('{'):
                     start = response.find('{')
                     end = response.rfind('}') + 1
                     if start != -1 and end > start:
                         response = response[start:end]
-                
+
                 data = json.loads(response)
                 return schema(**data)
-                
+
         except Exception as e:
             raise LLMProviderError(f"LangChain structured extraction failed: {str(e)}") from e
-    
+
     def complete(
         self,
         prompt: str,
@@ -92,14 +93,14 @@ Respond with valid JSON matching this schema:
             if hasattr(self.langchain_llm, 'temperature'):
                 original_temp = self.langchain_llm.temperature
                 self.langchain_llm.temperature = temperature
-            
+
             # Invoke LLM
             response = self.langchain_llm.invoke(prompt, **kwargs)
-            
+
             # Restore temperature
             if original_temp is not None:
                 self.langchain_llm.temperature = original_temp
-            
+
             # Handle different response types
             if isinstance(response, str):
                 return response
@@ -107,19 +108,19 @@ Respond with valid JSON matching this schema:
                 return response.content
             else:
                 return str(response)
-                
+
         except Exception as e:
             raise LLMProviderError(f"LangChain completion failed: {str(e)}") from e
-    
+
     def estimate_cost(self, text: str) -> float:
         """
         Estimate cost for processing text.
-        
+
         Returns 0.0 if LangChain LLM doesn't provide pricing info.
         """
         # LangChain doesn't have standardized cost estimation
         return 0.0
-    
+
     def count_tokens(self, text: str) -> int:
         """Count tokens using LangChain's method if available."""
         if hasattr(self.langchain_llm, 'get_num_tokens'):
@@ -127,7 +128,7 @@ Respond with valid JSON matching this schema:
         else:
             # Fallback estimate
             return len(text) // 4
-    
+
     @property
     def context_window(self) -> int:
         """Get context window size."""
@@ -139,7 +140,7 @@ Respond with valid JSON matching this schema:
         else:
             # Conservative default
             return 8192
-    
+
     @property
     def model(self) -> str:
         """Get model name."""

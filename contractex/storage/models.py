@@ -4,39 +4,39 @@ Domain models for legal document analysis.
 These dataclasses represent business entities and encapsulate domain logic,
 providing type-safe interfaces between database and application code.
 """
+import hashlib
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Optional, Dict, List, Any
-import hashlib
+from typing import Any, Optional
 
 
 @dataclass
 class Document:
     """Represents a source legal document (PDF, DOCX, etc.)."""
-    
+
     # Core fields
     id: Optional[int] = None
     filename: str = ""
     file_hash: Optional[str] = None
-    
+
     # Content
     file_data: Optional[bytes] = None
     extracted_text: Optional[str] = None
-    
+
     # Metadata (flexible JSONB storage)
     # Expected keys: contract_type, parties, effective_date, expiration_date,
     # governing_law, amendment_to, custom_tags
-    metadata: Dict[str, Any] = field(default_factory=dict)
-    
+    metadata: dict[str, Any] = field(default_factory=dict)
+
     # Timestamps
     uploaded_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
-    
+
     @classmethod
     def from_db_row(cls, row: tuple) -> 'Document':
         """
         Convert psycopg2 query result tuple to Document object.
-        
+
         Assumes row order matches schema:
         (id, filename, file_hash, file_data, extracted_text, metadata, uploaded_at, updated_at)
         """
@@ -50,16 +50,16 @@ class Document:
             uploaded_at=row[6],
             updated_at=row[7]
         )
-    
+
     @staticmethod
     def compute_hash(file_data: bytes) -> str:
         """Compute SHA-256 hash for deduplication."""
         return hashlib.sha256(file_data).hexdigest()
-    
+
     def update_metadata(self, **kwargs) -> None:
         """Update metadata fields while preserving existing values."""
         self.metadata.update(kwargs)
-    
+
     def get_metadata_field(self, key: str, default=None):
         """Safely retrieve metadata field with default."""
         return self.metadata.get(key, default)
@@ -68,40 +68,40 @@ class Document:
 @dataclass
 class Clause:
     """Represents an extracted clause from a document."""
-    
+
     # Core fields
     id: Optional[int] = None
     document_id: int = 0
-    
+
     # Content
     clause_text: str = ""
     clause_type: Optional[str] = None  # termination, payment, liability, etc.
-    
+
     # Spatial metadata for visual grounding
     page_number: Optional[int] = None
     bbox_x: Optional[float] = None
     bbox_y: Optional[float] = None
     bbox_width: Optional[float] = None
     bbox_height: Optional[float] = None
-    
+
     # Extraction metadata
     confidence_score: Optional[float] = None
     parent_clause_id: Optional[int] = None
-    
+
     # Flexible metadata
-    metadata: Dict[str, Any] = field(default_factory=dict)
-    
+    metadata: dict[str, Any] = field(default_factory=dict)
+
     # Timestamp
     created_at: Optional[datetime] = None
-    
+
     @classmethod
     def from_db_row(cls, row: tuple) -> 'Clause':
         """
         Convert psycopg2 query result tuple to Clause object.
-        
+
         Assumes row order matches schema:
-        (id, document_id, clause_text, clause_type, page_number, 
-         bbox_x, bbox_y, bbox_width, bbox_height, confidence_score, 
+        (id, document_id, clause_text, clause_type, page_number,
+         bbox_x, bbox_y, bbox_width, bbox_height, confidence_score,
          parent_clause_id, metadata, created_at)
         """
         return cls(
@@ -119,7 +119,7 @@ class Clause:
             metadata=row[11] if row[11] else {},
             created_at=row[12]
         )
-    
+
     def has_bounding_box(self) -> bool:
         """Check if clause has complete bounding box information."""
         return all([
@@ -128,8 +128,8 @@ class Clause:
             self.bbox_width is not None,
             self.bbox_height is not None
         ])
-    
-    def get_bounding_box(self) -> Optional[Dict[str, float]]:
+
+    def get_bounding_box(self) -> Optional[dict[str, float]]:
         """Return bounding box as dict, or None if incomplete."""
         if self.has_bounding_box() and self.bbox_x is not None and self.bbox_y is not None and self.bbox_width is not None and self.bbox_height is not None:
             return {
@@ -144,25 +144,25 @@ class Clause:
 @dataclass
 class ProcessingLog:
     """Audit trail entry for document processing lifecycle."""
-    
+
     id: Optional[int] = None
     document_id: Optional[int] = None
-    
+
     # Processing state
     processing_stage: str = ""  # uploaded, extracted, embedded, indexed
     status: str = ""  # pending, completed, failed
-    
+
     # Error tracking
     error_message: Optional[str] = None
-    
+
     # Timestamp
     created_at: Optional[datetime] = None
-    
+
     @classmethod
     def from_db_row(cls, row: tuple) -> 'ProcessingLog':
         """
         Convert psycopg2 query result tuple to ProcessingLog object.
-        
+
         Assumes row order matches schema:
         (id, document_id, processing_stage, status, error_message, created_at)
         """
@@ -174,11 +174,11 @@ class ProcessingLog:
             error_message=row[4],
             created_at=row[5]
         )
-    
+
     def is_failed(self) -> bool:
         """Check if this log entry represents a failure."""
         return self.status == 'failed'
-    
+
     def is_completed(self) -> bool:
         """Check if this log entry represents successful completion."""
         return self.status == 'completed'

@@ -92,6 +92,8 @@ extend-exclude = '''
 [tool.ruff]
 line-length = 100
 target-version = "py39"
+
+[tool.ruff.lint]
 select = [
     "E",  # pycodestyle errors
     "W",  # pycodestyle warnings
@@ -106,6 +108,9 @@ ignore = [
     "B008",  # do not perform function calls in argument defaults
     "C901",  # too complex
 ]
+
+[tool.ruff.lint.per-file-ignores]
+"examples/*.py" = ["E402"]  # Allow imports not at top for demonstration purposes
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

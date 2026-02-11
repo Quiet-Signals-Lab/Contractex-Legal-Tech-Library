@@ -12,7 +12,7 @@ contract = extract_contract("path/to/contract.pdf")
 
 # Access the results
 print(f"Contract Type: {contract.contract_type}")
-print(f"\nParties:")
+print("\nParties:")
 for party in contract.parties:
     print(f"  - {party.name} ({party.role})")
 

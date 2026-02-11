@@ -32,14 +32,14 @@ contract = extractor.extract(
     extract_financial=True
 )
 
-print(f"\n=== Extraction Complete ===")
+print("\n=== Extraction Complete ===")
 print(f"Contract Type: {contract.contract_type}")
 print(f"Parties: {', '.join([p.name for p in contract.parties])}")
 print(f"Clauses: {len(contract.clauses)}")
 print(f"Risks: {len(contract.risks)}")
 
 # Cost is $0 for local models
-print(f"\nAPI Cost: $0.00 (local processing)")
+print("\nAPI Cost: $0.00 (local processing)")
 print(f"Processing Time: {contract.metadata.processing_time_seconds:.2f}s")
 
 # Export results

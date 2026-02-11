@@ -5,17 +5,18 @@ A comprehensive library for LLM-powered contract analysis and legal document int
 """
 
 from contractex.__version__ import __version__
-from contractex.core.models import (
-    Contract,
-    Party,
-    Clause,
-    FinancialTerm,
-    RiskFlag,
-    ContractMetadata,
-)
-from contractex.core.extractors import ContractExtractor
-from contractex.core.classifiers import CUADClassifier
 from contractex.core.analyzers import RiskAnalyzer
+from contractex.core.classifiers import CUADClassifier
+from contractex.core.extractors import ContractExtractor
+from contractex.core.models import (
+    Clause,
+    Contract,
+    ContractMetadata,
+    FinancialTerm,
+    Party,
+    RiskFlag,
+)
+
 
 # Simple API for 80% use case
 def extract_contract(
@@ -27,17 +28,17 @@ def extract_contract(
 ) -> Contract:
     """
     Extract contract data from a document with a simple one-line API.
-    
+
     Args:
         document_path: Path to the contract document (PDF, DOCX, etc.)
         llm: LLM provider to use ("gpt-4o", "claude-3.5-sonnet", "llama-3.1-70b")
         confidence_threshold: Minimum confidence score for extractions (0.0-1.0)
         analyze_risks: Whether to perform risk analysis
         extract_financial: Whether to extract financial terms
-    
+
     Returns:
         Contract: Extracted contract data with parties, clauses, risks, etc.
-    
+
     Example:
         >>> contract = extract_contract("contract.pdf")
         >>> print(contract.parties)
@@ -48,13 +49,13 @@ def extract_contract(
         llm_provider_name=llm,
         confidence_threshold=confidence_threshold,
     )
-    
+
     contract = extractor.extract(
         document_path,
         analyze_risks=analyze_risks,
         extract_financial=extract_financial,
     )
-    
+
     return contract
 
 

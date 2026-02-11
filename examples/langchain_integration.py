@@ -7,12 +7,12 @@ Requires optional dependencies:
     pip install langchain langchain-openai langchain-community
 """
 
+# Example 1: Use LangChain LLM with ContractEx
+from langchain_openai import ChatOpenAI  # type: ignore[import-not-found]
+
 from contractex import ContractExtractor
 from contractex.llm import LangChainProvider
 from contractex.loaders import LangChainDocumentAdapter
-
-# Example 1: Use LangChain LLM with ContractEx
-from langchain_openai import ChatOpenAI  # type: ignore[import-not-found]
 
 langchain_llm = ChatOpenAI(  # type: ignore[call-arg]
     model="gpt-4o",
@@ -37,14 +37,14 @@ extractor = ContractExtractor(
 # Extract as normal
 contract = extractor.extract("contract.pdf")
 
-print(f"Extracted contract using LangChain components:")
+print("Extracted contract using LangChain components:")
 print(f"  Type: {contract.contract_type}")
 print(f"  Parties: {len(contract.parties)}")
 print(f"  Clauses: {len(contract.clauses)}")
 
 # Example 3: Use ContractEx output with LangChain chains
-from langchain.prompts import PromptTemplate  # type: ignore[import-not-found]
 from langchain.chains import LLMChain  # type: ignore[import-not-found]
+from langchain.prompts import PromptTemplate  # type: ignore[import-not-found]
 
 # Create a chain that uses extracted contract data
 summary_template = """

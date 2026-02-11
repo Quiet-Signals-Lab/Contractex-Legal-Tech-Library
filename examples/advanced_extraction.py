@@ -9,11 +9,11 @@ This example shows how to customize the extraction process with:
 """
 
 from contractex import ContractExtractor
-from contractex.llm import OpenAIProvider, AnthropicProvider
-from contractex.loaders import PDFLoader
 from contractex.chunking import ClauseAwareChunker
-from contractex.core.classifiers import CUADClassifier
 from contractex.core.analyzers import RiskAnalyzer
+from contractex.core.classifiers import CUADClassifier
+from contractex.llm import OpenAIProvider
+from contractex.loaders import PDFLoader
 
 # Configure custom LLM provider
 llm = OpenAIProvider(

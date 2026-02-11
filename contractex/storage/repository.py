@@ -5,37 +5,38 @@ Each repository class encapsulates all database operations for a domain model,
 providing a clean API that hides SQL details from application code.
 This makes the codebase testable (mock repositories) and database-agnostic.
 """
-from typing import List, Optional, Dict, Any
+import logging
+from typing import Any, Optional
+
 import psycopg2
 import psycopg2.extras
 from psycopg2.extras import execute_values
-import logging
 
-from contractex.storage.models import Document, Clause, ProcessingLog
 from contractex.storage.connection import get_cursor
+from contractex.storage.models import Clause, Document, ProcessingLog
 
 logger = logging.getLogger(__name__)
 
 
 class DocumentRepository:
     """Repository for Document database operations."""
-    
+
     def __init__(self, connection=None):
         """
         Initialize repository.
-        
+
         Args:
             connection: Optional psycopg2 connection. If None, uses context managers.
         """
         self.connection = connection
-    
+
     def insert(self, doc: Document) -> int:
         """
         Insert a new document.
-        
+
         Args:
             doc: Document object to insert
-        
+
         Returns:
             ID of the inserted document
         """
@@ -45,7 +46,7 @@ class DocumentRepository:
             ON CONFLICT (filename) DO NOTHING
             RETURNING id
         """
-        
+
         try:
             with get_cursor() as cur:
                 cur.execute(query, (
@@ -66,24 +67,24 @@ class DocumentRepository:
         except Exception as e:
             logger.error(f"Failed to insert document: {e}")
             raise
-    
+
     def get_by_id(self, doc_id: int) -> Optional[Document]:
         """
         Retrieve document by ID.
-        
+
         Args:
             doc_id: Document ID
-        
+
         Returns:
             Document object or None if not found
         """
         query = """
-            SELECT id, filename, file_hash, file_data, extracted_text, 
+            SELECT id, filename, file_hash, file_data, extracted_text,
                    metadata, uploaded_at, updated_at
             FROM documents
             WHERE id = %s
         """
-        
+
         try:
             with get_cursor() as cur:
                 cur.execute(query, (doc_id,))
@@ -94,7 +95,7 @@ class DocumentRepository:
         except Exception as e:
             logger.error(f"Failed to retrieve document {doc_id}: {e}")
             raise
-    
+
     def get_by_filename(self, filename: str) -> Optional[Document]:
         """Retrieve document by filename."""
         query = """
@@ -103,7 +104,7 @@ class DocumentRepository:
             FROM documents
             WHERE filename = %s
         """
-        
+
         try:
             with get_cursor() as cur:
                 cur.execute(query, (filename,))
@@ -114,7 +115,7 @@ class DocumentRepository:
         except Exception as e:
             logger.error(f"Failed to retrieve document by filename: {e}")
             raise
-    
+
     def get_id_by_filename(self, filename: str) -> Optional[int]:
         """Get document ID by filename."""
         query = "SELECT id FROM documents WHERE filename = %s"
@@ -126,24 +127,24 @@ class DocumentRepository:
         except Exception as e:
             logger.error(f"Failed to get document ID: {e}")
             raise
-    
-    def search_by_metadata(self, filters: Dict[str, Any]) -> List[Document]:
+
+    def search_by_metadata(self, filters: dict[str, Any]) -> list[Document]:
         """
         Search documents by metadata fields.
-        
+
         Args:
             filters: Dict of metadata field filters (e.g., {'contract_type': 'NDA'})
-        
+
         Returns:
             List of matching Document objects
         """
         conditions = []
         params = []
-        
+
         for key, value in filters.items():
-            conditions.append(f"metadata->>%s = %s")
+            conditions.append("metadata->>%s = %s")
             params.extend([key, value])
-        
+
         where_clause = " AND ".join(conditions)
         query = f"""
             SELECT id, filename, file_hash, file_data, extracted_text,
@@ -151,7 +152,7 @@ class DocumentRepository:
             FROM documents
             WHERE {where_clause}
         """
-        
+
         try:
             with get_cursor() as cur:
                 cur.execute(query, tuple(params))
@@ -160,14 +161,14 @@ class DocumentRepository:
         except Exception as e:
             logger.error(f"Failed to search documents: {e}")
             raise
-    
-    def get_all(self, limit: Optional[int] = None) -> List[Document]:
+
+    def get_all(self, limit: Optional[int] = None) -> list[Document]:
         """
         Retrieve all documents.
-        
+
         Args:
             limit: Optional limit on number of results
-        
+
         Returns:
             List of Document objects
         """
@@ -177,10 +178,10 @@ class DocumentRepository:
             FROM documents
             ORDER BY uploaded_at DESC
         """
-        
+
         if limit:
             query += f" LIMIT {limit}"
-        
+
         try:
             with get_cursor() as cur:
                 cur.execute(query)
@@ -189,7 +190,7 @@ class DocumentRepository:
         except Exception as e:
             logger.error(f"Failed to retrieve all documents: {e}")
             raise
-    
+
     def update_extracted_text(self, doc_id: int, extracted_text: str) -> None:
         """Update extracted text for a document."""
         query = """
@@ -197,7 +198,7 @@ class DocumentRepository:
             SET extracted_text = %s, updated_at = NOW()
             WHERE id = %s
         """
-        
+
         try:
             with get_cursor() as cur:
                 cur.execute(query, (extracted_text, doc_id))
@@ -205,15 +206,15 @@ class DocumentRepository:
         except Exception as e:
             logger.error(f"Failed to update extracted text: {e}")
             raise
-    
-    def update_metadata(self, doc_id: int, metadata: Dict[str, Any]) -> None:
+
+    def update_metadata(self, doc_id: int, metadata: dict[str, Any]) -> None:
         """Update metadata for a document."""
         query = """
             UPDATE documents
             SET metadata = %s, updated_at = NOW()
             WHERE id = %s
         """
-        
+
         try:
             with get_cursor() as cur:
                 cur.execute(query, (psycopg2.extras.Json(metadata), doc_id))
@@ -221,11 +222,11 @@ class DocumentRepository:
         except Exception as e:
             logger.error(f"Failed to update metadata: {e}")
             raise
-    
+
     def delete(self, doc_id: int) -> None:
         """Delete a document (cascades to clauses)."""
         query = "DELETE FROM documents WHERE id = %s"
-        
+
         try:
             with get_cursor() as cur:
                 cur.execute(query, (doc_id,))
@@ -233,7 +234,7 @@ class DocumentRepository:
         except Exception as e:
             logger.error(f"Failed to delete document: {e}")
             raise
-    
+
     def count(self) -> int:
         """Count total documents."""
         query = "SELECT COUNT(*) FROM documents"
@@ -249,11 +250,11 @@ class DocumentRepository:
 
 class ClauseRepository:
     """Repository for Clause database operations."""
-    
+
     def __init__(self, connection=None):
         """Initialize repository."""
         self.connection = connection
-    
+
     def insert(self, clause: Clause) -> int:
         """Insert a single clause."""
         query = """
@@ -265,7 +266,7 @@ class ClauseRepository:
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING id
         """
-        
+
         try:
             with get_cursor() as cur:
                 cur.execute(query, (
@@ -288,20 +289,20 @@ class ClauseRepository:
         except Exception as e:
             logger.error(f"Failed to insert clause: {e}")
             raise
-    
-    def insert_batch(self, clauses: List[Clause]) -> List[int]:
+
+    def insert_batch(self, clauses: list[Clause]) -> list[int]:
         """
         Bulk insert clauses.
-        
+
         Args:
             clauses: List of Clause objects
-        
+
         Returns:
             List of inserted clause IDs
         """
         if not clauses:
             return []
-        
+
         query = """
             INSERT INTO clauses (
                 document_id, clause_text, clause_type, page_number,
@@ -311,7 +312,7 @@ class ClauseRepository:
             VALUES %s
             RETURNING id
         """
-        
+
         values = [
             (
                 c.document_id, c.clause_text, c.clause_type, c.page_number,
@@ -321,7 +322,7 @@ class ClauseRepository:
             )
             for c in clauses
         ]
-        
+
         try:
             with get_cursor() as cur:
                 ids = execute_values(cur, query, values, fetch=True)
@@ -331,7 +332,7 @@ class ClauseRepository:
         except Exception as e:
             logger.error(f"Failed to batch insert clauses: {e}")
             raise
-    
+
     def get_by_id(self, clause_id: int) -> Optional[Clause]:
         """Retrieve clause by ID."""
         query = """
@@ -341,7 +342,7 @@ class ClauseRepository:
             FROM clauses
             WHERE id = %s
         """
-        
+
         try:
             with get_cursor() as cur:
                 cur.execute(query, (clause_id,))
@@ -352,8 +353,8 @@ class ClauseRepository:
         except Exception as e:
             logger.error(f"Failed to retrieve clause: {e}")
             raise
-    
-    def get_by_document(self, document_id: int) -> List[Clause]:
+
+    def get_by_document(self, document_id: int) -> list[Clause]:
         """Get all clauses for a document."""
         query = """
             SELECT id, document_id, clause_text, clause_type, page_number,
@@ -363,7 +364,7 @@ class ClauseRepository:
             WHERE document_id = %s
             ORDER BY page_number, id
         """
-        
+
         try:
             with get_cursor() as cur:
                 cur.execute(query, (document_id,))
@@ -372,8 +373,8 @@ class ClauseRepository:
         except Exception as e:
             logger.error(f"Failed to retrieve clauses for document: {e}")
             raise
-    
-    def search_by_type(self, clause_type: str, limit: Optional[int] = None) -> List[Clause]:
+
+    def search_by_type(self, clause_type: str, limit: Optional[int] = None) -> list[Clause]:
         """Search clauses by type across all documents."""
         query = """
             SELECT id, document_id, clause_text, clause_type, page_number,
@@ -383,10 +384,10 @@ class ClauseRepository:
             WHERE clause_type = %s
             ORDER BY created_at DESC
         """
-        
+
         if limit:
             query += f" LIMIT {limit}"
-        
+
         try:
             with get_cursor() as cur:
                 cur.execute(query, (clause_type,))
@@ -395,11 +396,11 @@ class ClauseRepository:
         except Exception as e:
             logger.error(f"Failed to search clauses by type: {e}")
             raise
-    
+
     def delete_by_document(self, document_id: int) -> None:
         """Delete all clauses for a document."""
         query = "DELETE FROM clauses WHERE document_id = %s"
-        
+
         try:
             with get_cursor() as cur:
                 cur.execute(query, (document_id,))
@@ -407,7 +408,7 @@ class ClauseRepository:
         except Exception as e:
             logger.error(f"Failed to delete clauses: {e}")
             raise
-    
+
     def count_by_document(self, document_id: int) -> int:
         """Count clauses for a document."""
         query = "SELECT COUNT(*) FROM clauses WHERE document_id = %s"
@@ -423,11 +424,11 @@ class ClauseRepository:
 
 class ProcessingLogRepository:
     """Repository for ProcessingLog database operations."""
-    
+
     def __init__(self, connection=None):
         """Initialize repository."""
         self.connection = connection
-    
+
     def insert(self, log: ProcessingLog) -> int:
         """Insert a processing log entry."""
         query = """
@@ -437,7 +438,7 @@ class ProcessingLogRepository:
             VALUES (%s, %s, %s, %s)
             RETURNING id
         """
-        
+
         try:
             with get_cursor() as cur:
                 cur.execute(query, (
@@ -453,8 +454,8 @@ class ProcessingLogRepository:
         except Exception as e:
             logger.error(f"Failed to insert processing log: {e}")
             raise
-    
-    def get_by_document(self, document_id: int) -> List[ProcessingLog]:
+
+    def get_by_document(self, document_id: int) -> list[ProcessingLog]:
         """Get all processing logs for a document."""
         query = """
             SELECT id, document_id, processing_stage, status, error_message, created_at
@@ -462,7 +463,7 @@ class ProcessingLogRepository:
             WHERE document_id = %s
             ORDER BY created_at DESC
         """
-        
+
         try:
             with get_cursor() as cur:
                 cur.execute(query, (document_id,))
@@ -471,8 +472,8 @@ class ProcessingLogRepository:
         except Exception as e:
             logger.error(f"Failed to retrieve processing logs: {e}")
             raise
-    
-    def get_failed_documents(self) -> List[int]:
+
+    def get_failed_documents(self) -> list[int]:
         """Get IDs of documents with failed processing."""
         query = """
             SELECT DISTINCT document_id
@@ -480,7 +481,7 @@ class ProcessingLogRepository:
             WHERE status = 'failed'
             ORDER BY document_id
         """
-        
+
         try:
             with get_cursor() as cur:
                 cur.execute(query)
@@ -489,7 +490,7 @@ class ProcessingLogRepository:
         except Exception as e:
             logger.error(f"Failed to retrieve failed documents: {e}")
             raise
-    
+
     def get_latest_by_stage(self, document_id: int, stage: str) -> Optional[ProcessingLog]:
         """Get most recent log entry for a document and stage."""
         query = """
@@ -499,7 +500,7 @@ class ProcessingLogRepository:
             ORDER BY created_at DESC
             LIMIT 1
         """
-        
+
         try:
             with get_cursor() as cur:
                 cur.execute(query, (document_id, stage))

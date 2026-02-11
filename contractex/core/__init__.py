@@ -1,12 +1,12 @@
 """Core module initialization."""
 
 from contractex.core.models import (
-    Contract,
-    Party,
     Clause,
-    FinancialTerm,
-    RiskFlag,
+    Contract,
     ContractMetadata,
+    FinancialTerm,
+    Party,
+    RiskFlag,
 )
 
 # Optional NER support (requires spacy)

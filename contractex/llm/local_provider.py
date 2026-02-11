@@ -1,21 +1,22 @@
 """Local LLM provider using Ollama for privacy-first deployments."""
 
-from typing import Type, Optional
-from pydantic import BaseModel
-import os
 import json
+import os
+from typing import Optional
 
-from contractex.llm.base import LLMProvider
+from pydantic import BaseModel
+
 from contractex.exceptions import LLMProviderError
+from contractex.llm.base import LLMProvider
 
 
 class LocalProvider(LLMProvider):
     """
     Local LLM provider using Ollama.
-    
+
     Supports running models locally for complete privacy and data sovereignty.
     """
-    
+
     # Default context windows for common models
     CONTEXT_WINDOWS = {
         "llama-3.1-70b": 128000,
@@ -26,7 +27,7 @@ class LocalProvider(LLMProvider):
         "mixtral": 32768,
         "phi-3": 128000,
     }
-    
+
     def __init__(
         self,
         model: str = "llama-3.1-70b",
@@ -36,7 +37,7 @@ class LocalProvider(LLMProvider):
     ):
         """
         Initialize local LLM provider.
-        
+
         Args:
             model: Model name (must be pulled in Ollama)
             host: Ollama host URL (defaults to OLLAMA_HOST env var or localhost)
@@ -46,32 +47,32 @@ class LocalProvider(LLMProvider):
         self._model = model
         self._temperature = temperature
         self._max_tokens = max_tokens
-        
+
         # Get Ollama host
         self._host = host or os.getenv("OLLAMA_HOST", "http://localhost:11434")
-        
+
         # Initialize Ollama client
         try:
             import ollama
             self.client = ollama.Client(host=self._host)
-        except ImportError:
+        except ImportError as e:
             raise LLMProviderError(
                 "Ollama package not installed. Install with: pip install ollama"
-            )
-        
+            ) from e
+
         # Check if model is available
         try:
             self.client.show(self._model)
-        except Exception:
+        except Exception as e:
             raise LLMProviderError(
                 f"Model '{self._model}' not found in Ollama. "
                 f"Pull it first with: ollama pull {self._model}"
-            )
-    
+            ) from e
+
     def extract_structured(
         self,
         prompt: str,
-        schema: Type[BaseModel],
+        schema: type[BaseModel],
         temperature: float = 0.0,
         max_tokens: Optional[int] = None,
     ) -> BaseModel:
@@ -81,7 +82,7 @@ class LocalProvider(LLMProvider):
         try:
             # Get JSON schema
             json_schema = schema.model_json_schema()
-            
+
             # Create enhanced prompt with schema
             enhanced_prompt = f"""
 {prompt}
@@ -91,7 +92,7 @@ You must respond with valid JSON that matches this schema:
 
 Respond ONLY with the JSON object, no additional text.
 """
-            
+
             # Get completion with JSON format
             response = self.client.generate(
                 model=self._model,
@@ -102,17 +103,17 @@ Respond ONLY with the JSON object, no additional text.
                     'num_predict': max_tokens or self._max_tokens,
                 }
             )
-            
+
             # Parse JSON response
             content = response['response']
-            
+
             # Parse and validate
             data = json.loads(content)
             return schema(**data)
-            
+
         except Exception as e:
             raise LLMProviderError(f"Local LLM structured extraction failed: {str(e)}") from e
-    
+
     def complete(
         self,
         prompt: str,
@@ -130,31 +131,31 @@ Respond ONLY with the JSON object, no additional text.
                     'num_predict': max_tokens or self._max_tokens,
                 }
             )
-            
+
             return response['response']
-            
+
         except Exception as e:
             raise LLMProviderError(f"Local LLM completion failed: {str(e)}") from e
-    
+
     def estimate_cost(self, text: str) -> float:
         """
         Local LLMs have no API cost.
-        
+
         Returns:
             Always returns 0.0 for local models
         """
         return 0.0
-    
+
     def count_tokens(self, text: str) -> int:
         """
         Count tokens using rough estimation.
-        
+
         Note: Ollama doesn't provide a token counting API.
         """
         # Rough estimate: 1 token ≈ 4 characters
         # This is approximate and model-dependent
         return len(text) // 4
-    
+
     @property
     def context_window(self) -> int:
         """Get context window size."""
@@ -162,10 +163,10 @@ Respond ONLY with the JSON object, no additional text.
         for model_prefix, window in self.CONTEXT_WINDOWS.items():
             if model_prefix in self._model.lower():
                 return window
-        
+
         # Default to conservative 8K
         return 8192
-    
+
     @property
     def model(self) -> str:
         """Get model name."""

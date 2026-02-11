@@ -4,11 +4,10 @@ Pytest configuration and shared fixtures.
 This file is automatically discovered by pytest and provides reusable fixtures
 for all test files.
 """
-import pytest
-import sys
-from unittest.mock import MagicMock, patch
 from datetime import datetime
-from typing import Generator, Optional
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 # Try to import psycopg2, but allow tests to run without it for unit tests
 try:
@@ -20,13 +19,22 @@ except ImportError:
     psycopg2 = None  # type: ignore
     ISOLATION_LEVEL_AUTOCOMMIT = None
 
-from contractex.storage.models import Document, Clause, ProcessingLog, ProcessingStage, ProcessingStatus
 from contractex.storage.config import get_db_config
+from contractex.storage.models import (
+    Clause,
+    Document,
+    ProcessingLog,
+    ProcessingStage,
+    ProcessingStatus,
+)
 
 # Conditionally import repository classes
 if PSYCOPG2_AVAILABLE:
-    from contractex.storage.connection import get_connection
-    from contractex.storage.repository import DocumentRepository, ClauseRepository, ProcessingLogRepository
+    from contractex.storage.repository import (
+        ClauseRepository,
+        DocumentRepository,
+        ProcessingLogRepository,
+    )
 
 
 # ============================================================================
@@ -46,7 +54,7 @@ def db_schema_sql():
     """Load schema SQL for test database setup."""
     import pathlib
     schema_file = pathlib.Path(__file__).parent.parent / "contractex" / "storage" / "schema.sql"
-    with open(schema_file, 'r') as f:
+    with open(schema_file) as f:
         # Skip database creation and extension lines
         lines = f.readlines()
         sql_lines = []
@@ -70,13 +78,13 @@ def db_schema_sql():
 def test_database(test_db_config, db_schema_sql):
     """
     Create test database once per test session.
-    
+
     This fixture creates a separate test database to avoid affecting
     production data. It's created once and reused for all tests.
     """
     if not PSYCOPG2_AVAILABLE:
         pytest.skip("psycopg2 not installed - integration tests require PostgreSQL")
-    
+
     # Connect to postgres database to create test database
     conn = psycopg2.connect(
         dbname='postgres',
@@ -87,14 +95,14 @@ def test_database(test_db_config, db_schema_sql):
     )
     conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
     cursor = conn.cursor()
-    
+
     # Drop and create test database
     db_name = test_db_config['db_name']
     cursor.execute(f"DROP DATABASE IF EXISTS {db_name}")
     cursor.execute(f"CREATE DATABASE {db_name} ENCODING 'UTF8'")
     cursor.close()
     conn.close()
-    
+
     # Connect to test database and create schema
     test_conn = psycopg2.connect(
         dbname=test_db_config['db_name'],
@@ -108,9 +116,9 @@ def test_database(test_db_config, db_schema_sql):
     cursor.execute(db_schema_sql)
     cursor.close()
     test_conn.close()
-    
+
     yield test_db_config
-    
+
     # Teardown: Drop test database after all tests
     conn = psycopg2.connect(
         dbname='postgres',
@@ -130,7 +138,7 @@ def test_database(test_db_config, db_schema_sql):
 def db_connection(test_database):
     """
     Provide a database connection for tests.
-    
+
     Uses transaction rollback to ensure test isolation - each test gets
     a clean database state.
     """
@@ -141,9 +149,9 @@ def db_connection(test_database):
         host=test_database['host'],
         port=test_database['port']
     )
-    
+
     yield conn
-    
+
     # Rollback transaction to clean up test data
     conn.rollback()
     conn.close()
@@ -153,7 +161,7 @@ def db_connection(test_database):
 def clean_db(db_connection):
     """
     Clean database before each test.
-    
+
     Truncates all tables to ensure test isolation.
     """
     cursor = db_connection.cursor()
@@ -182,7 +190,7 @@ def doc_repo(clean_db):
                 finally:
                     cur.close()
             return _cursor()
-        
+
         mock_cursor.side_effect = cursor_context
         yield DocumentRepository()
 
@@ -202,7 +210,7 @@ def clause_repo(clean_db):
                 finally:
                     cur.close()
             return _cursor()
-        
+
         mock_cursor.side_effect = cursor_context
         yield ClauseRepository()
 
@@ -222,7 +230,7 @@ def log_repo(clean_db):
                 finally:
                     cur.close()
             return _cursor()
-        
+
         mock_cursor.side_effect = cursor_context
         yield ProcessingLogRepository()
 

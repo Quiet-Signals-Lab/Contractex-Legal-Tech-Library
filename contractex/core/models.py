@@ -5,12 +5,12 @@ These models represent the structured data extracted from legal documents,
 providing type-safe interfaces with validation and convenience methods.
 """
 
-from pydantic import BaseModel, Field, ConfigDict, field_validator
-from typing import List, Optional, Dict, Any, Literal, TYPE_CHECKING
 from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
-import json
+from typing import TYPE_CHECKING, Any, Optional
+
+from pydantic import BaseModel, ConfigDict, Field
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 class ContractType(str, Enum):
     """Common contract types."""
-    
+
     NDA = "nda"
     MSA = "master_service_agreement"
     SOW = "statement_of_work"
@@ -37,7 +37,7 @@ class ContractType(str, Enum):
 
 class PartyRole(str, Enum):
     """Roles that parties can have in a contract."""
-    
+
     PROVIDER = "provider"
     CLIENT = "client"
     LICENSOR = "licensor"
@@ -54,7 +54,7 @@ class PartyRole(str, Enum):
 
 class RiskSeverity(str, Enum):
     """Risk severity levels."""
-    
+
     CRITICAL = "critical"
     HIGH = "high"
     MEDIUM = "medium"
@@ -64,7 +64,7 @@ class RiskSeverity(str, Enum):
 
 class Party(BaseModel):
     """Represents a party (legal entity) in a contract."""
-    
+
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
@@ -77,22 +77,22 @@ class Party(BaseModel):
             }
         }
     )
-    
+
     name: str = Field(..., description="Legal name of the party")
     role: Optional[PartyRole] = Field(None, description="Role in the contract")
     entity_type: Optional[str] = Field(None, description="Type of entity (LLC, Corp, etc.)")
     jurisdiction: Optional[str] = Field(None, description="Jurisdiction of incorporation")
-    contact_info: Dict[str, Any] = Field(default_factory=dict, description="Contact information")
+    contact_info: dict[str, Any] = Field(default_factory=dict, description="Contact information")
     address: Optional[str] = Field(None, description="Physical address")
     confidence: float = Field(0.0, ge=0.0, le=1.0, description="Extraction confidence score")
-    
+
     def __str__(self) -> str:
         return f"{self.name} ({self.role})" if self.role else self.name
 
 
 class Clause(BaseModel):
     """Represents an extracted clause from a contract."""
-    
+
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
@@ -104,36 +104,36 @@ class Clause(BaseModel):
             }
         }
     )
-    
+
     clause_type: str = Field(..., description="Type/category of the clause")
     text: str = Field(..., description="Full text of the clause")
     page_number: Optional[int] = Field(None, description="Page number where clause appears")
     section_number: Optional[str] = Field(None, description="Section number (e.g., '3.2.1')")
-    
+
     # Spatial metadata for visual grounding
-    bbox: Optional[Dict[str, float]] = Field(
+    bbox: Optional[dict[str, float]] = Field(
         None,
         description="Bounding box coordinates {x, y, width, height}"
     )
-    
+
     # Extraction metadata
     confidence: float = Field(0.0, ge=0.0, le=1.0, description="Extraction confidence score")
-    extracted_entities: Dict[str, Any] = Field(
+    extracted_entities: dict[str, Any] = Field(
         default_factory=dict,
         description="Entities extracted from this clause"
     )
-    tags: List[str] = Field(default_factory=list, description="Custom tags")
-    
+    tags: list[str] = Field(default_factory=list, description="Custom tags")
+
     # Relationships
     parent_clause_id: Optional[str] = Field(None, description="ID of parent clause if nested")
-    related_clauses: List[str] = Field(
+    related_clauses: list[str] = Field(
         default_factory=list,
         description="IDs of related clauses"
     )
-    
+
     # Additional metadata
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="Flexible metadata")
-    
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Flexible metadata")
+
     def __str__(self) -> str:
         preview = self.text[:100] + "..." if len(self.text) > 100 else self.text
         return f"[{self.clause_type}] {preview}"
@@ -141,7 +141,7 @@ class Clause(BaseModel):
 
 class FinancialTerm(BaseModel):
     """Represents financial terms extracted from a contract."""
-    
+
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
@@ -154,7 +154,7 @@ class FinancialTerm(BaseModel):
             }
         }
     )
-    
+
     term_type: str = Field(
         ...,
         description="Type of financial term (payment_amount, penalty, bonus, etc.)"
@@ -167,12 +167,12 @@ class FinancialTerm(BaseModel):
     )
     due_date: Optional[date] = Field(None, description="Payment due date")
     description: str = Field("", description="Description of the financial term")
-    conditions: List[str] = Field(
+    conditions: list[str] = Field(
         default_factory=list,
         description="Conditions that apply to this term"
     )
     confidence: float = Field(0.0, ge=0.0, le=1.0, description="Extraction confidence score")
-    
+
     def __str__(self) -> str:
         freq = f" ({self.frequency})" if self.frequency else ""
         return f"{self.term_type}: {self.currency} {self.amount}{freq}"
@@ -180,7 +180,7 @@ class FinancialTerm(BaseModel):
 
 class RiskFlag(BaseModel):
     """Represents a potential risk identified in the contract."""
-    
+
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
@@ -193,7 +193,7 @@ class RiskFlag(BaseModel):
             }
         }
     )
-    
+
     risk_type: str = Field(..., description="Type of risk identified")
     severity: RiskSeverity = Field(..., description="Risk severity level")
     description: str = Field(..., description="Description of the risk")
@@ -203,14 +203,14 @@ class RiskFlag(BaseModel):
     impact: Optional[str] = Field(None, description="Potential impact of the risk")
     likelihood: Optional[str] = Field(None, description="Likelihood of risk occurring")
     confidence: float = Field(0.0, ge=0.0, le=1.0, description="Detection confidence score")
-    
+
     def __str__(self) -> str:
         return f"[{self.severity.upper()}] {self.risk_type}: {self.description}"
 
 
 class ContractMetadata(BaseModel):
     """Metadata about the contract document and extraction process."""
-    
+
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
@@ -223,32 +223,32 @@ class ContractMetadata(BaseModel):
             }
         }
     )
-    
+
     # Document information
     filename: Optional[str] = Field(None, description="Original filename")
     file_hash: Optional[str] = Field(None, description="SHA-256 hash of the document")
     file_type: Optional[str] = Field(None, description="File type (pdf, docx, etc.)")
     file_size_bytes: Optional[int] = Field(None, description="File size in bytes")
     page_count: Optional[int] = Field(None, description="Number of pages")
-    
+
     # Extraction metadata
     extraction_date: datetime = Field(default_factory=datetime.utcnow, description="When extraction was performed")
     llm_provider: Optional[str] = Field(None, description="LLM provider used")
     llm_model: Optional[str] = Field(None, description="Specific model used")
     processing_time_seconds: Optional[float] = Field(None, description="Time taken to process")
-    token_usage: Optional[Dict[str, int]] = Field(None, description="Token usage statistics")
-    
+    token_usage: Optional[dict[str, int]] = Field(None, description="Token usage statistics")
+
     # Quality metrics
     overall_confidence: Optional[float] = Field(None, ge=0.0, le=1.0, description="Overall extraction confidence")
-    warnings: List[str] = Field(default_factory=list, description="Extraction warnings")
-    
+    warnings: list[str] = Field(default_factory=list, description="Extraction warnings")
+
     # Custom metadata
-    custom_fields: Dict[str, Any] = Field(default_factory=dict, description="User-defined metadata")
+    custom_fields: dict[str, Any] = Field(default_factory=dict, description="User-defined metadata")
 
 
 class Contract(BaseModel):
     """Main contract model representing all extracted data from a legal document."""
-    
+
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
@@ -266,96 +266,96 @@ class Contract(BaseModel):
             }
         }
     )
-    
+
     # Basic information
     contract_type: Optional[ContractType] = Field(None, description="Type of contract")
     title: Optional[str] = Field(None, description="Contract title")
-    
+
     # Parties
-    parties: List[Party] = Field(default_factory=list, description="Parties involved in the contract")
-    
+    parties: list[Party] = Field(default_factory=list, description="Parties involved in the contract")
+
     # Dates
     effective_date: Optional[date] = Field(None, description="Contract effective date")
     expiration_date: Optional[date] = Field(None, description="Contract expiration date")
     signature_date: Optional[date] = Field(None, description="Date contract was signed")
-    
+
     # Structural elements
-    clauses: List[Clause] = Field(default_factory=list, description="Extracted clauses")
-    financial_terms: List[FinancialTerm] = Field(default_factory=list, description="Financial terms")
-    
+    clauses: list[Clause] = Field(default_factory=list, description="Extracted clauses")
+    financial_terms: list[FinancialTerm] = Field(default_factory=list, description="Financial terms")
+
     # Analysis results
-    risks: List[RiskFlag] = Field(default_factory=list, description="Identified risks")
-    
+    risks: list[RiskFlag] = Field(default_factory=list, description="Identified risks")
+
     # Additional information
     governing_law: Optional[str] = Field(None, description="Governing law jurisdiction")
     amendment_to: Optional[str] = Field(None, description="Reference if this is an amendment")
-    
+
     # Metadata
     metadata: ContractMetadata = Field(
         default_factory=lambda: ContractMetadata(),  # type: ignore[call-arg]
         description="Metadata about the document and extraction"
     )
-    
+
     # Extracted text
     full_text: Optional[str] = Field(None, description="Full extracted text")
-    
+
     # Convenience properties
     @property
-    def critical_risks(self) -> List[RiskFlag]:
+    def critical_risks(self) -> list[RiskFlag]:
         """Get only critical risk flags."""
         return [r for r in self.risks if r.severity == RiskSeverity.CRITICAL]
-    
+
     @property
-    def high_confidence_clauses(self) -> List[Clause]:
+    def high_confidence_clauses(self) -> list[Clause]:
         """Get clauses with confidence >= 0.8."""
         return [c for c in self.clauses if c.confidence >= 0.8]
-    
+
     @property
     def duration_days(self) -> Optional[int]:
         """Calculate contract duration in days."""
         if self.effective_date and self.expiration_date:
             return (self.expiration_date - self.effective_date).days
         return None
-    
+
     # Export methods
     def to_json(self, file_path: Optional[str] = None, **kwargs) -> str:
         """
         Export to JSON format.
-        
+
         Args:
             file_path: Optional path to save JSON file
             **kwargs: Additional arguments for json.dumps
-        
+
         Returns:
             JSON string representation
         """
         json_str = self.model_dump_json(indent=2, **kwargs)
-        
+
         if file_path:
             with open(file_path, 'w', encoding='utf-8') as f:
                 f.write(json_str)
-        
+
         return json_str
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         """Export to dictionary."""
         return self.model_dump()
-    
+
     def to_dataframe(self) -> "pd.DataFrame":
         """
         Export to pandas DataFrame (clauses as rows).
-        
+
         Returns:
             DataFrame with clause information
         """
         try:
             import pandas as pd
-        except ImportError:
-            raise ImportError("pandas is required for to_dataframe(). Install with: pip install pandas")
-        
+        except ImportError as e:
+            raise ImportError("pandas is required for to_dataframe(). Install with: pip install pandas") from e
+
         if not self.clauses:
             return pd.DataFrame()
-        
+
         data = []
         for clause in self.clauses:
             row = {
@@ -367,21 +367,21 @@ class Contract(BaseModel):
                 'section_number': clause.section_number,
             }
             data.append(row)
-        
+
         return pd.DataFrame(data)
-    
+
     def to_excel(self, file_path: str) -> None:
         """
         Export to Excel file.
-        
+
         Args:
             file_path: Path to save Excel file
         """
         try:
             import pandas as pd
-        except ImportError:
-            raise ImportError("pandas and openpyxl are required. Install with: pip install pandas openpyxl")
-        
+        except ImportError as e:
+            raise ImportError("pandas and openpyxl are required. Install with: pip install pandas openpyxl") from e
+
         with pd.ExcelWriter(file_path, engine='openpyxl') as writer:
             # Contract overview
             overview_data = {
@@ -395,11 +395,11 @@ class Contract(BaseModel):
                 ]
             }
             pd.DataFrame(overview_data).to_excel(writer, sheet_name='Overview', index=False)
-            
+
             # Clauses
             if self.clauses:
                 self.to_dataframe().to_excel(writer, sheet_name='Clauses', index=False)
-            
+
             # Financial terms
             if self.financial_terms:
                 financial_data = [
@@ -414,7 +414,7 @@ class Contract(BaseModel):
                     for ft in self.financial_terms
                 ]
                 pd.DataFrame(financial_data).to_excel(writer, sheet_name='Financial Terms', index=False)
-            
+
             # Risks
             if self.risks:
                 risk_data = [
@@ -428,26 +428,26 @@ class Contract(BaseModel):
                     for r in self.risks
                 ]
                 pd.DataFrame(risk_data).to_excel(writer, sheet_name='Risks', index=False)
-    
+
     def compare_with(self, other: "Contract") -> "ContractComparison":
         """
         Compare with another contract.
-        
+
         Args:
             other: Another Contract instance to compare with
-        
+
         Returns:
             ContractComparison object with differences
         """
         from contractex.utils.comparators import ContractComparator
-        
+
         comparator = ContractComparator()
         return comparator.compare(self, other)
-    
+
     def __str__(self) -> str:
         parties_str = ', '.join([p.name for p in self.parties])
         return f"Contract({self.contract_type}, parties=[{parties_str}])"
-    
+
     def __repr__(self) -> str:
         return (
             f"Contract(type={self.contract_type}, "
@@ -459,22 +459,22 @@ class Contract(BaseModel):
 
 class ContractComparison(BaseModel):
     """Results of comparing two contracts."""
-    
+
     model_config = ConfigDict(arbitrary_types_allowed=True)
-    
+
     contract1: Contract
     contract2: Contract
-    
+
     # Differences
-    party_differences: List[str] = Field(default_factory=list)
-    clause_differences: List[str] = Field(default_factory=list)
-    financial_differences: List[str] = Field(default_factory=list)
-    date_differences: List[str] = Field(default_factory=list)
-    
+    party_differences: list[str] = Field(default_factory=list)
+    clause_differences: list[str] = Field(default_factory=list)
+    financial_differences: list[str] = Field(default_factory=list)
+    date_differences: list[str] = Field(default_factory=list)
+
     # Similarity scores
     overall_similarity: float = Field(0.0, ge=0.0, le=1.0)
     clause_similarity: float = Field(0.0, ge=0.0, le=1.0)
-    
+
     def summary(self) -> str:
         """Get a summary of the comparison."""
         total_diffs = (
@@ -483,7 +483,7 @@ class ContractComparison(BaseModel):
             len(self.financial_differences) +
             len(self.date_differences)
         )
-        
+
         return f"""
 Contract Comparison Summary
 ===========================

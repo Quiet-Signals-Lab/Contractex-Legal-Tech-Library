@@ -6,7 +6,7 @@ extracted contract data in PostgreSQL.
 
 Prerequisites:
     pip install contractex[storage]
-    
+
     Set up PostgreSQL:
     - Install PostgreSQL
     - Create database: CREATE DATABASE contracts;
@@ -18,10 +18,12 @@ Prerequisites:
         export POSTGRES_DB=contracts
 """
 
-from contractex import extract_contract
-from contractex.storage import DocumentRepository, ClauseRepository, Document, Clause
-from contractex.storage.setup import setup_database
 import os
+
+from contractex import extract_contract
+from contractex.storage import Clause, ClauseRepository, Document, DocumentRepository
+from contractex.storage.setup import setup_database
+
 
 def main():
     # Initialize database (run once)
@@ -31,25 +33,25 @@ def main():
         print("✓ Database initialized")
     except Exception as e:
         print(f"Database setup: {e} (may already exist)")
-    
+
     # Extract contract
     contract_path = "data/CUAD_v1/full_contract_txt/ACCURAYINC_09_01_2010-EX-10.31-DISTRIBUTOR AGREEMENT.txt"
-    
+
     if not os.path.exists(contract_path):
         print(f"Contract file not found: {contract_path}")
         print("Using a sample contract instead...")
         contract_path = "sample.pdf"  # Use your own contract
-    
+
     print(f"\nExtracting contract from {contract_path}...")
     contract = extract_contract(contract_path)
-    
+
     print(f"✓ Extracted: {contract.title}")
     print(f"  Parties: {len(contract.parties)}")
     print(f"  Clauses: {len(contract.clauses)}")
-    
+
     # Store in database
     print("\nStoring in database...")
-    
+
     # Create document record
     doc = Document(
         filename=os.path.basename(contract_path),
@@ -61,15 +63,15 @@ def main():
             "clause_count": len(contract.clauses),
         }
     )
-    
+
     doc_repo = DocumentRepository()
     doc_id = doc_repo.insert(doc)
     print(f"✓ Document stored with ID: {doc_id}")
-    
+
     # Store clauses
     clause_repo = ClauseRepository()
     clause_ids = []
-    
+
     for clause in contract.clauses[:10]:  # Store first 10 clauses as example
         db_clause = Clause(
             document_id=doc_id,
@@ -85,28 +87,28 @@ def main():
         )
         clause_id = clause_repo.insert(db_clause)
         clause_ids.append(clause_id)
-    
+
     print(f"✓ Stored {len(clause_ids)} clauses")
-    
+
     # Query back from database
     print("\nQuerying from database...")
-    
+
     # Get document
     retrieved_doc = doc_repo.get_by_id(doc_id)
     print(f"✓ Retrieved document: {retrieved_doc.filename}")
-    
+
     # Search clauses by type
     if contract.clauses[0].cuad_type:
         clause_type = contract.clauses[0].cuad_type.value
         matching_clauses = clause_repo.search_by_clause_type(clause_type)
         print(f"✓ Found {len(matching_clauses)} clauses of type '{clause_type}'")
-    
+
     # Get all documents
     all_docs = doc_repo.get_all(limit=5)
     print(f"\n✓ Total documents in database: {len(all_docs)}")
     for doc in all_docs:
         print(f"  - {doc.filename} (ID: {doc.id})")
-    
+
     print("\n✓ Storage example complete!")
     print("\nNext steps:")
     print("  - Use storage for contract versioning")

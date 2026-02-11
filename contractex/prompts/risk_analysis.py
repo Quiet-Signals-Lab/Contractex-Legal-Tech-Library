@@ -56,7 +56,7 @@ For each risk identified:
 - Severity: critical, high, medium, low
 - Description: Clear explanation of the risk
 - Clause reference: Where the risk appears
-- Impact: Potential business consequences  
+- Impact: Potential business consequences
 - Recommendation: How to mitigate or address
 - Confidence: Score (0.0-1.0) for detection accuracy
 

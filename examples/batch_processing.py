@@ -4,9 +4,9 @@ Batch Processing Example
 Process multiple contracts in parallel for efficiency.
 """
 
-from contractex import ContractExtractor
 from pathlib import Path
-from concurrent.futures import ThreadPoolExecutor
+
+from contractex import ContractExtractor
 
 # Initialize extractor
 extractor = ContractExtractor(
@@ -51,7 +51,7 @@ total_clauses = sum(len(c.clauses) for c in contracts)
 total_risks = sum(len(c.risks) for c in contracts)
 total_critical = sum(len(c.critical_risks) for c in contracts)
 
-print(f"\n=== Statistics ===")
+print("\n=== Statistics ===")
 print(f"Total contracts: {len(contracts)}")
 print(f"Total clauses extracted: {total_clauses}")
 print(f"Total risks identified: {total_risks}")

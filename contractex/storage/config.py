@@ -13,13 +13,13 @@ For production, set environment variables:
     export POSTGRES_PASSWORD=your_password
 """
 import os
-from typing import Dict, Any
+from typing import Any
 
 
-def get_db_config() -> Dict[str, Any]:
+def get_db_config() -> dict[str, Any]:
     """
     Get database configuration from environment variables or defaults.
-    
+
     Returns:
         Dictionary with database connection parameters
     """
