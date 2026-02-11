@@ -129,7 +129,8 @@ Respond ONLY with the JSON object, no additional text.
                 },
             )
 
-            return response["response"]
+            result: str = response["response"]
+            return result
 
         except Exception as e:
             raise LLMProviderError(f"Local LLM completion failed: {str(e)}") from e

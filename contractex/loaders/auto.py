@@ -55,7 +55,8 @@ class AutoLoader(DocumentLoader):
                 f"Supported types: {', '.join(self.loaders.keys())}"
             )
 
-        return loader.load(source)
+        result: str = loader.load(source)
+        return result
 
     def get_metadata(self, source: str):
         """Get metadata using appropriate loader."""

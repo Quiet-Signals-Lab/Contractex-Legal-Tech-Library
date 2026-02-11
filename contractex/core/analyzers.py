@@ -41,7 +41,8 @@ class RiskAnalyzer:
         """Load risk detection playbook."""
         if playbook_path and Path(playbook_path).exists():
             with open(playbook_path) as f:
-                return json.load(f)
+                result: dict[str, Any] = json.load(f)
+                return result
 
         # Default playbook with common risks
         return {

@@ -82,7 +82,7 @@ class ClauseAwareChunker(ChunkingStrategy):
         sections = []
         lines = text.split("\n")
 
-        current_section = []
+        current_section: list[str] = []
 
         for line in lines:
             # Check if line is a section header
@@ -117,7 +117,7 @@ class ClauseAwareChunker(ChunkingStrategy):
             List of chunks
         """
         chunks = []
-        current_chunk = []
+        current_chunk: list[str] = []
         current_size = 0
 
         for section in sections:
@@ -181,7 +181,7 @@ class ClauseAwareChunker(ChunkingStrategy):
 
         # Combine sentences into chunks
         chunks = []
-        current = []
+        current: list[str] = []
         current_size = 0
 
         for sentence in sentences:

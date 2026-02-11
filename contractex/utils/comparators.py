@@ -22,6 +22,8 @@ class ContractComparator:
         comparison = ContractComparison(
             contract1=contract1,
             contract2=contract2,
+            overall_similarity=0.0,
+            clause_similarity=0.0,
         )
 
         # Compare parties

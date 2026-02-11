@@ -79,7 +79,7 @@ class SemanticChunker(ChunkingStrategy):
             List of chunks
         """
         chunks = []
-        current_chunk = []
+        current_chunk: list[str] = []
         current_size = 0
 
         for unit in units:

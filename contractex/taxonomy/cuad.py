@@ -148,7 +148,7 @@ class CUADClauseType(str, Enum):
             cls.UNCAPPED_LIABILITY,
             cls.NON_COMPETE,
             cls.EXCLUSIVITY,
-            cls.AUTO_RENEWAL,
+            cls.RENEWAL_TERM,
             cls.ANTI_ASSIGNMENT,
             cls.LIQUIDATED_DAMAGES,
             cls.WARRANTY_DISCLAIMER,

@@ -62,12 +62,15 @@ class DocumentRepository:
                 )
                 result = cur.fetchone()
                 if result:
-                    doc_id = result[0]
+                    doc_id: int = result[0]
                     logger.info(f"Inserted document: {doc.filename} (ID: {doc_id})")
                     return doc_id
                 else:
                     logger.warning(f"Document already exists: {doc.filename}")
-                    return self.get_id_by_filename(doc.filename)
+                    existing_id = self.get_id_by_filename(doc.filename)
+                    if existing_id is None:
+                        raise ValueError(f"Failed to get ID for existing document: {doc.filename}")
+                    return existing_id
         except Exception as e:
             logger.error(f"Failed to insert document: {e}")
             raise

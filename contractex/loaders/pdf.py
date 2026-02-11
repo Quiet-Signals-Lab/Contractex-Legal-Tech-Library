@@ -116,7 +116,7 @@ class PDFLoader(DocumentLoader):
             img = Image.open(io.BytesIO(img_data))
 
             # Perform OCR
-            text = pytesseract.image_to_string(img)
+            text: str = pytesseract.image_to_string(img)
 
             return text
 

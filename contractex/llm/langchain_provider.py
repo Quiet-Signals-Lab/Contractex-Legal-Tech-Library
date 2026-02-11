@@ -27,7 +27,8 @@ class LangChainProvider(LLMProvider):
         self._default_max_tokens = default_max_tokens
 
         # Get model name if available
-        self._model_name = getattr(langchain_llm, "model_name", langchain_llm.__class__.__name__)
+        model_name: str = getattr(langchain_llm, "model_name", langchain_llm.__class__.__name__)
+        self._model_name: str = model_name
 
     def extract_structured(
         self,
@@ -46,7 +47,7 @@ class LangChainProvider(LLMProvider):
             # Try to use structured output if available
             if hasattr(self.langchain_llm, "with_structured_output"):
                 structured_llm = self.langchain_llm.with_structured_output(schema)
-                result = structured_llm.invoke(prompt)
+                result: BaseModel = structured_llm.invoke(prompt)
                 return result
             else:
                 # Fallback to JSON parsing
@@ -97,7 +98,8 @@ Respond with valid JSON matching this schema:
             if isinstance(response, str):
                 return response
             elif hasattr(response, "content"):
-                return response.content
+                content: str = response.content
+                return content
             else:
                 return str(response)
 
@@ -116,7 +118,8 @@ Respond with valid JSON matching this schema:
     def count_tokens(self, text: str) -> int:
         """Count tokens using LangChain's method if available."""
         if hasattr(self.langchain_llm, "get_num_tokens"):
-            return self.langchain_llm.get_num_tokens(text)
+            result: int = self.langchain_llm.get_num_tokens(text)
+            return result
         else:
             # Fallback estimate
             return len(text) // 4
@@ -126,9 +129,11 @@ Respond with valid JSON matching this schema:
         """Get context window size."""
         # Try to get from LLM attributes
         if hasattr(self.langchain_llm, "max_context_size"):
-            return self.langchain_llm.max_context_size
+            size: int = self.langchain_llm.max_context_size
+            return size
         elif hasattr(self.langchain_llm, "max_tokens"):
-            return self.langchain_llm.max_tokens
+            tokens: int = self.langchain_llm.max_tokens
+            return tokens
         else:
             # Conservative default
             return 8192

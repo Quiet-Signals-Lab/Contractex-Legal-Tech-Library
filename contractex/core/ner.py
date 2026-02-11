@@ -135,7 +135,7 @@ class LegalNER:
             Dictionary with entity types as keys and lists of entity texts as values
         """
         doc = self.nlp(text)
-        categorized = {}
+        categorized: dict[str, list[str]] = {}
 
         for ent in doc.ents:
             if ent.label_ not in categorized:

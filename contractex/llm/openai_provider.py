@@ -1,7 +1,7 @@
 """OpenAI provider implementation for GPT models."""
 
 import os
-from typing import Optional
+from typing import Optional, cast
 
 from pydantic import BaseModel
 
@@ -109,7 +109,10 @@ class OpenAIProvider(LLMProvider):
                 **kwargs,
             )
 
-            return response.choices[0].message.content
+            content = response.choices[0].message.content
+            if content is None:
+                raise LLMProviderError("OpenAI returned empty response")
+            return cast(str, content)
 
         except Exception as e:
             raise LLMProviderError(f"OpenAI completion failed: {str(e)}") from e
@@ -152,4 +155,5 @@ class OpenAIProvider(LLMProvider):
     @property
     def model(self) -> str:
         """Get model name."""
-        return self._model
+        result: str = self._model
+        return result

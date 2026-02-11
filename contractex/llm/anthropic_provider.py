@@ -2,7 +2,7 @@
 
 import json
 import os
-from typing import Optional
+from typing import Optional, cast
 
 from pydantic import BaseModel
 
@@ -105,7 +105,10 @@ Respond ONLY with the JSON object, no additional text.
             )
 
             # Parse JSON response
-            content = response.content[0].text
+            block = response.content[0]
+            if not hasattr(block, "text"):
+                raise LLMProviderError(f"Unexpected response block type: {type(block).__name__}")
+            content = cast(str, block.text)
 
             # Try to extract JSON if there's extra text
             if not content.strip().startswith("{"):
@@ -135,7 +138,10 @@ Respond ONLY with the JSON object, no additional text.
                 **kwargs,
             )
 
-            return response.content[0].text
+            block = response.content[0]
+            if not hasattr(block, "text"):
+                raise LLMProviderError(f"Unexpected response block type: {type(block).__name__}")
+            return cast(str, block.text)
 
         except Exception as e:
             raise LLMProviderError(f"Anthropic completion failed: {str(e)}") from e
@@ -178,4 +184,5 @@ Respond ONLY with the JSON object, no additional text.
     @property
     def model(self) -> str:
         """Get model name."""
-        return self._model
+        result: str = self._model
+        return result
