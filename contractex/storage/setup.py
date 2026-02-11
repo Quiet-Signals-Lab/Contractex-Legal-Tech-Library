@@ -246,14 +246,12 @@ def verify_setup() -> bool:
         cursor = conn.cursor()
 
         # Check that core tables exist
-        cursor.execute(
-            """
+        cursor.execute("""
             SELECT table_name
             FROM information_schema.tables
             WHERE table_schema = 'public'
             AND table_name IN ('documents', 'clauses', 'processing_log')
-        """
-        )
+        """)
         tables = [row[0] for row in cursor.fetchall()]
 
         expected_tables = {"documents", "clauses", "processing_log"}
