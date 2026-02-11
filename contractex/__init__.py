@@ -74,4 +74,6 @@ __all__ = [
 
 # Optional modules (require additional dependencies):
 # - contractex.storage: PostgreSQL persistence (install with: pip install contractex[storage])
+# - contractex.data: Dataset loaders for ACORD, CUAD, LePaRD (install with: pip install contractex[datasets])
+# - contractex.core.ner: Named Entity Recognition (install with: pip install contractex[spacy])
 # - contractex.retrieval: Search and ranking capabilities (future implementation)

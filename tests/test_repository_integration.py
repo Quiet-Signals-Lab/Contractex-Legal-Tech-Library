@@ -5,7 +5,7 @@ These tests require a real PostgreSQL database connection and test
 the full stack from repository through to database.
 """
 import pytest
-from dbase.models import (
+from contractex.storage.models import (
     Document, Clause, ProcessingLog,
     ClauseType, ProcessingStage, ProcessingStatus
 )

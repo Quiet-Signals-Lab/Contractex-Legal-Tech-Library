@@ -121,7 +121,7 @@ class RiskAnalyzer:
                 text_lower = clause.text.lower()
                 
                 if any(keyword.lower() in text_lower for keyword in keywords):
-                    risk = RiskFlag(
+                    risk = RiskFlag(  # type: ignore[call-arg]
                         risk_type=risk_type,
                         severity=RiskSeverity(risk_config["severity"]),
                         description=risk_config["description"],
@@ -159,5 +159,5 @@ class RiskAnalyzer:
             List of risks in this clause
         """
         # Create a minimal contract object for analysis
-        temp_contract = Contract(clauses=[clause])
+        temp_contract = Contract(clauses=[clause])  # type: ignore[call-arg]
         return self.analyze(temp_contract)

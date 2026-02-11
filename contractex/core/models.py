@@ -6,11 +6,14 @@ providing type-safe interfaces with validation and convenience methods.
 """
 
 from pydantic import BaseModel, Field, ConfigDict, field_validator
-from typing import List, Optional, Dict, Any, Literal
+from typing import List, Optional, Dict, Any, Literal, TYPE_CHECKING
 from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
 import json
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 
 class ContractType(str, Enum):
@@ -289,7 +292,7 @@ class Contract(BaseModel):
     
     # Metadata
     metadata: ContractMetadata = Field(
-        default_factory=ContractMetadata,
+        default_factory=lambda: ContractMetadata(),  # type: ignore[call-arg]
         description="Metadata about the document and extraction"
     )
     

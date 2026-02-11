@@ -86,7 +86,10 @@ class OpenAIProvider(LLMProvider):
                 max_tokens=max_tokens or self._max_tokens,
             )
             
-            return response.choices[0].message.parsed
+            parsed = response.choices[0].message.parsed
+            if parsed is None:
+                raise LLMProviderError("OpenAI returned None for parsed response")
+            return parsed
             
         except Exception as e:
             raise LLMProviderError(f"OpenAI structured extraction failed: {str(e)}") from e
@@ -131,7 +134,7 @@ class OpenAIProvider(LLMProvider):
     def count_tokens(self, text: str) -> int:
         """Count tokens using tiktoken."""
         try:
-            import tiktoken
+            import tiktoken  # type: ignore[import-not-found]
             
             # Get encoding for model
             if "gpt-4" in self._model:

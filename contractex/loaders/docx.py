@@ -53,7 +53,7 @@ class DOCXLoader(DocumentLoader):
                 raise FileNotFoundError(f"DOCX file not found: {source}")
             
             # Load document
-            doc = self.docx.Document(source)
+            doc = self.docx.Document(source)  # type: ignore[attr-defined]
             
             text_parts = []
             
@@ -98,7 +98,7 @@ class DOCXLoader(DocumentLoader):
         metadata = super().get_metadata(source)
         
         try:
-            doc = self.docx.Document(source)
+            doc = self.docx.Document(source)  # type: ignore[attr-defined]
             
             # Add DOCX-specific metadata
             core_properties = doc.core_properties

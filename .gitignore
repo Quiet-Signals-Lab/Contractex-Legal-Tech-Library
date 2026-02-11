@@ -231,14 +231,8 @@ dbase/
 retrieval/
 src/
 
-# Old test/validation scripts (deprecated)
-test_processor.py
-validate_dbase.py
-
-# Internal planning documents (not part of public docs)
-contract-clause-extractor-revised-plan.md
-DATABASE_IMPLEMENTATION.md
-RESTRUCTURING.md
+# Historical documentation (archived)
+docs/archive/
 
 # Examples that might contain API keys or sensitive data
 examples/output/

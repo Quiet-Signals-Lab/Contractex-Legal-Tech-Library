@@ -6,7 +6,7 @@ models in isolation.
 """
 import pytest
 from datetime import datetime
-from dbase.models import (
+from contractex.storage.models import (
     Document, Clause, ProcessingLog,
     ClauseType, ProcessingStage, ProcessingStatus
 )

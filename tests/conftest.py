@@ -20,13 +20,13 @@ except ImportError:
     psycopg2 = None  # type: ignore
     ISOLATION_LEVEL_AUTOCOMMIT = None
 
-from dbase.models import Document, Clause, ProcessingLog, ProcessingStage, ProcessingStatus
-from dbase.config import get_db_config
+from contractex.storage.models import Document, Clause, ProcessingLog, ProcessingStage, ProcessingStatus
+from contractex.storage.config import get_db_config
 
 # Conditionally import repository classes
 if PSYCOPG2_AVAILABLE:
-    from dbase.connection import get_connection
-    from dbase.repository import DocumentRepository, ClauseRepository, ProcessingLogRepository
+    from contractex.storage.connection import get_connection
+    from contractex.storage.repository import DocumentRepository, ClauseRepository, ProcessingLogRepository
 
 
 # ============================================================================
@@ -45,7 +45,7 @@ def test_db_config():
 def db_schema_sql():
     """Load schema SQL for test database setup."""
     import pathlib
-    schema_file = pathlib.Path(__file__).parent.parent / "dbase" / "schema.sql"
+    schema_file = pathlib.Path(__file__).parent.parent / "contractex" / "storage" / "schema.sql"
     with open(schema_file, 'r') as f:
         # Skip database creation and extension lines
         lines = f.readlines()

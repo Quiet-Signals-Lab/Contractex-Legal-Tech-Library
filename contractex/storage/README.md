@@ -18,19 +18,19 @@ Following best practices for legal tech document analysis systems, this module i
 
 ```bash
 # Initialize database, schema, and load CUAD data
-python -m dbase.setup
+python -m contractex.storage.setup
 
 # Setup without loading data
-python -m dbase.setup --no-data
+python -m contractex.storage.setup --no-data
 
 # Setup with limited data (for testing)
-python -m dbase.setup --limit 10
+python -m contractex.storage.setup --limit 10
 ```
 
 ### 2. Basic Usage
 
 ```python
-from dbase import DocumentRepository, Document, ClauseRepository, Clause
+from contractex.storage import DocumentRepository, Document, ClauseRepository, Clause
 
 # Create document
 doc = Document(
@@ -215,7 +215,7 @@ export LOG_LEVEL=INFO
 ## Testing Connection
 
 ```python
-from dbase.connection import test_connection
+from contractex.storage.connection import test_connection
 
 if test_connection():
     print("Database connected successfully!")
@@ -224,7 +224,7 @@ if test_connection():
 ## Module Structure
 
 ```
-dbase/
+contractex/storage/
 ├── __init__.py          # Public API exports
 ├── config.py            # Configuration with env var support
 ├── connection.py        # Connection management & context managers
@@ -248,18 +248,18 @@ dbase/
 
 **Connection fails:**
 ```python
-from dbase.connection import test_connection
+from contractex.storage.connection import test_connection
 test_connection()  # Returns False and logs error details
 ```
 
 **Database doesn't exist:**
 ```bash
-python -m dbase.setup  # Creates database and schema
+python -m contractex.storage.setup  # Creates database and schema
 ```
 
 **Check what's in database:**
 ```python
-from dbase import DocumentRepository, ClauseRepository
+from contractex.storage import DocumentRepository, ClauseRepository
 
 doc_repo = DocumentRepository()
 print(f"Documents: {doc_repo.count()}")

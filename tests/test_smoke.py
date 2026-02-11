@@ -4,7 +4,7 @@ Quick smoke tests for CI/CD pipelines.
 These are fast tests that verify basic functionality.
 Run with: pytest tests/test_smoke.py -m smoke
 
-Note: These tests only require the dbase module - no database connection needed.
+Note: These tests only require the contractex.storage module - no database connection needed.
 """
 import pytest
 
@@ -16,14 +16,14 @@ class TestSmoke:
     
     def test_model_imports(self):
         """Test that model classes can be imported."""
-        from dbase.models import Document, Clause, ProcessingLog
+        from contractex.storage.models import Document, Clause, ProcessingLog
         assert Document is not None
         assert Clause is not None
         assert ProcessingLog is not None
     
     def test_document_creation(self):
         """Test basic Document instantiation."""
-        from dbase.models import Document
+        from contractex.storage.models import Document
         
         doc = Document(filename="test.pdf")
         assert doc.filename == "test.pdf"
@@ -32,7 +32,7 @@ class TestSmoke:
     
     def test_clause_creation(self):
         """Test basic Clause instantiation."""
-        from dbase.models import Clause
+        from contractex.storage.models import Clause
         
         clause = Clause(document_id=1, clause_text="test clause")
         assert clause.clause_text == "test clause"
@@ -40,7 +40,7 @@ class TestSmoke:
     
     def test_processing_log_creation(self):
         """Test basic ProcessingLog instantiation."""
-        from dbase.models import ProcessingLog
+        from contractex.storage.models import ProcessingLog
         
         log = ProcessingLog(
             document_id=1,
@@ -52,7 +52,7 @@ class TestSmoke:
     
     def test_config_module(self):
         """Test that configuration module loads."""
-        from dbase.config import get_db_config
+        from contractex.storage.config import get_db_config
         
         config = get_db_config()
         assert 'host' in config
@@ -61,7 +61,7 @@ class TestSmoke:
     
     def test_document_hash(self):
         """Test document hash computation."""
-        from dbase.models import Document
+        from contractex.storage.models import Document
         
         hash_val = Document.compute_hash(b"test data")
         assert len(hash_val) == 64
@@ -73,7 +73,7 @@ class TestSmoke:
     
     def test_controlled_vocabularies(self):
         """Test controlled vocabulary constants."""
-        from dbase.models import ClauseType, ProcessingStage, ProcessingStatus
+        from contractex.storage.models import ClauseType, ProcessingStage, ProcessingStatus
         
         assert ClauseType.PAYMENT == "payment"
         assert ProcessingStage.UPLOADED == "uploaded"
@@ -81,7 +81,7 @@ class TestSmoke:
     
     def test_clause_bounding_box(self):
         """Test clause bounding box functionality."""
-        from dbase.models import Clause
+        from contractex.storage.models import Clause
         
         clause = Clause(
             document_id=1,

@@ -45,6 +45,7 @@ langchain = ["langchain>=0.3.0", "langchain-community>=0.3.0"]
 spacy = ["spacy>=3.7.0"]
 local = ["ollama>=0.1.0"]
 storage = ["psycopg2-binary>=2.9.9"]
+datasets = ["datasets>=2.0.0", "requests>=2.31.0", "platformdirs>=3.0.0"]
 dev = [
     "pytest>=8.0.0",
     "pytest-cov>=4.1.0",
@@ -57,7 +58,7 @@ docs = [
     "mkdocs>=1.5.0",
     "mkdocs-material>=9.5.0",
 ]
-all = ["contractex[ocr,cloud,langchain,spacy,local,storage]"]
+all = ["contractex[ocr,cloud,langchain,spacy,local,storage,datasets]"]
 
 [project.urls]
 Homepage = "https://github.com/aahepburn/Contract-Clause-Extractor"

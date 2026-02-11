@@ -190,7 +190,7 @@ psql postgres -c "DROP DATABASE IF EXISTS clause_docs_test;"
 ```python
 # tests/test_my_feature.py
 import pytest
-from dbase.models import Document
+from contractex.storage.models import Document
 
 @pytest.mark.unit
 class TestMyFeature:

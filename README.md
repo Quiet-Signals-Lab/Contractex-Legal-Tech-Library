@@ -18,7 +18,9 @@ ContractEx is a production-ready Python library for intelligent contract analysi
 - **🛡️ Risk Analysis**: Automatic detection of unfavorable terms and potential risks
 - **💰 Financial Extraction**: Extract payment terms, amounts, and conditions
 - **🔒 Privacy-First**: Local LLM support for sensitive documents
-- **🔗 Extensible**: LangChain and spaCy compatibility
+- **🧑‍⚖️ Named Entity Recognition**: Extract parties, dates, and legal entities using spaCy/Blackstone
+- **� Dataset Loaders**: Built-in access to ACORD, CUAD, and LePaRD benchmarks
+- **�🔗 Extensible**: LangChain and spaCy compatibility
 - **📊 Export**: JSON, Excel, CSV output formats
 - **⚡ Fast**: Batch processing with parallel execution
 - **✅ Type-Safe**: Full type hints and Pydantic models
@@ -27,17 +29,39 @@ ContractEx is a production-ready Python library for intelligent contract analysi
 
 ## 📦 Installation
 
+### Quick Install
+
 ```bash
-# Basic installation
-pip install contractex
+# Clone repository
+git clone https://github.com/aahepburn/Contract-Clause-Extractor.git
+cd Contract-Clause-Extractor
 
-# With optional dependencies
-pip install contractex[all]  # All features
+# Install all dependencies (single requirements file)
+pip install -r requirements.txt
 
-# Or install specific features
-pip install contractex[ocr]        # OCR support for scanned PDFs
-pip install contractex[langchain]  # LangChain integration
-pip install contractex[local]      # Local LLM support (Ollama)
+# Or install as editable package
+pip install -e .
+```
+
+### Using pyproject.toml (Optional Feature Groups)
+
+```bash
+# Install specific feature groups
+pip install -e ".[ocr]"        # OCR support for scanned PDFs
+pip install -e ".[spacy]"      # Named Entity Recognition
+pip install -e ".[langchain]"  # LangChain integration
+pip install -e ".[local]"      # Local LLM support (Ollama)
+pip install -e ".[storage]"    # PostgreSQL storage
+pip install -e ".[datasets]"   # Dataset loaders (ACORD, CUAD, LePaRD)
+pip install -e ".[all]"        # All features
+```
+
+### Configuration
+
+```bash
+# Create .env file with your API keys
+OPENAI_API_KEY=sk-...
+ANTHROPIC_API_KEY=sk-ant-...
 ```
 
 ---
@@ -93,6 +117,28 @@ contract = extractor.extract(
 
 ---
 
+## 📊 Dataset Loading
+
+Load popular legal contract datasets for training and evaluation:
+
+```python
+from contractex.data import load_cuad, load_acord, load_lepard
+
+# Load CUAD (Contract Understanding Atticus Dataset)
+cuad_df = load_cuad(split='train')
+print(f"Loaded {len(cuad_df)} contracts with 41 clause types")
+
+# Load ACORD (clause retrieval benchmark)
+acord_df = load_acord(split='train')
+
+# Load LePaRD (legal passage retrieval)
+lepard_df = load_lepard()
+```
+
+See [contractex/data/README.md](contractex/data/README.md) for full documentation.
+
+---
+
 ## 🎯 Use Cases
 
 ### Legal Teams
@@ -120,11 +166,38 @@ contract = extractor.extract(
 
 ---
 
-## 📚 Documentation
+## 📚 Documentation & Examples
 
-- [Quick Start Guide](QUICKSTART.md)
-- [API Reference](docs/api_reference.md)
-- [Examples](examples/)
+- **[CHANGELOG.md](CHANGELOG.md)** - Version history and release notes
+- **[Examples Directory](examples/)** - Ready-to-run examples:
+  - `basic_extraction.py` - Simple usage
+  - `advanced_extraction.py` - Custom configuration
+  - `batch_processing.py` - Multiple contracts
+  - `langchain_integration.py` - LangChain usage
+  - `local_llm_example.py` - Privacy-first local
+  - `fastapi_service.py` - REST API
+  - `dataset_loading.py` - Working with legal datasets
+  - `ner_example.py` - Named entity recognition
+  - `storage_example.py` - PostgreSQL persistence
+
+Run examples: `python examples/basic_extraction.py`
+
+---
+
+## 🧪 Testing & Development
+
+```bash
+# Run all tests
+pytest
+
+# With coverage
+pytest --cov=contractex --cov-report=html
+
+# Code quality
+black contractex/           # Format code
+ruff check contractex/ --fix  # Lint
+mypy contractex/             # Type check
+```
 
 ---
 

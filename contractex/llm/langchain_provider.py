@@ -88,6 +88,7 @@ Respond with valid JSON matching this schema:
         """Get text completion from LangChain LLM."""
         try:
             # Set temperature if possible
+            original_temp = None
             if hasattr(self.langchain_llm, 'temperature'):
                 original_temp = self.langchain_llm.temperature
                 self.langchain_llm.temperature = temperature
@@ -96,7 +97,7 @@ Respond with valid JSON matching this schema:
             response = self.langchain_llm.invoke(prompt, **kwargs)
             
             # Restore temperature
-            if hasattr(self.langchain_llm, 'temperature'):
+            if original_temp is not None:
                 self.langchain_llm.temperature = original_temp
             
             # Handle different response types

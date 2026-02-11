@@ -6,8 +6,8 @@ import os
 from unittest.mock import patch, MagicMock
 import psycopg2
 
-from dbase.config import get_db_config
-from dbase.connection import (
+from contractex.storage.config import get_db_config
+from contractex.storage.connection import (
     DatabaseConnection,
     get_connection,
     get_cursor,
@@ -280,11 +280,11 @@ class TestConnectionIntegration:
     
     def test_transaction_rollback(self, test_database):
         """Test that failed transactions rollback properly."""
-        from dbase.models import Document
-        from dbase.repository import DocumentRepository
+        from contractex.storage.models import Document
+        from contractex.storage.repository import DocumentRepository
         
         # Use repository to insert
-        with patch('dbase.repository.get_cursor') as mock_cursor:
+        with patch('contractex.storage.repository.get_cursor') as mock_cursor:
             def cursor_context(*args, **kwargs):
                 from contextlib import contextmanager
                 @contextmanager

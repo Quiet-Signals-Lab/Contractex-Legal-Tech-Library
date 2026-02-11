@@ -2,6 +2,9 @@
 LangChain Integration Example
 
 Shows how to use ContractEx with LangChain components.
+
+Requires optional dependencies:
+    pip install langchain langchain-openai langchain-community
 """
 
 from contractex import ContractExtractor
@@ -9,9 +12,9 @@ from contractex.llm import LangChainProvider
 from contractex.loaders import LangChainDocumentAdapter
 
 # Example 1: Use LangChain LLM with ContractEx
-from langchain_openai import ChatOpenAI
+from langchain_openai import ChatOpenAI  # type: ignore[import-not-found]
 
-langchain_llm = ChatOpenAI(
+langchain_llm = ChatOpenAI(  # type: ignore[call-arg]
     model="gpt-4o",
     temperature=0.0
 )
@@ -20,7 +23,7 @@ langchain_llm = ChatOpenAI(
 llm_provider = LangChainProvider(langchain_llm)
 
 # Example 2: Use LangChain document loader
-from langchain_community.document_loaders import PyPDFLoader
+from langchain_community.document_loaders import PyPDFLoader  # type: ignore[import-not-found]
 
 langchain_loader = PyPDFLoader("contract.pdf")
 document_loader = LangChainDocumentAdapter(langchain_loader)
@@ -40,8 +43,8 @@ print(f"  Parties: {len(contract.parties)}")
 print(f"  Clauses: {len(contract.clauses)}")
 
 # Example 3: Use ContractEx output with LangChain chains
-from langchain.prompts import PromptTemplate
-from langchain.chains import LLMChain
+from langchain.prompts import PromptTemplate  # type: ignore[import-not-found]
+from langchain.chains import LLMChain  # type: ignore[import-not-found]
 
 # Create a chain that uses extracted contract data
 summary_template = """
