@@ -18,7 +18,7 @@ class SemanticChunker(ChunkingStrategy):
         self,
         max_chunk_size: int = 4000,
         overlap: int = 200,
-        split_on: str = 'paragraph',  # 'paragraph' or 'sentence'
+        split_on: str = "paragraph",  # 'paragraph' or 'sentence'
     ):
         """
         Initialize semantic chunker.
@@ -43,7 +43,7 @@ class SemanticChunker(ChunkingStrategy):
             List of text chunks
         """
         try:
-            if self.split_on == 'paragraph':
+            if self.split_on == "paragraph":
                 units = self._split_paragraphs(text)
             else:
                 units = self._split_sentences(text)
@@ -59,13 +59,13 @@ class SemanticChunker(ChunkingStrategy):
     def _split_paragraphs(self, text: str) -> list[str]:
         """Split text into paragraphs."""
         # Split on double newlines or 2+ newlines
-        paragraphs = re.split(r'\n\s*\n', text)
+        paragraphs = re.split(r"\n\s*\n", text)
         return [p.strip() for p in paragraphs if p.strip()]
 
     def _split_sentences(self, text: str) -> list[str]:
         """Split text into sentences."""
         # Split on sentence boundaries (.!?) followed by space and capital letter
-        sentences = re.split(r'(?<=[.!?])\s+(?=[A-Z])', text)
+        sentences = re.split(r"(?<=[.!?])\s+(?=[A-Z])", text)
         return [s.strip() for s in sentences if s.strip()]
 
     def _combine_units(self, units: list[str]) -> list[str]:
@@ -88,7 +88,7 @@ class SemanticChunker(ChunkingStrategy):
             # If single unit exceeds max size, split it further
             if unit_size > self.max_chunk_size:
                 if current_chunk:
-                    chunks.append('\n\n'.join(current_chunk))
+                    chunks.append("\n\n".join(current_chunk))
                     current_chunk = []
                     current_size = 0
 
@@ -98,11 +98,11 @@ class SemanticChunker(ChunkingStrategy):
 
             # Start new chunk if this would exceed max size
             elif current_size + unit_size > self.max_chunk_size:
-                chunks.append('\n\n'.join(current_chunk))
+                chunks.append("\n\n".join(current_chunk))
 
                 # Add overlap
                 if self.overlap > 0 and current_chunk:
-                    overlap_text = current_chunk[-1][-self.overlap * 4:]
+                    overlap_text = current_chunk[-1][-self.overlap * 4 :]
                     current_chunk = [overlap_text, unit]
                     current_size = self.count_tokens(overlap_text) + unit_size
                 else:
@@ -116,7 +116,7 @@ class SemanticChunker(ChunkingStrategy):
 
         # Add final chunk
         if current_chunk:
-            chunks.append('\n\n'.join(current_chunk))
+            chunks.append("\n\n".join(current_chunk))
 
         return chunks
 
@@ -126,7 +126,7 @@ class SemanticChunker(ChunkingStrategy):
         chunks = []
 
         for i in range(0, len(text), char_limit):
-            chunk = text[i:i+char_limit]
+            chunk = text[i : i + char_limit]
             if chunk.strip():
                 chunks.append(chunk.strip())
 

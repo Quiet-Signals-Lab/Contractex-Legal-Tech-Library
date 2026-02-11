@@ -40,11 +40,7 @@ class LLMProvider(ABC):
 
     @abstractmethod
     def complete(
-        self,
-        prompt: str,
-        temperature: float = 0.7,
-        max_tokens: Optional[int] = None,
-        **kwargs
+        self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs
     ) -> str:
         """
         Get a text completion from the LLM.

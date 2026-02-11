@@ -55,6 +55,7 @@ class ContractExtractor:
             self.document_loader = document_loader
         else:
             from contractex.loaders import AutoLoader
+
             self.document_loader = AutoLoader()
 
         # Initialize chunking strategy
@@ -62,6 +63,7 @@ class ContractExtractor:
             self.chunking_strategy = chunking_strategy
         else:
             from contractex.chunking import ClauseAwareChunker
+
             self.chunking_strategy = ClauseAwareChunker()
 
     def _create_provider(self, name: str) -> LLMProvider:
@@ -70,16 +72,19 @@ class ContractExtractor:
 
         if "gpt" in name_lower or "openai" in name_lower:
             from contractex.llm import OpenAIProvider
+
             model = name if name.startswith("gpt-") else "gpt-4o"
             return OpenAIProvider(model=model)
 
         elif "claude" in name_lower or "anthropic" in name_lower:
             from contractex.llm import AnthropicProvider
+
             model = name if name.startswith("claude-") else "claude-3-5-sonnet-20241022"
             return AnthropicProvider(model=model)
 
         elif "llama" in name_lower or "local" in name_lower:
             from contractex.llm import LocalProvider
+
             return LocalProvider(model=name)
 
         else:
@@ -119,7 +124,7 @@ class ContractExtractor:
                 "filename": doc_path.name,
                 "file_type": doc_path.suffix[1:],
                 "llm_provider": self.llm_provider.__class__.__name__,
-                "llm_model": getattr(self.llm_provider, 'model', None),
+                "llm_model": getattr(self.llm_provider, "model", None),
             }
 
             # Chunk document
@@ -142,6 +147,7 @@ class ContractExtractor:
             # Perform risk analysis if requested
             if analyze_risks:
                 from contractex.core.analyzers import RiskAnalyzer
+
                 analyzer = RiskAnalyzer()
                 contract.risks = analyzer.analyze(contract)
 
@@ -199,7 +205,9 @@ class ContractExtractor:
 
         for clause in contract.clauses:
             if clause.confidence < self.confidence_threshold:
-                low_confidence_items.append(f"Clause: {clause.clause_type} ({clause.confidence:.2f})")
+                low_confidence_items.append(
+                    f"Clause: {clause.clause_type} ({clause.confidence:.2f})"
+                )
 
         for party in contract.parties:
             if party.confidence < self.confidence_threshold:
@@ -227,10 +235,7 @@ class ContractExtractor:
         return self.extract(document_path, **kwargs)
 
     def extract_batch(
-        self,
-        document_paths: list[str],
-        max_workers: int = 4,
-        **kwargs
+        self, document_paths: list[str], max_workers: int = 4, **kwargs
     ) -> list[Contract]:
         """
         Process multiple contracts in parallel.
@@ -249,8 +254,7 @@ class ContractExtractor:
 
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             future_to_path = {
-                executor.submit(self.extract, path, **kwargs): path
-                for path in document_paths
+                executor.submit(self.extract, path, **kwargs): path for path in document_paths
             }
 
             for future in as_completed(future_to_path):

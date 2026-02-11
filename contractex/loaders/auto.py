@@ -25,8 +25,8 @@ class AutoLoader(DocumentLoader):
 
         # Initialize specific loaders
         self.loaders = {
-            '.pdf': PDFLoader(**loader_kwargs),
-            '.docx': DOCXLoader(**loader_kwargs),
+            ".pdf": PDFLoader(**loader_kwargs),
+            ".docx": DOCXLoader(**loader_kwargs),
         }
 
     def load(self, source: str) -> str:

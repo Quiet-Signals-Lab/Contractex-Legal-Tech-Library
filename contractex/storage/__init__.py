@@ -55,21 +55,21 @@ from contractex.storage.repository import (
 
 __all__ = [
     # Models
-    'Document',
-    'Clause',
-    'ProcessingLog',
-    'ClauseType',
-    'ProcessingStage',
-    'ProcessingStatus',
+    "Document",
+    "Clause",
+    "ProcessingLog",
+    "ClauseType",
+    "ProcessingStage",
+    "ProcessingStatus",
     # Repositories
-    'DocumentRepository',
-    'ClauseRepository',
-    'ProcessingLogRepository',
+    "DocumentRepository",
+    "ClauseRepository",
+    "ProcessingLogRepository",
     # Connection
-    'DatabaseConnection',
-    'get_connection',
-    'get_cursor',
-    'test_connection',
+    "DatabaseConnection",
+    "get_connection",
+    "get_cursor",
+    "test_connection",
     # Config
-    'get_db_config',
+    "get_db_config",
 ]

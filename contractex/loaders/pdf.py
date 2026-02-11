@@ -35,6 +35,7 @@ class PDFLoader(DocumentLoader):
         # Check PyMuPDF availability
         try:
             import fitz
+
             self.fitz = fitz
         except ImportError as e:
             raise DocumentLoadError(
@@ -121,8 +122,7 @@ class PDFLoader(DocumentLoader):
 
         except ImportError as e:
             raise DocumentLoadError(
-                "OCR dependencies not installed. "
-                "Install with: pip install pytesseract pillow"
+                "OCR dependencies not installed. " "Install with: pip install pytesseract pillow"
             ) from e
         except Exception:
             # Silently fail and return empty string
@@ -136,11 +136,13 @@ class PDFLoader(DocumentLoader):
             doc = self.fitz.open(source)
 
             # Add PDF-specific metadata
-            metadata.update({
-                'page_count': len(doc),
-                'pdf_metadata': doc.metadata,
-                'is_encrypted': doc.is_encrypted,
-            })
+            metadata.update(
+                {
+                    "page_count": len(doc),
+                    "pdf_metadata": doc.metadata,
+                    "is_encrypted": doc.is_encrypted,
+                }
+            )
 
             doc.close()
 
@@ -151,4 +153,4 @@ class PDFLoader(DocumentLoader):
 
     def supports(self, file_path: str) -> bool:
         """Check if file is a PDF."""
-        return Path(file_path).suffix.lower() == '.pdf'
+        return Path(file_path).suffix.lower() == ".pdf"

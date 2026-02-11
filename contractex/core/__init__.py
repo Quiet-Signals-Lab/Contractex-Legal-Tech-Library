@@ -12,6 +12,7 @@ from contractex.core.models import (
 # Optional NER support (requires spacy)
 try:
     from contractex.core.ner import LegalNER
+
     __all__ = [
         "Contract",
         "Party",
@@ -31,4 +32,3 @@ except ImportError:
         "RiskFlag",
         "ContractMetadata",
     ]
-

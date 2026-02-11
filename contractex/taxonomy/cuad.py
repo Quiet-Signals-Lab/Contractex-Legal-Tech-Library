@@ -97,51 +97,40 @@ class CUADClauseType(str, Enum):
             cls.EXPIRATION_DATE: "When the agreement expires or ends",
             cls.RENEWAL_TERM: "Terms for automatic renewal or extension",
             cls.AGREEMENT_DATE: "Date the agreement was executed",
-
             cls.TERMINATION_FOR_CAUSE: "Conditions allowing termination due to breach or fault",
             cls.TERMINATION_FOR_CONVENIENCE: "Ability to terminate without cause",
             cls.NOTICE_PERIOD_TO_TERMINATE: "Required notice period for termination",
-
             cls.PAYMENT_TERMS: "Payment amounts, schedule, and conditions",
             cls.CAP_ON_LIABILITY: "Maximum liability limits",
             cls.LIQUIDATED_DAMAGES: "Pre-determined damages for breach",
             cls.PRICE_RESTRICTIONS: "Restrictions on pricing or price changes",
-
             cls.LICENSE_GRANT: "Grant of license for intellectual property use",
             cls.IP_OWNERSHIP_ASSIGNMENT: "Transfer of IP ownership",
             cls.JOINT_IP_OWNERSHIP: "Shared ownership of intellectual property",
-
             cls.NON_COMPETE: "Restriction on competing activities",
             cls.EXCLUSIVITY: "Exclusive rights or obligations",
             cls.NO_SOLICIT_OF_CUSTOMERS: "Prohibition on soliciting customers",
             cls.NO_SOLICIT_OF_EMPLOYEES: "Prohibition on hiring employees",
-
             cls.CONFIDENTIALITY: "Confidentiality and non-disclosure obligations",
             cls.DATA_SECURITY: "Data protection and security requirements",
             cls.AUDIT_RIGHTS: "Rights to audit records or compliance",
-
             cls.UNCAPPED_LIABILITY: "Unlimited liability exposure",
             cls.INDEMNIFICATION: "Obligation to indemnify against losses",
             cls.INSURANCE_REQUIREMENTS: "Required insurance coverage",
             cls.WARRANTY_DISCLAIMER: "Disclaimer of warranties",
-
             cls.CHANGE_OF_CONTROL: "Provisions triggered by change in ownership",
             cls.ANTI_ASSIGNMENT: "Restrictions on transferring the agreement",
             cls.CONTRACT_MODIFICATION: "How the contract can be modified or amended",
-
             cls.GOVERNING_LAW: "Which jurisdiction's laws govern the agreement",
             cls.VENUE: "Where disputes must be resolved",
             cls.ARBITRATION: "Requirement to arbitrate disputes",
-
             cls.REVENUE_PROFIT_SHARING: "Revenue or profit sharing arrangements",
             cls.MINIMUM_COMMITMENT: "Minimum purchase or usage commitments",
             cls.VOLUME_RESTRICTION: "Maximum volume or quantity restrictions",
             cls.MOST_FAVORED_NATION: "Obligation to offer best pricing terms",
-
             cls.AUTHORITY: "Representation that party has authority to enter agreement",
             cls.THIRD_PARTY_BENEFICIARIES: "Third parties who can enforce the agreement",
             cls.ROFR_ROFO_ROFN: "Right of first refusal, offer, or negotiation",
-
             cls.MISCELLANEOUS: "Other standard contract provisions",
         }
 

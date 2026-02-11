@@ -4,6 +4,7 @@ Domain models for legal document analysis.
 These dataclasses represent business entities and encapsulate domain logic,
 providing type-safe interfaces between database and application code.
 """
+
 import hashlib
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -33,7 +34,7 @@ class Document:
     updated_at: Optional[datetime] = None
 
     @classmethod
-    def from_db_row(cls, row: tuple) -> 'Document':
+    def from_db_row(cls, row: tuple) -> "Document":
         """
         Convert psycopg2 query result tuple to Document object.
 
@@ -48,7 +49,7 @@ class Document:
             extracted_text=row[4],
             metadata=row[5] if row[5] else {},
             uploaded_at=row[6],
-            updated_at=row[7]
+            updated_at=row[7],
         )
 
     @staticmethod
@@ -95,7 +96,7 @@ class Clause:
     created_at: Optional[datetime] = None
 
     @classmethod
-    def from_db_row(cls, row: tuple) -> 'Clause':
+    def from_db_row(cls, row: tuple) -> "Clause":
         """
         Convert psycopg2 query result tuple to Clause object.
 
@@ -117,26 +118,34 @@ class Clause:
             confidence_score=row[9],
             parent_clause_id=row[10],
             metadata=row[11] if row[11] else {},
-            created_at=row[12]
+            created_at=row[12],
         )
 
     def has_bounding_box(self) -> bool:
         """Check if clause has complete bounding box information."""
-        return all([
-            self.bbox_x is not None,
-            self.bbox_y is not None,
-            self.bbox_width is not None,
-            self.bbox_height is not None
-        ])
+        return all(
+            [
+                self.bbox_x is not None,
+                self.bbox_y is not None,
+                self.bbox_width is not None,
+                self.bbox_height is not None,
+            ]
+        )
 
     def get_bounding_box(self) -> Optional[dict[str, float]]:
         """Return bounding box as dict, or None if incomplete."""
-        if self.has_bounding_box() and self.bbox_x is not None and self.bbox_y is not None and self.bbox_width is not None and self.bbox_height is not None:
+        if (
+            self.has_bounding_box()
+            and self.bbox_x is not None
+            and self.bbox_y is not None
+            and self.bbox_width is not None
+            and self.bbox_height is not None
+        ):
             return {
-                'x': self.bbox_x,
-                'y': self.bbox_y,
-                'width': self.bbox_width,
-                'height': self.bbox_height
+                "x": self.bbox_x,
+                "y": self.bbox_y,
+                "width": self.bbox_width,
+                "height": self.bbox_height,
             }
         return None
 
@@ -159,7 +168,7 @@ class ProcessingLog:
     created_at: Optional[datetime] = None
 
     @classmethod
-    def from_db_row(cls, row: tuple) -> 'ProcessingLog':
+    def from_db_row(cls, row: tuple) -> "ProcessingLog":
         """
         Convert psycopg2 query result tuple to ProcessingLog object.
 
@@ -172,46 +181,49 @@ class ProcessingLog:
             processing_stage=row[2],
             status=row[3],
             error_message=row[4],
-            created_at=row[5]
+            created_at=row[5],
         )
 
     def is_failed(self) -> bool:
         """Check if this log entry represents a failure."""
-        return self.status == 'failed'
+        return self.status == "failed"
 
     def is_completed(self) -> bool:
         """Check if this log entry represents successful completion."""
-        return self.status == 'completed'
+        return self.status == "completed"
 
 
 # Constants for standardization
 class ClauseType:
     """Controlled vocabulary for clause types."""
-    TERMINATION = 'termination'
-    PAYMENT = 'payment'
-    LIABILITY = 'liability'
-    INDEMNIFICATION = 'indemnification'
-    CONFIDENTIALITY = 'confidentiality'
-    GOVERNING_LAW = 'governing_law'
-    DISPUTE_RESOLUTION = 'dispute_resolution'
-    INTELLECTUAL_PROPERTY = 'intellectual_property'
-    WARRANTY = 'warranty'
-    FORCE_MAJEURE = 'force_majeure'
-    ASSIGNMENT = 'assignment'
-    AMENDMENT = 'amendment'
-    OTHER = 'other'
+
+    TERMINATION = "termination"
+    PAYMENT = "payment"
+    LIABILITY = "liability"
+    INDEMNIFICATION = "indemnification"
+    CONFIDENTIALITY = "confidentiality"
+    GOVERNING_LAW = "governing_law"
+    DISPUTE_RESOLUTION = "dispute_resolution"
+    INTELLECTUAL_PROPERTY = "intellectual_property"
+    WARRANTY = "warranty"
+    FORCE_MAJEURE = "force_majeure"
+    ASSIGNMENT = "assignment"
+    AMENDMENT = "amendment"
+    OTHER = "other"
 
 
 class ProcessingStage:
     """Controlled vocabulary for processing stages."""
-    UPLOADED = 'uploaded'
-    EXTRACTED = 'extracted'
-    EMBEDDED = 'embedded'
-    INDEXED = 'indexed'
+
+    UPLOADED = "uploaded"
+    EXTRACTED = "extracted"
+    EMBEDDED = "embedded"
+    INDEXED = "indexed"
 
 
 class ProcessingStatus:
     """Controlled vocabulary for processing status."""
-    PENDING = 'pending'
-    COMPLETED = 'completed'
-    FAILED = 'failed'
+
+    PENDING = "pending"
+    COMPLETED = "completed"
+    FAILED = "failed"

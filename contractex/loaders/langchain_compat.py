@@ -8,10 +8,12 @@ from contractex.loaders.base import DocumentLoader
 # Optional LangChain imports
 try:
     from langchain_core.documents import Document  # type: ignore[import-not-found]
+
     HAS_LANGCHAIN = True
 except ImportError:
     try:
         from langchain.schema import Document  # type: ignore[import-not-found]
+
         HAS_LANGCHAIN = True
     except ImportError:
         # LangChain not installed - define placeholder for type checking
@@ -74,9 +76,7 @@ class LangChainDocumentAdapter(DocumentLoader):
             return full_text
 
         except Exception as e:
-            raise DocumentLoadError(
-                f"LangChain loader failed: {str(e)}"
-            ) from e
+            raise DocumentLoadError(f"LangChain loader failed: {str(e)}") from e
 
     def get_metadata(self, source: str) -> dict:
         """

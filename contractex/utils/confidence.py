@@ -1,6 +1,5 @@
 """Confidence scoring utilities."""
 
-
 from contractex.core.models import Contract
 
 
@@ -47,10 +46,7 @@ def calculate_overall_confidence(contract: Contract) -> float:
         return 0.0
 
 
-def get_low_confidence_items(
-    contract: Contract,
-    threshold: float = 0.7
-) -> list[str]:
+def get_low_confidence_items(contract: Contract, threshold: float = 0.7) -> list[str]:
     """
     Get list of items with confidence below threshold.
 
@@ -71,9 +67,7 @@ def get_low_confidence_items(
 
     for party in contract.parties:
         if party.confidence < threshold:
-            warnings.append(
-                f"Low confidence party: {party.name} ({party.confidence:.2f})"
-            )
+            warnings.append(f"Low confidence party: {party.name} ({party.confidence:.2f})")
 
     for term in contract.financial_terms:
         if term.confidence < threshold:
@@ -84,10 +78,7 @@ def get_low_confidence_items(
     return warnings
 
 
-def adjust_confidence_score(
-    base_score: float,
-    factors: dict
-) -> float:
+def adjust_confidence_score(base_score: float, factors: dict) -> float:
     """
     Adjust confidence score based on various factors.
 
@@ -101,16 +92,16 @@ def adjust_confidence_score(
     score = base_score
 
     # Apply adjustments
-    if 'multiple_sources' in factors and factors['multiple_sources']:
+    if "multiple_sources" in factors and factors["multiple_sources"]:
         score *= 1.1  # Boost if confirmed by multiple sources
 
-    if 'ambiguous_language' in factors and factors['ambiguous_language']:
+    if "ambiguous_language" in factors and factors["ambiguous_language"]:
         score *= 0.9  # Reduce if language is ambiguous
 
-    if 'ocr_extraction' in factors and factors['ocr_extraction']:
+    if "ocr_extraction" in factors and factors["ocr_extraction"]:
         score *= 0.85  # Reduce for OCR (less reliable)
 
-    if 'manual_verification' in factors and factors['manual_verification']:
+    if "manual_verification" in factors and factors["manual_verification"]:
         score *= 1.2  # Boost if manually verified
 
     # Clamp to [0, 1]

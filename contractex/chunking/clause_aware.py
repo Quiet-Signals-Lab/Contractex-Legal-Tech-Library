@@ -16,12 +16,12 @@ class ClauseAwareChunker(ChunkingStrategy):
 
     # Common patterns that indicate section/clause boundaries
     SECTION_PATTERNS = [
-        r'^\d+\.',  # 1. Section
-        r'^Article\s+\d+',  # Article 1
-        r'^Section\s+\d+',  # Section 1
-        r'^\([a-z]\)',  # (a) subsection
-        r'^\([0-9]+\)',  # (1) subsection
-        r'^\w+\s+TERMINATION',  # TERMINATION sections
+        r"^\d+\.",  # 1. Section
+        r"^Article\s+\d+",  # Article 1
+        r"^Section\s+\d+",  # Section 1
+        r"^\([a-z]\)",  # (a) subsection
+        r"^\([0-9]+\)",  # (1) subsection
+        r"^\w+\s+TERMINATION",  # TERMINATION sections
     ]
 
     def __init__(
@@ -44,8 +44,7 @@ class ClauseAwareChunker(ChunkingStrategy):
 
         # Compile patterns
         self.section_regex = re.compile(
-            '|'.join(self.SECTION_PATTERNS),
-            re.MULTILINE | re.IGNORECASE
+            "|".join(self.SECTION_PATTERNS), re.MULTILINE | re.IGNORECASE
         )
 
     def chunk(self, text: str) -> list[str]:
@@ -81,7 +80,7 @@ class ClauseAwareChunker(ChunkingStrategy):
             List of sections
         """
         sections = []
-        lines = text.split('\n')
+        lines = text.split("\n")
 
         current_section = []
 
@@ -90,7 +89,7 @@ class ClauseAwareChunker(ChunkingStrategy):
             if self.section_regex.match(line.strip()):
                 # Save previous section
                 if current_section:
-                    sections.append('\n'.join(current_section))
+                    sections.append("\n".join(current_section))
 
                 # Start new section
                 current_section = [line]
@@ -99,11 +98,11 @@ class ClauseAwareChunker(ChunkingStrategy):
 
         # Add last section
         if current_section:
-            sections.append('\n'.join(current_section))
+            sections.append("\n".join(current_section))
 
         # If no sections were found, split by paragraphs
         if len(sections) <= 1:
-            sections = text.split('\n\n')
+            sections = text.split("\n\n")
 
         return [s.strip() for s in sections if s.strip()]
 
@@ -128,7 +127,7 @@ class ClauseAwareChunker(ChunkingStrategy):
             if section_size > self.max_chunk_size:
                 # Save current chunk if any
                 if current_chunk:
-                    chunks.append('\n\n'.join(current_chunk))
+                    chunks.append("\n\n".join(current_chunk))
                     current_chunk = []
                     current_size = 0
 
@@ -138,11 +137,13 @@ class ClauseAwareChunker(ChunkingStrategy):
 
             # If adding this section would exceed max size, start new chunk
             elif current_size + section_size > self.max_chunk_size:
-                chunks.append('\n\n'.join(current_chunk))
+                chunks.append("\n\n".join(current_chunk))
 
                 # Handle overlap
                 if self.overlap > 0 and current_chunk:
-                    overlap_text = current_chunk[-1][-self.overlap * 4:]  # Approximate chars from tokens
+                    overlap_text = current_chunk[-1][
+                        -self.overlap * 4 :
+                    ]  # Approximate chars from tokens
                     current_chunk = [overlap_text, section]
                     current_size = self.count_tokens(overlap_text) + section_size
                 else:
@@ -156,7 +157,7 @@ class ClauseAwareChunker(ChunkingStrategy):
 
         # Add final chunk
         if current_chunk:
-            chunks.append('\n\n'.join(current_chunk))
+            chunks.append("\n\n".join(current_chunk))
 
         return chunks
 
@@ -172,11 +173,11 @@ class ClauseAwareChunker(ChunkingStrategy):
         """
         # Split by sentences if preserve_sentences is True
         if self.preserve_sentences:
-            sentences = re.split(r'(?<=[.!?])\s+', section)
+            sentences = re.split(r"(?<=[.!?])\s+", section)
         else:
             # Split by character count
             char_limit = self.max_chunk_size * 4  # Convert tokens to chars
-            sentences = [section[i:i+char_limit] for i in range(0, len(section), char_limit)]
+            sentences = [section[i : i + char_limit] for i in range(0, len(section), char_limit)]
 
         # Combine sentences into chunks
         chunks = []
@@ -188,7 +189,7 @@ class ClauseAwareChunker(ChunkingStrategy):
 
             if current_size + sentence_size > self.max_chunk_size:
                 if current:
-                    chunks.append(' '.join(current))
+                    chunks.append(" ".join(current))
                 current = [sentence]
                 current_size = sentence_size
             else:
@@ -196,6 +197,6 @@ class ClauseAwareChunker(ChunkingStrategy):
                 current_size += sentence_size
 
         if current:
-            chunks.append(' '.join(current))
+            chunks.append(" ".join(current))
 
         return chunks

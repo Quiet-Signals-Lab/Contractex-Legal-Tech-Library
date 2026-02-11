@@ -27,11 +27,7 @@ class LangChainProvider(LLMProvider):
         self._default_max_tokens = default_max_tokens
 
         # Get model name if available
-        self._model_name = getattr(
-            langchain_llm,
-            'model_name',
-            langchain_llm.__class__.__name__
-        )
+        self._model_name = getattr(langchain_llm, "model_name", langchain_llm.__class__.__name__)
 
     def extract_structured(
         self,
@@ -48,7 +44,7 @@ class LangChainProvider(LLMProvider):
         """
         try:
             # Try to use structured output if available
-            if hasattr(self.langchain_llm, 'with_structured_output'):
+            if hasattr(self.langchain_llm, "with_structured_output"):
                 structured_llm = self.langchain_llm.with_structured_output(schema)
                 result = structured_llm.invoke(prompt)
                 return result
@@ -67,9 +63,9 @@ Respond with valid JSON matching this schema:
                 response = self.complete(enhanced_prompt, temperature, max_tokens)
 
                 # Try to extract JSON
-                if not response.strip().startswith('{'):
-                    start = response.find('{')
-                    end = response.rfind('}') + 1
+                if not response.strip().startswith("{"):
+                    start = response.find("{")
+                    end = response.rfind("}") + 1
                     if start != -1 and end > start:
                         response = response[start:end]
 
@@ -80,17 +76,13 @@ Respond with valid JSON matching this schema:
             raise LLMProviderError(f"LangChain structured extraction failed: {str(e)}") from e
 
     def complete(
-        self,
-        prompt: str,
-        temperature: float = 0.7,
-        max_tokens: Optional[int] = None,
-        **kwargs
+        self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs
     ) -> str:
         """Get text completion from LangChain LLM."""
         try:
             # Set temperature if possible
             original_temp = None
-            if hasattr(self.langchain_llm, 'temperature'):
+            if hasattr(self.langchain_llm, "temperature"):
                 original_temp = self.langchain_llm.temperature
                 self.langchain_llm.temperature = temperature
 
@@ -104,7 +96,7 @@ Respond with valid JSON matching this schema:
             # Handle different response types
             if isinstance(response, str):
                 return response
-            elif hasattr(response, 'content'):
+            elif hasattr(response, "content"):
                 return response.content
             else:
                 return str(response)
@@ -123,7 +115,7 @@ Respond with valid JSON matching this schema:
 
     def count_tokens(self, text: str) -> int:
         """Count tokens using LangChain's method if available."""
-        if hasattr(self.langchain_llm, 'get_num_tokens'):
+        if hasattr(self.langchain_llm, "get_num_tokens"):
             return self.langchain_llm.get_num_tokens(text)
         else:
             # Fallback estimate
@@ -133,9 +125,9 @@ Respond with valid JSON matching this schema:
     def context_window(self) -> int:
         """Get context window size."""
         # Try to get from LLM attributes
-        if hasattr(self.langchain_llm, 'max_context_size'):
+        if hasattr(self.langchain_llm, "max_context_size"):
             return self.langchain_llm.max_context_size
-        elif hasattr(self.langchain_llm, 'max_tokens'):
+        elif hasattr(self.langchain_llm, "max_tokens"):
             return self.langchain_llm.max_tokens
         else:
             # Conservative default

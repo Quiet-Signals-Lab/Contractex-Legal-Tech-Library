@@ -38,8 +38,8 @@ class DocumentLoader(ABC):
         metadata = self.get_metadata(source)
 
         return {
-            'text': text,
-            'metadata': metadata,
+            "text": text,
+            "metadata": metadata,
         }
 
     def get_metadata(self, source: str) -> dict[str, Any]:
@@ -55,9 +55,9 @@ class DocumentLoader(ABC):
         path = Path(source)
 
         return {
-            'filename': path.name,
-            'file_type': path.suffix[1:],
-            'file_size_bytes': path.stat().st_size if path.exists() else None,
+            "filename": path.name,
+            "file_type": path.suffix[1:],
+            "file_size_bytes": path.stat().st_size if path.exists() else None,
         }
 
     def supports(self, file_path: str) -> bool:

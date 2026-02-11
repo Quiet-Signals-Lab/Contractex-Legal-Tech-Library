@@ -11,10 +11,10 @@ class DateNormalizer:
 
     # Common date patterns
     PATTERNS = [
-        (r'(\d{1,2})/(\d{1,2})/(\d{4})', '%m/%d/%Y'),  # MM/DD/YYYY
-        (r'(\d{4})-(\d{2})-(\d{2})', '%Y-%m-%d'),      # YYYY-MM-DD
-        (r'(\d{1,2})-(\d{1,2})-(\d{4})', '%m-%d-%Y'),  # MM-DD-YYYY
-        (r'(\w+)\s+(\d{1,2}),?\s+(\d{4})', '%B %d %Y'),  # Month DD, YYYY
+        (r"(\d{1,2})/(\d{1,2})/(\d{4})", "%m/%d/%Y"),  # MM/DD/YYYY
+        (r"(\d{4})-(\d{2})-(\d{2})", "%Y-%m-%d"),  # YYYY-MM-DD
+        (r"(\d{1,2})-(\d{1,2})-(\d{4})", "%m-%d-%Y"),  # MM-DD-YYYY
+        (r"(\w+)\s+(\d{1,2}),?\s+(\d{4})", "%B %d %Y"),  # Month DD, YYYY
     ]
 
     @staticmethod
@@ -50,13 +50,13 @@ class CurrencyNormalizer:
 
     # Currency symbols to codes
     SYMBOL_TO_CODE = {
-        '$': 'USD',
-        '€': 'EUR',
-        '£': 'GBP',
-        '¥': 'JPY',
-        '₹': 'INR',
-        'C$': 'CAD',
-        'A$': 'AUD',
+        "$": "USD",
+        "€": "EUR",
+        "£": "GBP",
+        "¥": "JPY",
+        "₹": "INR",
+        "C$": "CAD",
+        "A$": "AUD",
     }
 
     @staticmethod
@@ -71,13 +71,13 @@ class CurrencyNormalizer:
             Decimal amount or None
         """
         # Remove currency symbols and commas
-        cleaned = re.sub(r'[$€£¥₹,]', '', text)
+        cleaned = re.sub(r"[$€£¥₹,]", "", text)
 
         # Find number
-        match = re.search(r'[\d,]+\.?\d*', cleaned)
+        match = re.search(r"[\d,]+\.?\d*", cleaned)
         if match:
             try:
-                return Decimal(match.group(0).replace(',', ''))
+                return Decimal(match.group(0).replace(",", ""))
             except Exception:
                 return None
 
@@ -95,7 +95,7 @@ class CurrencyNormalizer:
             ISO 4217 currency code or "USD" as default
         """
         # Check for ISO codes (3 uppercase letters)
-        iso_match = re.search(r'\b([A-Z]{3})\b', text)
+        iso_match = re.search(r"\b([A-Z]{3})\b", text)
         if iso_match:
             return iso_match.group(1)
 
@@ -133,9 +133,24 @@ class EntityNormalizer:
 
     # Common legal entity suffixes
     LEGAL_SUFFIXES = [
-        'Inc.', 'Inc', 'LLC', 'L.L.C.', 'Corp.', 'Corporation',
-        'Ltd.', 'Limited', 'LLP', 'L.L.P.', 'LP', 'L.P.',
-        'Co.', 'Company', 'GmbH', 'AG', 'SA', 'PLC',
+        "Inc.",
+        "Inc",
+        "LLC",
+        "L.L.C.",
+        "Corp.",
+        "Corporation",
+        "Ltd.",
+        "Limited",
+        "LLP",
+        "L.L.P.",
+        "LP",
+        "L.P.",
+        "Co.",
+        "Company",
+        "GmbH",
+        "AG",
+        "SA",
+        "PLC",
     ]
 
     @staticmethod
@@ -153,14 +168,14 @@ class EntityNormalizer:
             return ""
 
         # Remove extra whitespace
-        normalized = ' '.join(name.split())
+        normalized = " ".join(name.split())
 
         # Standardize legal suffixes (add period if missing)
         for suffix in EntityNormalizer.LEGAL_SUFFIXES:
             # Look for suffix without period
-            no_period = suffix.replace('.', '')
-            if normalized.endswith(f" {no_period}") and '.' not in suffix:
-                normalized = normalized[:-len(no_period)] + suffix
+            no_period = suffix.replace(".", "")
+            if normalized.endswith(f" {no_period}") and "." not in suffix:
+                normalized = normalized[: -len(no_period)] + suffix
 
         return normalized
 
@@ -176,8 +191,8 @@ class EntityNormalizer:
             Entity type or None
         """
         for suffix in EntityNormalizer.LEGAL_SUFFIXES:
-            if suffix.replace('.', '') in name.replace('.', ''):
-                return suffix.replace('.', '')
+            if suffix.replace(".", "") in name.replace(".", ""):
+                return suffix.replace(".", "")
 
         return None
 
@@ -189,10 +204,10 @@ class TextNormalizer:
     def clean_whitespace(text: str) -> str:
         """Remove extra whitespace and normalize line breaks."""
         # Replace multiple spaces with single space
-        text = re.sub(r' +', ' ', text)
+        text = re.sub(r" +", " ", text)
 
         # Replace multiple newlines with double newline
-        text = re.sub(r'\n\s*\n\s*\n+', '\n\n', text)
+        text = re.sub(r"\n\s*\n\s*\n+", "\n\n", text)
 
         return text.strip()
 

@@ -49,25 +49,25 @@ class RiskAnalyzer:
                 "keywords": ["unlimited liability", "no limit on liability"],
                 "severity": "critical",
                 "description": "Contract contains unlimited liability exposure",
-                "recommendation": "Negotiate a liability cap"
+                "recommendation": "Negotiate a liability cap",
             },
             "auto_renewal": {
                 "keywords": ["automatically renew", "auto-renew", "automatic renewal"],
                 "severity": "medium",
                 "description": "Contract auto-renews without explicit consent",
-                "recommendation": "Add termination notice provision"
+                "recommendation": "Add termination notice provision",
             },
             "non_compete": {
                 "keywords": ["non-compete", "not compete", "refrain from competing"],
                 "severity": "high",
                 "description": "Contains non-compete clause",
-                "recommendation": "Review scope and duration for reasonableness"
+                "recommendation": "Review scope and duration for reasonableness",
             },
             "unilateral_changes": {
                 "keywords": ["may modify", "right to change", "unilateral modification"],
                 "severity": "high",
                 "description": "Allows unilateral contract modifications",
-                "recommendation": "Require mutual consent for changes"
+                "recommendation": "Require mutual consent for changes",
             },
         }
 

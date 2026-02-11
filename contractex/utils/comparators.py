@@ -130,9 +130,7 @@ class ContractComparator:
         diffs = []
 
         if c1.effective_date != c2.effective_date:
-            diffs.append(
-                f"Different effective dates: {c1.effective_date} vs {c2.effective_date}"
-            )
+            diffs.append(f"Different effective dates: {c1.effective_date} vs {c2.effective_date}")
 
         if c1.expiration_date != c2.expiration_date:
             diffs.append(
@@ -160,10 +158,10 @@ class ContractComparator:
         # Could be weighted based on importance
 
         total_diffs = (
-            len(comparison.party_differences) +
-            len(comparison.clause_differences) +
-            len(comparison.financial_differences) +
-            len(comparison.date_differences)
+            len(comparison.party_differences)
+            + len(comparison.clause_differences)
+            + len(comparison.financial_differences)
+            + len(comparison.date_differences)
         )
 
         # Normalize: fewer differences = higher similarity

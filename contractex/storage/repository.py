@@ -5,6 +5,7 @@ Each repository class encapsulates all database operations for a domain model,
 providing a clean API that hides SQL details from application code.
 This makes the codebase testable (mock repositories) and database-agnostic.
 """
+
 import logging
 from typing import Any, Optional
 
@@ -49,13 +50,16 @@ class DocumentRepository:
 
         try:
             with get_cursor() as cur:
-                cur.execute(query, (
-                    doc.filename,
-                    doc.file_hash,
-                    doc.file_data,
-                    doc.extracted_text,
-                    psycopg2.extras.Json(doc.metadata)
-                ))
+                cur.execute(
+                    query,
+                    (
+                        doc.filename,
+                        doc.file_hash,
+                        doc.file_data,
+                        doc.extracted_text,
+                        psycopg2.extras.Json(doc.metadata),
+                    ),
+                )
                 result = cur.fetchone()
                 if result:
                     doc_id = result[0]
@@ -269,19 +273,22 @@ class ClauseRepository:
 
         try:
             with get_cursor() as cur:
-                cur.execute(query, (
-                    clause.document_id,
-                    clause.clause_text,
-                    clause.clause_type,
-                    clause.page_number,
-                    clause.bbox_x,
-                    clause.bbox_y,
-                    clause.bbox_width,
-                    clause.bbox_height,
-                    clause.confidence_score,
-                    clause.parent_clause_id,
-                    psycopg2.extras.Json(clause.metadata)
-                ))
+                cur.execute(
+                    query,
+                    (
+                        clause.document_id,
+                        clause.clause_text,
+                        clause.clause_type,
+                        clause.page_number,
+                        clause.bbox_x,
+                        clause.bbox_y,
+                        clause.bbox_width,
+                        clause.bbox_height,
+                        clause.confidence_score,
+                        clause.parent_clause_id,
+                        psycopg2.extras.Json(clause.metadata),
+                    ),
+                )
                 result = cur.fetchone()
                 clause_id = result[0] if result else 0
                 logger.debug(f"Inserted clause {clause_id} for document {clause.document_id}")
@@ -315,10 +322,17 @@ class ClauseRepository:
 
         values = [
             (
-                c.document_id, c.clause_text, c.clause_type, c.page_number,
-                c.bbox_x, c.bbox_y, c.bbox_width, c.bbox_height,
-                c.confidence_score, c.parent_clause_id,
-                psycopg2.extras.Json(c.metadata)
+                c.document_id,
+                c.clause_text,
+                c.clause_type,
+                c.page_number,
+                c.bbox_x,
+                c.bbox_y,
+                c.bbox_width,
+                c.bbox_height,
+                c.confidence_score,
+                c.parent_clause_id,
+                psycopg2.extras.Json(c.metadata),
             )
             for c in clauses
         ]
@@ -441,12 +455,9 @@ class ProcessingLogRepository:
 
         try:
             with get_cursor() as cur:
-                cur.execute(query, (
-                    log.document_id,
-                    log.processing_stage,
-                    log.status,
-                    log.error_message
-                ))
+                cur.execute(
+                    query, (log.document_id, log.processing_stage, log.status, log.error_message)
+                )
                 result = cur.fetchone()
                 log_id = result[0] if result else 0
                 logger.debug(f"Inserted processing log {log_id}")

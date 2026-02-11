@@ -62,6 +62,7 @@ class AnthropicProvider(LLMProvider):
         # Initialize Anthropic client
         try:
             from anthropic import Anthropic
+
             self.client = Anthropic(api_key=api_key)
         except ImportError as e:
             raise LLMProviderError(
@@ -100,19 +101,17 @@ Respond ONLY with the JSON object, no additional text.
                 model=self._model,
                 max_tokens=max_tokens or self._max_tokens,
                 temperature=temperature,
-                messages=[
-                    {"role": "user", "content": enhanced_prompt}
-                ]
+                messages=[{"role": "user", "content": enhanced_prompt}],
             )
 
             # Parse JSON response
             content = response.content[0].text
 
             # Try to extract JSON if there's extra text
-            if not content.strip().startswith('{'):
+            if not content.strip().startswith("{"):
                 # Find first { and last }
-                start = content.find('{')
-                end = content.rfind('}') + 1
+                start = content.find("{")
+                end = content.rfind("}") + 1
                 if start != -1 and end > start:
                     content = content[start:end]
 
@@ -124,11 +123,7 @@ Respond ONLY with the JSON object, no additional text.
             raise LLMProviderError(f"Anthropic structured extraction failed: {str(e)}") from e
 
     def complete(
-        self,
-        prompt: str,
-        temperature: float = 0.7,
-        max_tokens: Optional[int] = None,
-        **kwargs
+        self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs
     ) -> str:
         """Get text completion from Anthropic."""
         try:
@@ -136,10 +131,8 @@ Respond ONLY with the JSON object, no additional text.
                 model=self._model,
                 max_tokens=max_tokens or self._max_tokens,
                 temperature=temperature,
-                messages=[
-                    {"role": "user", "content": prompt}
-                ],
-                **kwargs
+                messages=[{"role": "user", "content": prompt}],
+                **kwargs,
             )
 
             return response.content[0].text
@@ -169,8 +162,7 @@ Respond ONLY with the JSON object, no additional text.
         try:
             # Use Anthropic's token counting
             response = self.client.messages.count_tokens(
-                model=self._model,
-                messages=[{"role": "user", "content": text}]
+                model=self._model, messages=[{"role": "user", "content": text}]
             )
             return response.input_tokens
         except Exception:

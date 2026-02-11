@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 class NERError(ContractExError):
     """Raised when NER operations fail."""
+
     pass
 
 
@@ -28,12 +29,12 @@ class LegalNER:
 
     # Legal entity types recognized by Blackstone
     LEGAL_ENTITY_TYPES = {
-        "CASENAME",      # Names of legal cases
-        "CITATION",      # Legal citations
-        "INSTRUMENT",    # Legal instruments (contracts, statutes, etc.)
-        "PROVISION",     # Specific legal provisions
-        "COURT",         # Court names
-        "JUDGE",         # Judge names
+        "CASENAME",  # Names of legal cases
+        "CITATION",  # Legal citations
+        "INSTRUMENT",  # Legal instruments (contracts, statutes, etc.)
+        "PROVISION",  # Specific legal provisions
+        "COURT",  # Court names
+        "JUDGE",  # Judge names
     }
 
     # Entity types for identifying parties
@@ -104,12 +105,14 @@ class LegalNER:
         entities = []
 
         for ent in doc.ents:
-            entities.append({
-                "text": ent.text,
-                "label": ent.label_,
-                "start": ent.start_char,
-                "end": ent.end_char
-            })
+            entities.append(
+                {
+                    "text": ent.text,
+                    "label": ent.label_,
+                    "start": ent.start_char,
+                    "end": ent.end_char,
+                }
+            )
 
         return entities
 
@@ -181,11 +184,7 @@ class LegalNER:
 
         for ent in doc.ents:
             if ent.label_ == "DATE":
-                dates.append({
-                    "text": ent.text,
-                    "start": ent.start_char,
-                    "end": ent.end_char
-                })
+                dates.append({"text": ent.text, "start": ent.start_char, "end": ent.end_char})
 
         return dates
 
@@ -207,11 +206,7 @@ class LegalNER:
 
         for ent in doc.ents:
             if ent.label_ == "MONEY":
-                values.append({
-                    "text": ent.text,
-                    "start": ent.start_char,
-                    "end": ent.end_char
-                })
+                values.append({"text": ent.text, "start": ent.start_char, "end": ent.end_char})
 
         return values
 
@@ -237,7 +232,7 @@ class LegalNER:
             "legal_entities": self.extract_legal_entities(text),
             "parties": self.extract_parties(text),
             "dates": self.extract_dates(text),
-            "monetary_values": self.extract_monetary_values(text)
+            "monetary_values": self.extract_monetary_values(text),
         }
 
     def __repr__(self) -> str:

@@ -14,7 +14,9 @@ class ClauseTypeSchema(BaseModel):
 
     # Optional metadata
     risk_level: Optional[str] = Field(None, description="Risk level (low, medium, high, critical)")
-    keywords: list[str] = Field(default_factory=list, description="Keywords associated with this type")
+    keywords: list[str] = Field(
+        default_factory=list, description="Keywords associated with this type"
+    )
     examples: list[str] = Field(default_factory=list, description="Example clauses of this type")
 
     class Config:
@@ -27,7 +29,7 @@ class ClauseTypeSchema(BaseModel):
                 "keywords": ["force majeure", "act of god", "unforeseeable"],
                 "examples": [
                     "Neither party shall be liable for failure to perform due to acts of God..."
-                ]
+                ],
             }
         }
 

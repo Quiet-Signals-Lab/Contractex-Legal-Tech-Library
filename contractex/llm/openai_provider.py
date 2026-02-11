@@ -61,6 +61,7 @@ class OpenAIProvider(LLMProvider):
         # Initialize OpenAI client
         try:
             from openai import OpenAI
+
             self.client = OpenAI(api_key=api_key)
         except ImportError as e:
             raise LLMProviderError(
@@ -80,7 +81,7 @@ class OpenAIProvider(LLMProvider):
                 model=self._model,
                 messages=[
                     {"role": "system", "content": "You are a legal document extraction assistant."},
-                    {"role": "user", "content": prompt}
+                    {"role": "user", "content": prompt},
                 ],
                 response_format=schema,
                 temperature=temperature,
@@ -96,22 +97,16 @@ class OpenAIProvider(LLMProvider):
             raise LLMProviderError(f"OpenAI structured extraction failed: {str(e)}") from e
 
     def complete(
-        self,
-        prompt: str,
-        temperature: float = 0.7,
-        max_tokens: Optional[int] = None,
-        **kwargs
+        self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs
     ) -> str:
         """Get text completion from OpenAI."""
         try:
             response = self.client.chat.completions.create(
                 model=self._model,
-                messages=[
-                    {"role": "user", "content": prompt}
-                ],
+                messages=[{"role": "user", "content": prompt}],
                 temperature=temperature,
                 max_tokens=max_tokens or self._max_tokens,
-                **kwargs
+                **kwargs,
             )
 
             return response.choices[0].message.content

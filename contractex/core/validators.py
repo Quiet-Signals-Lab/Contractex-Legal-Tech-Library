@@ -2,7 +2,6 @@
 Validators for confidence scoring and data validation.
 """
 
-
 from contractex.core.models import Contract
 
 
@@ -40,9 +39,7 @@ class ConfidenceValidator:
         # Check parties
         for party in contract.parties:
             if party.confidence < self.threshold:
-                warnings.append(
-                    f"Party '{party.name}' has low confidence: {party.confidence:.2f}"
-                )
+                warnings.append(f"Party '{party.name}' has low confidence: {party.confidence:.2f}")
 
         # Check financial terms
         for term in contract.financial_terms:

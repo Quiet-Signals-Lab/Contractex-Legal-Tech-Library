@@ -73,7 +73,7 @@ class Party(BaseModel):
                 "entity_type": "corporation",
                 "jurisdiction": "Delaware",
                 "contact_info": {"email": "legal@acme.com"},
-                "confidence": 0.95
+                "confidence": 0.95,
             }
         }
     )
@@ -100,7 +100,7 @@ class Clause(BaseModel):
                 "text": "Either party may terminate this agreement...",
                 "page_number": 5,
                 "confidence": 0.92,
-                "tags": ["termination", "notice_period"]
+                "tags": ["termination", "notice_period"],
             }
         }
     )
@@ -112,24 +112,19 @@ class Clause(BaseModel):
 
     # Spatial metadata for visual grounding
     bbox: Optional[dict[str, float]] = Field(
-        None,
-        description="Bounding box coordinates {x, y, width, height}"
+        None, description="Bounding box coordinates {x, y, width, height}"
     )
 
     # Extraction metadata
     confidence: float = Field(0.0, ge=0.0, le=1.0, description="Extraction confidence score")
     extracted_entities: dict[str, Any] = Field(
-        default_factory=dict,
-        description="Entities extracted from this clause"
+        default_factory=dict, description="Entities extracted from this clause"
     )
     tags: list[str] = Field(default_factory=list, description="Custom tags")
 
     # Relationships
     parent_clause_id: Optional[str] = Field(None, description="ID of parent clause if nested")
-    related_clauses: list[str] = Field(
-        default_factory=list,
-        description="IDs of related clauses"
-    )
+    related_clauses: list[str] = Field(default_factory=list, description="IDs of related clauses")
 
     # Additional metadata
     metadata: dict[str, Any] = Field(default_factory=dict, description="Flexible metadata")
@@ -150,26 +145,23 @@ class FinancialTerm(BaseModel):
                 "currency": "USD",
                 "frequency": "monthly",
                 "description": "Monthly service fee",
-                "confidence": 0.88
+                "confidence": 0.88,
             }
         }
     )
 
     term_type: str = Field(
-        ...,
-        description="Type of financial term (payment_amount, penalty, bonus, etc.)"
+        ..., description="Type of financial term (payment_amount, penalty, bonus, etc.)"
     )
     amount: Optional[Decimal] = Field(None, description="Monetary amount")
     currency: str = Field("USD", description="Currency code (ISO 4217)")
     frequency: Optional[str] = Field(
-        None,
-        description="Payment frequency (one-time, monthly, quarterly, annually)"
+        None, description="Payment frequency (one-time, monthly, quarterly, annually)"
     )
     due_date: Optional[date] = Field(None, description="Payment due date")
     description: str = Field("", description="Description of the financial term")
     conditions: list[str] = Field(
-        default_factory=list,
-        description="Conditions that apply to this term"
+        default_factory=list, description="Conditions that apply to this term"
     )
     confidence: float = Field(0.0, ge=0.0, le=1.0, description="Extraction confidence score")
 
@@ -189,7 +181,7 @@ class RiskFlag(BaseModel):
                 "description": "Contract contains unlimited liability clause",
                 "clause_reference": "Section 8.2",
                 "recommendation": "Negotiate liability cap",
-                "confidence": 0.85
+                "confidence": 0.85,
             }
         }
     )
@@ -197,7 +189,9 @@ class RiskFlag(BaseModel):
     risk_type: str = Field(..., description="Type of risk identified")
     severity: RiskSeverity = Field(..., description="Risk severity level")
     description: str = Field(..., description="Description of the risk")
-    clause_reference: Optional[str] = Field(None, description="Reference to the clause containing the risk")
+    clause_reference: Optional[str] = Field(
+        None, description="Reference to the clause containing the risk"
+    )
     clause_text: Optional[str] = Field(None, description="Text of the risky clause")
     recommendation: Optional[str] = Field(None, description="Recommended action to mitigate risk")
     impact: Optional[str] = Field(None, description="Potential impact of the risk")
@@ -219,7 +213,7 @@ class ContractMetadata(BaseModel):
                 "page_count": 15,
                 "extraction_date": "2024-01-15T10:30:00Z",
                 "llm_provider": "gpt-4o",
-                "processing_time_seconds": 12.5
+                "processing_time_seconds": 12.5,
             }
         }
     )
@@ -232,14 +226,18 @@ class ContractMetadata(BaseModel):
     page_count: Optional[int] = Field(None, description="Number of pages")
 
     # Extraction metadata
-    extraction_date: datetime = Field(default_factory=datetime.utcnow, description="When extraction was performed")
+    extraction_date: datetime = Field(
+        default_factory=datetime.utcnow, description="When extraction was performed"
+    )
     llm_provider: Optional[str] = Field(None, description="LLM provider used")
     llm_model: Optional[str] = Field(None, description="Specific model used")
     processing_time_seconds: Optional[float] = Field(None, description="Time taken to process")
     token_usage: Optional[dict[str, int]] = Field(None, description="Token usage statistics")
 
     # Quality metrics
-    overall_confidence: Optional[float] = Field(None, ge=0.0, le=1.0, description="Overall extraction confidence")
+    overall_confidence: Optional[float] = Field(
+        None, ge=0.0, le=1.0, description="Overall extraction confidence"
+    )
     warnings: list[str] = Field(default_factory=list, description="Extraction warnings")
 
     # Custom metadata
@@ -256,13 +254,13 @@ class Contract(BaseModel):
                 "title": "Master Service Agreement",
                 "parties": [
                     {"name": "Acme Corp", "role": "provider"},
-                    {"name": "Client Inc", "role": "client"}
+                    {"name": "Client Inc", "role": "client"},
                 ],
                 "effective_date": "2024-01-01",
                 "expiration_date": "2025-01-01",
                 "clauses": [],
                 "financial_terms": [],
-                "risks": []
+                "risks": [],
             }
         }
     )
@@ -272,7 +270,9 @@ class Contract(BaseModel):
     title: Optional[str] = Field(None, description="Contract title")
 
     # Parties
-    parties: list[Party] = Field(default_factory=list, description="Parties involved in the contract")
+    parties: list[Party] = Field(
+        default_factory=list, description="Parties involved in the contract"
+    )
 
     # Dates
     effective_date: Optional[date] = Field(None, description="Contract effective date")
@@ -281,7 +281,9 @@ class Contract(BaseModel):
 
     # Structural elements
     clauses: list[Clause] = Field(default_factory=list, description="Extracted clauses")
-    financial_terms: list[FinancialTerm] = Field(default_factory=list, description="Financial terms")
+    financial_terms: list[FinancialTerm] = Field(
+        default_factory=list, description="Financial terms"
+    )
 
     # Analysis results
     risks: list[RiskFlag] = Field(default_factory=list, description="Identified risks")
@@ -293,7 +295,7 @@ class Contract(BaseModel):
     # Metadata
     metadata: ContractMetadata = Field(
         default_factory=lambda: ContractMetadata(),  # type: ignore[call-arg]
-        description="Metadata about the document and extraction"
+        description="Metadata about the document and extraction",
     )
 
     # Extracted text
@@ -332,7 +334,7 @@ class Contract(BaseModel):
         json_str = self.model_dump_json(indent=2, **kwargs)
 
         if file_path:
-            with open(file_path, 'w', encoding='utf-8') as f:
+            with open(file_path, "w", encoding="utf-8") as f:
                 f.write(json_str)
 
         return json_str
@@ -351,7 +353,9 @@ class Contract(BaseModel):
         try:
             import pandas as pd
         except ImportError as e:
-            raise ImportError("pandas is required for to_dataframe(). Install with: pip install pandas") from e
+            raise ImportError(
+                "pandas is required for to_dataframe(). Install with: pip install pandas"
+            ) from e
 
         if not self.clauses:
             return pd.DataFrame()
@@ -359,12 +363,12 @@ class Contract(BaseModel):
         data = []
         for clause in self.clauses:
             row = {
-                'contract_type': self.contract_type,
-                'clause_type': clause.clause_type,
-                'text': clause.text,
-                'page_number': clause.page_number,
-                'confidence': clause.confidence,
-                'section_number': clause.section_number,
+                "contract_type": self.contract_type,
+                "clause_type": clause.clause_type,
+                "text": clause.text,
+                "page_number": clause.page_number,
+                "confidence": clause.confidence,
+                "section_number": clause.section_number,
             }
             data.append(row)
 
@@ -380,54 +384,58 @@ class Contract(BaseModel):
         try:
             import pandas as pd
         except ImportError as e:
-            raise ImportError("pandas and openpyxl are required. Install with: pip install pandas openpyxl") from e
+            raise ImportError(
+                "pandas and openpyxl are required. Install with: pip install pandas openpyxl"
+            ) from e
 
-        with pd.ExcelWriter(file_path, engine='openpyxl') as writer:
+        with pd.ExcelWriter(file_path, engine="openpyxl") as writer:
             # Contract overview
             overview_data = {
-                'Field': ['Contract Type', 'Title', 'Effective Date', 'Expiration Date', 'Parties'],
-                'Value': [
+                "Field": ["Contract Type", "Title", "Effective Date", "Expiration Date", "Parties"],
+                "Value": [
                     str(self.contract_type),
-                    self.title or '',
-                    str(self.effective_date) if self.effective_date else '',
-                    str(self.expiration_date) if self.expiration_date else '',
-                    ', '.join([p.name for p in self.parties])
-                ]
+                    self.title or "",
+                    str(self.effective_date) if self.effective_date else "",
+                    str(self.expiration_date) if self.expiration_date else "",
+                    ", ".join([p.name for p in self.parties]),
+                ],
             }
-            pd.DataFrame(overview_data).to_excel(writer, sheet_name='Overview', index=False)
+            pd.DataFrame(overview_data).to_excel(writer, sheet_name="Overview", index=False)
 
             # Clauses
             if self.clauses:
-                self.to_dataframe().to_excel(writer, sheet_name='Clauses', index=False)
+                self.to_dataframe().to_excel(writer, sheet_name="Clauses", index=False)
 
             # Financial terms
             if self.financial_terms:
                 financial_data = [
                     {
-                        'Type': ft.term_type,
-                        'Amount': str(ft.amount) if ft.amount else '',
-                        'Currency': ft.currency,
-                        'Frequency': ft.frequency or '',
-                        'Description': ft.description,
-                        'Confidence': ft.confidence
+                        "Type": ft.term_type,
+                        "Amount": str(ft.amount) if ft.amount else "",
+                        "Currency": ft.currency,
+                        "Frequency": ft.frequency or "",
+                        "Description": ft.description,
+                        "Confidence": ft.confidence,
                     }
                     for ft in self.financial_terms
                 ]
-                pd.DataFrame(financial_data).to_excel(writer, sheet_name='Financial Terms', index=False)
+                pd.DataFrame(financial_data).to_excel(
+                    writer, sheet_name="Financial Terms", index=False
+                )
 
             # Risks
             if self.risks:
                 risk_data = [
                     {
-                        'Type': r.risk_type,
-                        'Severity': r.severity,
-                        'Description': r.description,
-                        'Recommendation': r.recommendation or '',
-                        'Confidence': r.confidence
+                        "Type": r.risk_type,
+                        "Severity": r.severity,
+                        "Description": r.description,
+                        "Recommendation": r.recommendation or "",
+                        "Confidence": r.confidence,
                     }
                     for r in self.risks
                 ]
-                pd.DataFrame(risk_data).to_excel(writer, sheet_name='Risks', index=False)
+                pd.DataFrame(risk_data).to_excel(writer, sheet_name="Risks", index=False)
 
     def compare_with(self, other: "Contract") -> "ContractComparison":
         """
@@ -445,7 +453,7 @@ class Contract(BaseModel):
         return comparator.compare(self, other)
 
     def __str__(self) -> str:
-        parties_str = ', '.join([p.name for p in self.parties])
+        parties_str = ", ".join([p.name for p in self.parties])
         return f"Contract({self.contract_type}, parties=[{parties_str}])"
 
     def __repr__(self) -> str:
@@ -478,10 +486,10 @@ class ContractComparison(BaseModel):
     def summary(self) -> str:
         """Get a summary of the comparison."""
         total_diffs = (
-            len(self.party_differences) +
-            len(self.clause_differences) +
-            len(self.financial_differences) +
-            len(self.date_differences)
+            len(self.party_differences)
+            + len(self.clause_differences)
+            + len(self.financial_differences)
+            + len(self.date_differences)
         )
 
         return f"""

@@ -28,6 +28,7 @@ class DOCXLoader(DocumentLoader):
         # Check python-docx availability
         try:
             import docx
+
             self.docx = docx
         except ImportError as e:
             raise DocumentLoadError(
@@ -103,15 +104,17 @@ class DOCXLoader(DocumentLoader):
             # Add DOCX-specific metadata
             core_properties = doc.core_properties
 
-            metadata.update({
-                'author': core_properties.author,
-                'created': core_properties.created,
-                'modified': core_properties.modified,
-                'title': core_properties.title,
-                'subject': core_properties.subject,
-                'paragraph_count': len(doc.paragraphs),
-                'table_count': len(doc.tables),
-            })
+            metadata.update(
+                {
+                    "author": core_properties.author,
+                    "created": core_properties.created,
+                    "modified": core_properties.modified,
+                    "title": core_properties.title,
+                    "subject": core_properties.subject,
+                    "paragraph_count": len(doc.paragraphs),
+                    "table_count": len(doc.tables),
+                }
+            )
 
         except Exception:
             pass
@@ -120,4 +123,4 @@ class DOCXLoader(DocumentLoader):
 
     def supports(self, file_path: str) -> bool:
         """Check if file is a DOCX."""
-        return Path(file_path).suffix.lower() == '.docx'
+        return Path(file_path).suffix.lower() == ".docx"

@@ -8,6 +8,7 @@ run multiple times.
 Usage:
     python -m dbase.setup
 """
+
 import logging
 import sys
 from pathlib import Path
@@ -37,7 +38,7 @@ def create_database_if_not_exists() -> bool:
         True if database was created, False if already exists
     """
     config = get_db_config()
-    db_name = config['db_name']
+    db_name = config["db_name"]
 
     try:
         # Connect to PostgreSQL server (not specific database)
@@ -45,18 +46,13 @@ def create_database_if_not_exists() -> bool:
         cursor = conn.cursor()
 
         # Check if database exists
-        cursor.execute(
-            "SELECT 1 FROM pg_database WHERE datname = %s",
-            (db_name,)
-        )
+        cursor.execute("SELECT 1 FROM pg_database WHERE datname = %s", (db_name,))
         exists = cursor.fetchone() is not None
 
         if not exists:
             # Create database
             cursor.execute(
-                sql.SQL("CREATE DATABASE {} ENCODING 'UTF8'").format(
-                    sql.Identifier(db_name)
-                )
+                sql.SQL("CREATE DATABASE {} ENCODING 'UTF8'").format(sql.Identifier(db_name))
             )
             logger.info(f"Created database: {db_name}")
             created = True
@@ -84,11 +80,11 @@ def setup_extensions() -> None:
 
     try:
         conn = psycopg2.connect(
-            dbname=config['db_name'],
-            user=config['user'],
-            password=config['password'],
-            host=config['host'],
-            port=config['port']
+            dbname=config["db_name"],
+            user=config["user"],
+            password=config["password"],
+            host=config["host"],
+            port=config["port"],
         )
         conn.autocommit = True
         cursor = conn.cursor()
@@ -119,11 +115,11 @@ def setup_schema() -> None:
 
     try:
         conn = psycopg2.connect(
-            dbname=config['db_name'],
-            user=config['user'],
-            password=config['password'],
-            host=config['host'],
-            port=config['port']
+            dbname=config["db_name"],
+            user=config["user"],
+            password=config["password"],
+            host=config["host"],
+            port=config["port"],
         )
         conn.autocommit = True
         cursor = conn.cursor()
@@ -188,7 +184,7 @@ def ingest_initial_data(limit: Optional[int] = None) -> None:
                 continue
 
             # Read text content
-            with open(txt_file, encoding='utf-8', errors='ignore') as f:
+            with open(txt_file, encoding="utf-8", errors="ignore") as f:
                 text_content = f.read()
 
             # Create document object
@@ -197,10 +193,7 @@ def ingest_initial_data(limit: Optional[int] = None) -> None:
                 file_hash=None,  # No binary data for text files
                 file_data=None,
                 extracted_text=text_content,
-                metadata={
-                    'source': 'CUAD_v1',
-                    'file_type': 'txt'
-                }
+                metadata={"source": "CUAD_v1", "file_type": "txt"},
             )
 
             # Insert document
@@ -210,7 +203,7 @@ def ingest_initial_data(limit: Optional[int] = None) -> None:
             log = ProcessingLog(
                 document_id=doc_id,
                 processing_stage=ProcessingStage.UPLOADED,
-                status=ProcessingStatus.COMPLETED
+                status=ProcessingStatus.COMPLETED,
             )
             log_repo.insert(log)
 
@@ -224,7 +217,9 @@ def ingest_initial_data(limit: Optional[int] = None) -> None:
             error_count += 1
             continue
 
-    logger.info(f"Ingestion complete: {success_count} inserted, {skip_count} skipped, {error_count} errors")
+    logger.info(
+        f"Ingestion complete: {success_count} inserted, {skip_count} skipped, {error_count} errors"
+    )
 
 
 def verify_setup() -> bool:
@@ -242,11 +237,11 @@ def verify_setup() -> bool:
 
         config = get_db_config()
         conn = psycopg2.connect(
-            dbname=config['db_name'],
-            user=config['user'],
-            password=config['password'],
-            host=config['host'],
-            port=config['port']
+            dbname=config["db_name"],
+            user=config["user"],
+            password=config["password"],
+            host=config["host"],
+            port=config["port"],
         )
         cursor = conn.cursor()
 
@@ -259,7 +254,7 @@ def verify_setup() -> bool:
         """)
         tables = [row[0] for row in cursor.fetchall()]
 
-        expected_tables = {'documents', 'clauses', 'processing_log'}
+        expected_tables = {"documents", "clauses", "processing_log"}
         if set(tables) == expected_tables:
             logger.info(f"All core tables exist: {tables}")
 
@@ -336,19 +331,11 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Setup contract clause extraction database")
+    parser.add_argument("--no-data", action="store_true", help="Skip initial data ingestion")
     parser.add_argument(
-        '--no-data',
-        action='store_true',
-        help="Skip initial data ingestion"
-    )
-    parser.add_argument(
-        '--limit',
-        type=int,
-        default=None,
-        help="Limit number of documents to ingest (for testing)"
+        "--limit", type=int, default=None, help="Limit number of documents to ingest (for testing)"
     )
 
     args = parser.parse_args()
 
     run_setup(ingest_data=not args.no_data, data_limit=args.limit)
-

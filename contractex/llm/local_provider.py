@@ -54,6 +54,7 @@ class LocalProvider(LLMProvider):
         # Initialize Ollama client
         try:
             import ollama
+
             self.client = ollama.Client(host=self._host)
         except ImportError as e:
             raise LLMProviderError(
@@ -97,15 +98,15 @@ Respond ONLY with the JSON object, no additional text.
             response = self.client.generate(
                 model=self._model,
                 prompt=enhanced_prompt,
-                format='json',
+                format="json",
                 options={
-                    'temperature': temperature,
-                    'num_predict': max_tokens or self._max_tokens,
-                }
+                    "temperature": temperature,
+                    "num_predict": max_tokens or self._max_tokens,
+                },
             )
 
             # Parse JSON response
-            content = response['response']
+            content = response["response"]
 
             # Parse and validate
             data = json.loads(content)
@@ -115,11 +116,7 @@ Respond ONLY with the JSON object, no additional text.
             raise LLMProviderError(f"Local LLM structured extraction failed: {str(e)}") from e
 
     def complete(
-        self,
-        prompt: str,
-        temperature: float = 0.7,
-        max_tokens: Optional[int] = None,
-        **kwargs
+        self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs
     ) -> str:
         """Get text completion from local LLM."""
         try:
@@ -127,12 +124,12 @@ Respond ONLY with the JSON object, no additional text.
                 model=self._model,
                 prompt=prompt,
                 options={
-                    'temperature': temperature,
-                    'num_predict': max_tokens or self._max_tokens,
-                }
+                    "temperature": temperature,
+                    "num_predict": max_tokens or self._max_tokens,
+                },
             )
 
-            return response['response']
+            return response["response"]
 
         except Exception as e:
             raise LLMProviderError(f"Local LLM completion failed: {str(e)}") from e

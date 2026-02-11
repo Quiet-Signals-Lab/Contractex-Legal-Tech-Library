@@ -4,6 +4,7 @@ PostgreSQL connection management with context managers.
 Provides connection lifecycle management and will support connection pooling
 when scaling to API serving.
 """
+
 import logging
 from contextlib import contextmanager
 from typing import Optional
@@ -41,11 +42,11 @@ class DatabaseConnection:
         """Context manager entry - establish connection."""
         try:
             self.conn = psycopg2.connect(
-                dbname=self.config['db_name'],
-                user=self.config['user'],
-                password=self.config['password'],
-                host=self.config['host'],
-                port=self.config['port']
+                dbname=self.config["db_name"],
+                user=self.config["user"],
+                password=self.config["password"],
+                host=self.config["host"],
+                port=self.config["port"],
             )
             logger.debug(f"Connected to database: {self.config['db_name']}")
             return self.conn
@@ -86,11 +87,11 @@ def get_connection(config: Optional[dict] = None):
     conn = None
     try:
         conn = psycopg2.connect(
-            dbname=config['db_name'],
-            user=config['user'],
-            password=config['password'],
-            host=config['host'],
-            port=config['port']
+            dbname=config["db_name"],
+            user=config["user"],
+            password=config["password"],
+            host=config["host"],
+            port=config["port"],
         )
         logger.debug(f"Connected to database: {config['db_name']}")
         yield conn
@@ -166,11 +167,11 @@ def connect_to_postgres_server(config: Optional[dict] = None):
     config = config or get_db_config()
     try:
         conn = psycopg2.connect(
-            dbname='postgres',  # Connect to default postgres database
-            user=config['user'],
-            password=config['password'],
-            host=config['host'],
-            port=config['port']
+            dbname="postgres",  # Connect to default postgres database
+            user=config["user"],
+            password=config["password"],
+            host=config["host"],
+            port=config["port"],
         )
         conn.autocommit = True  # Required for CREATE DATABASE
         logger.info("Connected to PostgreSQL server")
