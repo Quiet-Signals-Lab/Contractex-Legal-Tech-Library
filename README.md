@@ -1,6 +1,6 @@
 # ContractEx: Modern Contract Intelligence for Python
 
-🔥 **LLM-powered contract analysis** | 📋 **CUAD taxonomy** | 🛡️ **Risk detection** | 🔒 **Privacy-first**
+ **LLM-powered contract analysis** |  **CUAD taxonomy** |  **Risk detection** | **Privacy-first**
 
 ContractEx is a production-ready Python library for intelligent contract analysis using large language models. Extract clauses, identify parties, analyze risks, and extract financial terms from legal documents with a clean, intuitive API.
 
@@ -10,24 +10,24 @@ ContractEx is a production-ready Python library for intelligent contract analysi
 
 ---
 
-## ✨ Features
+##  Features
 
-- **🚀 Simple API**: Extract contracts with a single line of code
-- **🧠 Multi-LLM Support**: OpenAI (GPT-4o), Anthropic (Claude), Google (Gemini), local models (Llama via Ollama)
-- **📋 CUAD Taxonomy**: 41 standard clause types from the Contract Understanding Atticus Dataset
-- **🛡️ Risk Analysis**: Automatic detection of unfavorable terms and potential risks
-- **💰 Financial Extraction**: Extract payment terms, amounts, and conditions
-- **🔒 Privacy-First**: Local LLM support for sensitive documents
-- **🧑‍⚖️ Named Entity Recognition**: Extract parties, dates, and legal entities using spaCy/Blackstone
-- **� Dataset Loaders**: Built-in access to ACORD, CUAD, and LePaRD benchmarks
-- **�🔗 Extensible**: LangChain and spaCy compatibility
-- **📊 Export**: JSON, Excel, CSV output formats
-- **⚡ Fast**: Batch processing with parallel execution
-- **✅ Type-Safe**: Full type hints and Pydantic models
+- ** Simple API**: Extract contracts with a single line of code
+- ** Multi-LLM Support**: OpenAI (GPT-4o), Anthropic (Claude), Google (Gemini), local models (Llama via Ollama)
+- ** CUAD Taxonomy**: 41 standard clause types from the Contract Understanding Atticus Dataset
+- ** Risk Analysis**: Automatic detection of unfavorable terms and potential risks
+- ** Financial Extraction**: Extract payment terms, amounts, and conditions
+- ** Privacy-First**: Local LLM support for sensitive documents
+- ** Named Entity Recognition**: Extract parties, dates, and legal entities using spaCy/Blackstone
+- ** Dataset Loaders**: Built-in access to ACORD, CUAD, and LePaRD benchmarks
+- ** Extensible**: LangChain and spaCy compatibility
+- ** Export**: JSON, Excel, CSV output formats
+- ** Fast**: Batch processing with parallel execution
+- ** Type-Safe**: Full type hints and Pydantic models
 
 ---
 
-## 📦 Installation
+##  Installation
 
 ### Quick Install
 
@@ -67,7 +67,7 @@ GOOGLE_API_KEY=your-google-api-key
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Basic Usage (< 10 lines)
 
@@ -118,7 +118,7 @@ contract = extractor.extract(
 
 ---
 
-## 📊 Dataset Loading
+## Dataset Loading
 
 Load popular legal contract datasets for training and evaluation:
 
@@ -140,7 +140,7 @@ See [contractex/data/README.md](contractex/data/README.md) for full documentatio
 
 ---
 
-## 🎯 Use Cases
+## Use Cases
 
 ### Legal Teams
 - Contract Review & Due Diligence
@@ -159,7 +159,7 @@ See [contractex/data/README.md](contractex/data/README.md) for full documentatio
 
 ---
 
-## 🧠 LLM Providers
+## LLM Providers
 
 - **OpenAI (GPT-4o)**: Best accuracy (~$0.025/contract)
 - **Anthropic (Claude)**: Large documents (~$0.030/contract)
@@ -168,7 +168,7 @@ See [contractex/data/README.md](contractex/data/README.md) for full documentatio
 
 ---
 
-## 📚 Documentation & Examples
+## Documentation & Examples
 
 - **[CHANGELOG.md](CHANGELOG.md)** - Version history and release notes
 - **[Examples Directory](examples/)** - Ready-to-run examples:
@@ -186,7 +186,7 @@ Run examples: `python examples/basic_extraction.py`
 
 ---
 
-## 🧪 Testing & Development
+## Testing & Development
 
 ```bash
 # Run all tests
@@ -203,16 +203,15 @@ mypy contractex/             # Type check
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ---
 
-## 📄 License
+## License
 
 Apache 2.0 License - see [LICENSE](LICENSE) for details.
 
 ---
 
-**Built with ❤️ for the legal tech community**
