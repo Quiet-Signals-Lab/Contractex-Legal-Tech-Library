@@ -1,13 +1,17 @@
 """Local LLM provider using Ollama for privacy-first deployments."""
 
 import json
+import logging
 import os
+import time
 from typing import Optional
 
 from pydantic import BaseModel
 
 from contractex.exceptions import LLMProviderError
 from contractex.llm.base import LLMProvider
+
+logger = logging.getLogger(__name__)
 
 
 class LocalProvider(LLMProvider):
@@ -70,6 +74,34 @@ class LocalProvider(LLMProvider):
                 f"Pull it first with: ollama pull {self._model}"
             ) from e
 
+    def _call_with_retry(self, fn, label: str, max_retries: int = 3, base_delay: float = 2.0):
+        """
+        Call fn() with exponential backoff on any exception.
+
+        Local models may be slow to load or temporarily unavailable, so we use a
+        longer base_delay (2 s) compared to cloud providers.
+        """
+        last_exc: Exception = Exception("unreachable")
+        for attempt in range(max_retries):
+            try:
+                return fn()
+            except LLMProviderError:
+                raise
+            except Exception as exc:
+                last_exc = exc
+                if attempt < max_retries - 1:
+                    delay = base_delay * (2**attempt)
+                    logger.warning(
+                        "%s failed (attempt %d/%d): %s — retrying in %.1fs",
+                        label,
+                        attempt + 1,
+                        max_retries,
+                        exc,
+                        delay,
+                    )
+                    time.sleep(delay)
+        raise LLMProviderError(f"{label} failed after {max_retries} retries: {last_exc}") from last_exc
+
     def extract_structured(
         self,
         prompt: str,
@@ -77,24 +109,14 @@ class LocalProvider(LLMProvider):
         temperature: float = 0.0,
         max_tokens: Optional[int] = None,
     ) -> BaseModel:
-        """
-        Extract structured data using local LLM with JSON mode.
-        """
-        try:
-            # Get JSON schema
-            json_schema = schema.model_json_schema()
+        """Extract structured data using local LLM with JSON mode."""
+        json_schema = schema.model_json_schema()
+        enhanced_prompt = (
+            f"{prompt}\n\nYou must respond with valid JSON that matches this schema:\n"
+            f"{json.dumps(json_schema, indent=2)}\n\nRespond ONLY with the JSON object, no additional text."
+        )
 
-            # Create enhanced prompt with schema
-            enhanced_prompt = f"""
-{prompt}
-
-You must respond with valid JSON that matches this schema:
-{json.dumps(json_schema, indent=2)}
-
-Respond ONLY with the JSON object, no additional text.
-"""
-
-            # Get completion with JSON format
+        def _call():
             response = self.client.generate(
                 model=self._model,
                 prompt=enhanced_prompt,
@@ -104,22 +126,17 @@ Respond ONLY with the JSON object, no additional text.
                     "num_predict": max_tokens or self._max_tokens,
                 },
             )
-
-            # Parse JSON response
             content = response["response"]
-
-            # Parse and validate
             data = json.loads(content)
             return schema(**data)
 
-        except Exception as e:
-            raise LLMProviderError(f"Local LLM structured extraction failed: {str(e)}") from e
+        return self._call_with_retry(_call, "Local LLM structured extraction")  # type: ignore[return-value]
 
     def complete(
         self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs
     ) -> str:
         """Get text completion from local LLM."""
-        try:
+        def _call():
             response = self.client.generate(
                 model=self._model,
                 prompt=prompt,
@@ -128,12 +145,10 @@ Respond ONLY with the JSON object, no additional text.
                     "num_predict": max_tokens or self._max_tokens,
                 },
             )
-
             result: str = response["response"]
             return result
 
-        except Exception as e:
-            raise LLMProviderError(f"Local LLM completion failed: {str(e)}") from e
+        return self._call_with_retry(_call, "Local LLM completion")  # type: ignore[return-value]
 
     def estimate_cost(self, text: str) -> float:
         """

@@ -1,13 +1,40 @@
 """Anthropic provider implementation for Claude models."""
 
 import json
+import logging
 import os
+import time
 from typing import Optional, cast
 
 from pydantic import BaseModel
 
 from contractex.exceptions import LLMProviderError
 from contractex.llm.base import LLMProvider
+
+logger = logging.getLogger(__name__)
+
+try:
+    from anthropic import APIConnectionError as _ANTConnectionError
+    from anthropic import APIStatusError as _ANTStatusError
+    from anthropic import APITimeoutError as _ANTTimeoutError
+    from anthropic import RateLimitError as _ANTRateLimitError
+
+    _ANTHROPIC_RETRYABLE = (
+        _ANTRateLimitError,
+        _ANTConnectionError,
+        _ANTTimeoutError,
+    )
+except ImportError:
+    _ANTHROPIC_RETRYABLE = ()  # type: ignore[assignment]
+    _ANTStatusError = None  # type: ignore[assignment,misc]
+
+
+def _anthropic_is_retryable(exc: Exception) -> bool:
+    if _ANTHROPIC_RETRYABLE and isinstance(exc, _ANTHROPIC_RETRYABLE):
+        return True
+    if _ANTStatusError and isinstance(exc, _ANTStatusError):
+        return bool(exc.status_code >= 500)
+    return False
 
 
 class AnthropicProvider(LLMProvider):
@@ -69,6 +96,31 @@ class AnthropicProvider(LLMProvider):
                 "Anthropic package not installed. Install with: pip install anthropic"
             ) from e
 
+    def _call_with_retry(self, fn, label: str, max_retries: int = 3, base_delay: float = 1.0):
+        """Call fn() with exponential backoff on transient Anthropic errors."""
+        last_exc: Exception = Exception("unreachable")
+        for attempt in range(max_retries):
+            try:
+                return fn()
+            except LLMProviderError:
+                raise
+            except Exception as exc:
+                if not _anthropic_is_retryable(exc):
+                    raise LLMProviderError(f"{label} failed: {exc}") from exc
+                last_exc = exc
+                if attempt < max_retries - 1:
+                    delay = base_delay * (2**attempt)
+                    logger.warning(
+                        "%s failed (attempt %d/%d): %s — retrying in %.1fs",
+                        label,
+                        attempt + 1,
+                        max_retries,
+                        exc,
+                        delay,
+                    )
+                    time.sleep(delay)
+        raise LLMProviderError(f"{label} failed after {max_retries} retries: {last_exc}") from last_exc
+
     def extract_structured(
         self,
         prompt: str,
@@ -79,57 +131,41 @@ class AnthropicProvider(LLMProvider):
         """
         Extract structured data using Claude with JSON schema.
 
-        Claude doesn't have native structured output, so we use JSON mode
-        with schema in the prompt.
+        Claude doesn't have native structured output, so we inject the JSON
+        schema into the prompt and parse the response.
         """
-        try:
-            # Get JSON schema
-            json_schema = schema.model_json_schema()
+        json_schema = schema.model_json_schema()
+        enhanced_prompt = (
+            f"{prompt}\n\nYou must respond with valid JSON that matches this schema:\n"
+            f"{json.dumps(json_schema, indent=2)}\n\nRespond ONLY with the JSON object, no additional text."
+        )
 
-            # Create enhanced prompt with schema
-            enhanced_prompt = f"""
-{prompt}
-
-You must respond with valid JSON that matches this schema:
-{json.dumps(json_schema, indent=2)}
-
-Respond ONLY with the JSON object, no additional text.
-"""
-
-            # Get completion
+        def _call():
             response = self.client.messages.create(
                 model=self._model,
                 max_tokens=max_tokens or self._max_tokens,
                 temperature=temperature,
                 messages=[{"role": "user", "content": enhanced_prompt}],
             )
-
-            # Parse JSON response
             block = response.content[0]
             if not hasattr(block, "text"):
                 raise LLMProviderError(f"Unexpected response block type: {type(block).__name__}")
             content = cast(str, block.text)
-
-            # Try to extract JSON if there's extra text
             if not content.strip().startswith("{"):
-                # Find first { and last }
                 start = content.find("{")
                 end = content.rfind("}") + 1
                 if start != -1 and end > start:
                     content = content[start:end]
-
-            # Parse and validate
             data = json.loads(content)
             return schema(**data)
 
-        except Exception as e:
-            raise LLMProviderError(f"Anthropic structured extraction failed: {str(e)}") from e
+        return self._call_with_retry(_call, "Anthropic structured extraction")  # type: ignore[return-value]
 
     def complete(
         self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs
     ) -> str:
         """Get text completion from Anthropic."""
-        try:
+        def _call():
             response = self.client.messages.create(
                 model=self._model,
                 max_tokens=max_tokens or self._max_tokens,
@@ -137,14 +173,12 @@ Respond ONLY with the JSON object, no additional text.
                 messages=[{"role": "user", "content": prompt}],
                 **kwargs,
             )
-
             block = response.content[0]
             if not hasattr(block, "text"):
                 raise LLMProviderError(f"Unexpected response block type: {type(block).__name__}")
             return cast(str, block.text)
 
-        except Exception as e:
-            raise LLMProviderError(f"Anthropic completion failed: {str(e)}") from e
+        return self._call_with_retry(_call, "Anthropic completion")  # type: ignore[return-value]
 
     def estimate_cost(self, text: str) -> float:
         """Estimate cost for processing text."""

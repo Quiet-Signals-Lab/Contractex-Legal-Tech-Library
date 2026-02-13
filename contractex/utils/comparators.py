@@ -166,13 +166,15 @@ class ContractComparator:
             + len(comparison.date_differences)
         )
 
-        # Normalize: fewer differences = higher similarity
-        # Assume max 20 differences for normalization
-        similarity = max(0.0, 1.0 - (total_diffs / 20.0))
+        # Convert difference count to a 0-1 score using a smooth decay so that
+        # any number of diffs is handled without an arbitrary cap.
+        diff_score = 1.0 / (1 + total_diffs)
 
-        # Blend with clause similarity
+        # Blend with clause structural similarity (Jaccard over clause types)
         if comparison.clause_similarity > 0:
-            similarity = (similarity + comparison.clause_similarity) / 2
+            similarity = (diff_score + comparison.clause_similarity) / 2
+        else:
+            similarity = diff_score
 
         return round(similarity, 3)
 

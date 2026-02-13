@@ -6,14 +6,14 @@ ContractEx is a production-ready Python library for intelligent contract analysi
 
 [![PyPI version](https://badge.fury.io/py/contractex.svg)](https://badge.fury.io/py/contractex)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 ---
 
 ## ✨ Features
 
 - **🚀 Simple API**: Extract contracts with a single line of code
-- **🧠 Multi-LLM Support**: OpenAI (GPT-4o), Anthropic (Claude), local models (Llama via Ollama)
+- **🧠 Multi-LLM Support**: OpenAI (GPT-4o), Anthropic (Claude), Google (Gemini), local models (Llama via Ollama)
 - **📋 CUAD Taxonomy**: 41 standard clause types from the Contract Understanding Atticus Dataset
 - **🛡️ Risk Analysis**: Automatic detection of unfavorable terms and potential risks
 - **💰 Financial Extraction**: Extract payment terms, amounts, and conditions
@@ -62,6 +62,7 @@ pip install -e ".[all]"        # All features
 # Create .env file with your API keys
 OPENAI_API_KEY=sk-...
 ANTHROPIC_API_KEY=sk-ant-...
+GOOGLE_API_KEY=your-google-api-key
 ```
 
 ---
@@ -162,6 +163,7 @@ See [contractex/data/README.md](contractex/data/README.md) for full documentatio
 
 - **OpenAI (GPT-4o)**: Best accuracy (~$0.025/contract)
 - **Anthropic (Claude)**: Large documents (~$0.030/contract)
+- **Google (Gemini)**: Fast and cost-effective (~$0.002/contract)
 - **Local (Llama)**: Privacy-first, zero cost
 
 ---
@@ -209,14 +211,8 @@ Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## 📄 License
 
-MIT License - see [LICENSE](LICENSE) for details.
+Apache 2.0 License - see [LICENSE](LICENSE) for details.
 
 ---
 
 **Built with ❤️ for the legal tech community**
-| **Llama-3.2-90B** | 90B | 72-76% | ❌ | 8 languages | Meta | Ollama (local) ✅ |
-| **Llama-3.2-11B-Vision** | 11B | N/A | ✅ | 8 languages | Meta | Ollama ✅ |
-| **EuroVLM-9B** | 9B | 70-75% | ✅ | 35 EU languages | OpenRAIL | HuggingFace ✅ |
-| **Qwen2.5-VL-32B** | 32B | 74-78% | ✅ | 40+ languages | Apache 2.0 | Self-hosted ✅ |
-
-**Primary Stack**: Llama-3.2 (zero API costs, full privacy). **Fallback**: EuroVLM-9B (EU-native multilingual support).

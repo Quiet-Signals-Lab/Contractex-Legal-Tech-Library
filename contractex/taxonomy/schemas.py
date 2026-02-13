@@ -2,7 +2,7 @@
 
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ClauseTypeSchema(BaseModel):
@@ -19,8 +19,8 @@ class ClauseTypeSchema(BaseModel):
     )
     examples: list[str] = Field(default_factory=list, description="Example clauses of this type")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "name": "force_majeure",
                 "display_name": "Force Majeure",
@@ -32,6 +32,7 @@ class ClauseTypeSchema(BaseModel):
                 ],
             }
         }
+    )
 
 
 class CustomClauseRegistry:

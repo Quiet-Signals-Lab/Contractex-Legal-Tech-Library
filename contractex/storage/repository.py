@@ -13,7 +13,7 @@ import psycopg2
 import psycopg2.extras
 from psycopg2.extras import execute_values
 
-from contractex.storage.connection import get_cursor
+from contractex.storage.connection import get_cursor, get_vector_cursor
 from contractex.storage.models import Clause, Document, ProcessingLog
 
 logger = logging.getLogger(__name__)
@@ -186,12 +186,12 @@ class DocumentRepository:
             ORDER BY uploaded_at DESC
         """
 
-        if limit:
-            query += f" LIMIT {limit}"
-
         try:
             with get_cursor() as cur:
-                cur.execute(query)
+                if limit:
+                    cur.execute(query + " LIMIT %s", (limit,))
+                else:
+                    cur.execute(query)
                 rows = cur.fetchall()
                 return [Document.from_db_row(row) for row in rows]
         except Exception as e:
@@ -402,12 +402,12 @@ class ClauseRepository:
             ORDER BY created_at DESC
         """
 
-        if limit:
-            query += f" LIMIT {limit}"
-
         try:
             with get_cursor() as cur:
-                cur.execute(query, (clause_type,))
+                if limit:
+                    cur.execute(query + " LIMIT %s", (clause_type, limit))
+                else:
+                    cur.execute(query, (clause_type,))
                 rows = cur.fetchall()
                 return [Clause.from_db_row(row) for row in rows]
         except Exception as e:
@@ -436,6 +436,42 @@ class ClauseRepository:
                 return result[0] if result else 0
         except Exception as e:
             logger.error(f"Failed to count clauses: {e}")
+            raise
+
+    def update_embedding(self, clause_id: int, embedding: list[float]) -> None:
+        """Store a vector embedding for a single clause."""
+        with get_vector_cursor() as cur:
+            cur.execute(
+                "UPDATE clauses SET embedding = %s WHERE id = %s",
+                (embedding, clause_id),
+            )
+
+    def update_embeddings_batch(self, pairs: list[tuple[int, list[float]]]) -> None:
+        """Bulk-update embeddings. pairs = [(clause_id, embedding), ...]"""
+        with get_vector_cursor() as cur:
+            cur.executemany(
+                "UPDATE clauses SET embedding = %s WHERE id = %s",
+                [(emb, cid) for cid, emb in pairs],
+            )
+
+    def get_unembedded(self, document_id: Optional[int] = None) -> list[Clause]:
+        """Return clauses that have not yet been embedded."""
+        base = """
+            SELECT id, document_id, clause_text, clause_type, page_number,
+                   bbox_x, bbox_y, bbox_width, bbox_height,
+                   confidence_score, parent_clause_id, metadata, created_at
+            FROM clauses
+            WHERE embedding IS NULL
+        """
+        try:
+            with get_cursor() as cur:
+                if document_id is not None:
+                    cur.execute(base + " AND document_id = %s ORDER BY id", (document_id,))
+                else:
+                    cur.execute(base + " ORDER BY id")
+                return [Clause.from_db_row(row) for row in cur.fetchall()]
+        except Exception as e:
+            logger.error(f"Failed to retrieve unembedded clauses: {e}")
             raise
 
 

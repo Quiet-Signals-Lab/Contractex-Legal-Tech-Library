@@ -5,11 +5,13 @@ from contractex.loaders.base import DocumentLoader
 from contractex.loaders.docx import DOCXLoader
 from contractex.loaders.langchain_compat import LangChainDocumentAdapter
 from contractex.loaders.pdf import PDFLoader
+from contractex.loaders.text import TextLoader
 
 __all__ = [
     "DocumentLoader",
     "PDFLoader",
     "DOCXLoader",
+    "TextLoader",
     "AutoLoader",
     "LangChainDocumentAdapter",
 ]

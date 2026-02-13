@@ -7,6 +7,7 @@
 pydantic>=2.9.0
 openai>=1.50.0
 anthropic>=0.39.0
+google-generativeai>=0.8.0
 pymupdf>=1.24.0
 python-docx>=1.1.0
 pandas>=2.2.0
@@ -44,6 +45,7 @@ requests>=2.31.0
 platformdirs>=3.0.0
 
 # PostgreSQL Storage
+psycopg2>=2.9.9
 psycopg2-binary>=2.9.9
 
 # OCR Support

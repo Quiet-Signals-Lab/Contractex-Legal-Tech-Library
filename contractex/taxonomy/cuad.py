@@ -136,6 +136,60 @@ class CUADClauseType(str, Enum):
 
         return descriptions.get(clause_type, "")
 
+    # Mapping from fine-grained CUAD type to the broader storage.ClauseType vocabulary.
+    # storage.ClauseType intentionally has a smaller set (13 types); CUAD has 41.
+    _STORAGE_TYPE_MAP: dict[str, str] = {
+        # Termination
+        "termination_for_cause": "termination",
+        "termination_for_convenience": "termination",
+        "notice_period_to_terminate": "termination",
+        # Payment / financial
+        "payment_terms": "payment",
+        "liquidated_damages": "payment",
+        "price_restrictions": "payment",
+        "revenue_profit_sharing": "payment",
+        "minimum_commitment": "payment",
+        # Liability
+        "cap_on_liability": "liability",
+        "uncapped_liability": "liability",
+        # Indemnification
+        "indemnification": "indemnification",
+        "insurance_requirements": "indemnification",
+        # Confidentiality
+        "confidentiality": "confidentiality",
+        "data_security": "confidentiality",
+        # Governing law / dispute resolution
+        "governing_law": "governing_law",
+        "venue": "dispute_resolution",
+        "arbitration": "dispute_resolution",
+        # Intellectual property
+        "license_grant": "intellectual_property",
+        "ip_ownership_assignment": "intellectual_property",
+        "joint_ip_ownership": "intellectual_property",
+        # Warranty
+        "warranty_disclaimer": "warranty",
+        # Assignment
+        "anti_assignment": "assignment",
+        "change_of_control": "assignment",
+        # Amendment / modification
+        "contract_modification": "amendment",
+        "renewal_term": "amendment",
+    }
+
+    @classmethod
+    def to_storage_type(cls, cuad_type: "CUADClauseType") -> str:
+        """
+        Map a fine-grained CUAD clause type to the broader storage.ClauseType vocabulary.
+
+        Args:
+            cuad_type: A CUADClauseType enum member
+
+        Returns:
+            The matching storage ClauseType value string, or ``"other"`` if no
+            mapping exists.
+        """
+        return cls._STORAGE_TYPE_MAP.get(cuad_type.value, "other")
+
     @classmethod
     def get_all_types(cls) -> list:
         """Get list of all CUAD clause types."""

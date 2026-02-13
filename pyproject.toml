@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "Modern Python library for LLM-powered contract intelligence and legal document analysis"
 readme = "README.md"
 requires-python = ">=3.9"
-license = {text = "MIT"}
+license = {text = "Apache-2.0"}
 authors = [
     {name = "Contract-Clause-Extractor Team", email = "contact@example.com"}
 ]
@@ -17,7 +17,7 @@ classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "Intended Audience :: Legal Industry",
-    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
@@ -31,6 +31,7 @@ dependencies = [
     "pydantic>=2.9.0",
     "openai>=1.50.0",
     "anthropic>=0.39.0",
+    "google-generativeai>=0.8.0",
     "pymupdf>=1.24.0",
     "python-docx>=1.1.0",
     "pandas>=2.2.0",
@@ -46,6 +47,8 @@ spacy = ["spacy>=3.7.0"]
 local = ["ollama>=0.1.0"]
 storage = ["psycopg2-binary>=2.9.9"]
 datasets = ["datasets>=2.0.0", "requests>=2.31.0", "platformdirs>=3.0.0"]
+retrieval = ["pgvector>=0.3.0", "sentence-transformers>=2.0.0", "ollama>=0.1.0"]
+chroma = ["chromadb>=0.4.0"]
 dev = [
     "pytest>=8.0.0",
     "pytest-cov>=4.1.0",
@@ -54,12 +57,16 @@ dev = [
     "ruff>=0.1.0",
     "mypy>=1.8.0",
     "psycopg2-binary>=2.9.9",
+    "scikit-learn>=1.3.0",
+    "jupyter>=1.0.0",
+    "matplotlib>=3.7.0",
+    "seaborn>=0.13.0",
 ]
 docs = [
     "mkdocs>=1.5.0",
     "mkdocs-material>=9.5.0",
 ]
-all = ["contractex[ocr,cloud,langchain,spacy,local,storage,datasets]"]
+all = ["contractex[ocr,cloud,langchain,spacy,local,storage,datasets,retrieval,chroma]"]
 
 [project.urls]
 Homepage = "https://github.com/aahepburn/Contract-Clause-Extractor"

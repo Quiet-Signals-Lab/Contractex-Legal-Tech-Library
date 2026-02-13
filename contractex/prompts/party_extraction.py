@@ -1,40 +1,31 @@
 """Prompt templates for party extraction."""
 
-PARTY_EXTRACTION_PROMPT = """
-You are an expert legal document analyst. Extract all parties mentioned in this contract.
+PARTY_EXTRACTION_PROMPT = """You are an expert legal document analyst. Extract all primary contracting parties from this contract.
 
 Contract Text:
 {contract_text}
 
-For each party, identify:
-1. Legal name of the entity or person
-2. Role in the contract (provider, client, licensor, licensee, etc.)
-3. Entity type (corporation, LLC, individual, partnership, etc.) if mentioned
-4. Jurisdiction of incorporation if mentioned
-5. Any contact information or addresses
-6. Confidence score (0.0-1.0) for extraction accuracy
+For each PRIMARY party (signatories and named counterparties only), identify:
+1. name: Full legal name of the entity or person
+2. role: Must be exactly one of: provider, client, licensor, licensee, buyer, seller,
+         employer, employee, landlord, tenant, partner, other
+3. entity_type: Legal form if stated (e.g. corporation, LLC, limited partnership, individual)
+4. jurisdiction: State or country of incorporation if stated (e.g. "Delaware", "England and Wales")
+5. address: Physical or registered address if stated
+6. confidence: 0.0–1.0 (use > 0.9 only when information is explicitly stated)
 
-Instructions:
-- Distinguish between the primary contracting parties and other mentioned entities
-- Be precise with legal names (look for "a Delaware corporation", "Inc.", "LLC", etc.)
-- Extract addresses and contact info if present
-- Note any parent companies or subsidiaries if relevant
-- Provide high confidence (>0.9) only when information is explicitly stated
-
-Common party roles:
-- Provider/Vendor/Supplier
-- Client/Customer/Buyer
-- Licensor/Licensee
-- Employer/Employee
-- Landlord/Tenant
-- Partner (in joint ventures)
+INSTRUCTIONS:
+- Include ONLY the primary contracting parties — the entities that sign this agreement.
+- Exclude: law firms, agents, banks, third-party beneficiaries, and entities mentioned only in examples.
+- Be precise with legal names — include suffixes (Inc., LLC, Ltd., Corp.) exactly as written.
+- If a party is described as "a Delaware corporation", set jurisdiction to "Delaware".
+- Do not guess or infer information that is not explicitly stated; use null for missing fields.
 
 Return as structured JSON.
 """
 
 
-PARTY_RELATIONSHIP_PROMPT = """
-Analyze the relationship between the parties in this contract.
+PARTY_RELATIONSHIP_PROMPT = """Analyse the relationship between the parties in this contract.
 
 Contract Text:
 {contract_text}
@@ -48,5 +39,5 @@ Describe:
 3. Dependencies mentioned
 4. Any parent-subsidiary or affiliate relationships
 
-Provide a brief analysis (3-4 sentences).
+Provide a brief analysis (3–4 sentences).
 """

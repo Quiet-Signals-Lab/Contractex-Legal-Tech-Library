@@ -181,6 +181,42 @@ def connect_to_postgres_server(config: Optional[dict] = None):
         raise
 
 
+@contextmanager
+def get_vector_cursor(dict_cursor: bool = False, config: Optional[dict] = None):
+    """
+    Context manager for database cursor with pgvector types registered.
+
+    Use this instead of get_cursor() for any query that reads or writes
+    VECTOR columns. Registers the pgvector psycopg2 adapter so plain
+    Python list[float] values are accepted as query parameters.
+
+    Usage:
+        with get_vector_cursor() as cur:
+            cur.execute("UPDATE clauses SET embedding = %s WHERE id = %s",
+                        (embedding, clause_id))
+
+    Raises:
+        ContractExError: If pgvector Python package is not installed
+    """
+    try:
+        from pgvector.psycopg2 import register_vector
+    except ImportError as e:
+        from contractex.exceptions import ContractExError
+
+        raise ContractExError(
+            "pgvector not installed. Install with: pip install pgvector"
+        ) from e
+
+    with get_connection(config) as conn:
+        register_vector(conn)
+        cursor_factory = RealDictCursor if dict_cursor else None
+        cursor = conn.cursor(cursor_factory=cursor_factory)
+        try:
+            yield cursor
+        finally:
+            cursor.close()
+
+
 # TODO: Implement connection pooling when scaling to API serving
 # from psycopg2 import pool
 # connection_pool = psycopg2.pool.SimpleConnectionPool(minconn=1, maxconn=20, ...)

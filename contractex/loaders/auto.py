@@ -6,6 +6,7 @@ from contractex.exceptions import UnsupportedFileTypeError
 from contractex.loaders.base import DocumentLoader
 from contractex.loaders.docx import DOCXLoader
 from contractex.loaders.pdf import PDFLoader
+from contractex.loaders.text import TextLoader
 
 
 class AutoLoader(DocumentLoader):
@@ -27,6 +28,7 @@ class AutoLoader(DocumentLoader):
         self.loaders = {
             ".pdf": PDFLoader(**loader_kwargs),
             ".docx": DOCXLoader(**loader_kwargs),
+            ".txt": TextLoader(**loader_kwargs),
         }
 
     def load(self, source: str) -> str:

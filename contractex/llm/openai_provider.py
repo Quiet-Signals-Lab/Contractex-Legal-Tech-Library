@@ -1,12 +1,42 @@
 """OpenAI provider implementation for GPT models."""
 
+import logging
 import os
+import time
 from typing import Optional, cast
 
 from pydantic import BaseModel
 
 from contractex.exceptions import LLMProviderError
 from contractex.llm.base import LLMProvider
+
+logger = logging.getLogger(__name__)
+
+# Errors that warrant a retry (rate limits, network, server errors)
+try:
+    from openai import APIConnectionError as _OAIConnectionError
+    from openai import APIStatusError as _OAIStatusError
+    from openai import APITimeoutError as _OAITimeoutError
+    from openai import RateLimitError as _OAIRateLimitError
+
+    _OPENAI_RETRYABLE = (
+        _OAIRateLimitError,
+        _OAIConnectionError,
+        _OAITimeoutError,
+    )
+except ImportError:  # openai not installed yet (shouldn't happen, it's in deps)
+    _OPENAI_RETRYABLE = ()  # type: ignore[assignment]
+    _OAIStatusError = None  # type: ignore[assignment,misc]
+
+
+def _openai_is_retryable(exc: Exception) -> bool:
+    """Return True if the exception is worth retrying."""
+    if _OPENAI_RETRYABLE and isinstance(exc, _OPENAI_RETRYABLE):
+        return True
+    # Retry 5xx server errors (but not 4xx client errors)
+    if _OAIStatusError and isinstance(exc, _OAIStatusError):
+        return bool(exc.status_code >= 500)
+    return False
 
 
 class OpenAIProvider(LLMProvider):
@@ -68,6 +98,36 @@ class OpenAIProvider(LLMProvider):
                 "OpenAI package not installed. Install with: pip install openai"
             ) from e
 
+    def _call_with_retry(self, fn, label: str, max_retries: int = 3, base_delay: float = 1.0):
+        """
+        Call fn() with exponential backoff on transient OpenAI errors.
+
+        Retries on rate limits, connection errors, timeouts, and 5xx responses.
+        Non-retryable errors (4xx auth/validation) are raised immediately.
+        """
+        last_exc: Exception = Exception("unreachable")
+        for attempt in range(max_retries):
+            try:
+                return fn()
+            except LLMProviderError:
+                raise  # Already wrapped — don't retry
+            except Exception as exc:
+                if not _openai_is_retryable(exc):
+                    raise LLMProviderError(f"{label} failed: {exc}") from exc
+                last_exc = exc
+                if attempt < max_retries - 1:
+                    delay = base_delay * (2**attempt)
+                    logger.warning(
+                        "%s failed (attempt %d/%d): %s — retrying in %.1fs",
+                        label,
+                        attempt + 1,
+                        max_retries,
+                        exc,
+                        delay,
+                    )
+                    time.sleep(delay)
+        raise LLMProviderError(f"{label} failed after {max_retries} retries: {last_exc}") from last_exc
+
     def extract_structured(
         self,
         prompt: str,
@@ -76,7 +136,7 @@ class OpenAIProvider(LLMProvider):
         max_tokens: Optional[int] = None,
     ) -> BaseModel:
         """Extract structured data using OpenAI's structured output feature."""
-        try:
+        def _call():
             response = self.client.beta.chat.completions.parse(
                 model=self._model,
                 messages=[
@@ -87,20 +147,18 @@ class OpenAIProvider(LLMProvider):
                 temperature=temperature,
                 max_tokens=max_tokens or self._max_tokens,
             )
-
             parsed = response.choices[0].message.parsed
             if parsed is None:
                 raise LLMProviderError("OpenAI returned None for parsed response")
             return parsed
 
-        except Exception as e:
-            raise LLMProviderError(f"OpenAI structured extraction failed: {str(e)}") from e
+        return self._call_with_retry(_call, "OpenAI structured extraction")  # type: ignore[return-value]
 
     def complete(
         self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs
     ) -> str:
         """Get text completion from OpenAI."""
-        try:
+        def _call():
             response = self.client.chat.completions.create(
                 model=self._model,
                 messages=[{"role": "user", "content": prompt}],
@@ -108,14 +166,12 @@ class OpenAIProvider(LLMProvider):
                 max_tokens=max_tokens or self._max_tokens,
                 **kwargs,
             )
-
             content = response.choices[0].message.content
             if content is None:
                 raise LLMProviderError("OpenAI returned empty response")
             return cast(str, content)
 
-        except Exception as e:
-            raise LLMProviderError(f"OpenAI completion failed: {str(e)}") from e
+        return self._call_with_retry(_call, "OpenAI completion")  # type: ignore[return-value]
 
     def estimate_cost(self, text: str) -> float:
         """Estimate cost for processing text."""

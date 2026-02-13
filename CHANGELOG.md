@@ -8,30 +8,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Initial package structure and core architecture
-- Pydantic models for Contract, Party, Clause, FinancialTerm, RiskFlag
-- Multi-LLM provider support (OpenAI, Anthropic, Local via Ollama)
-- Document loaders for PDF and DOCX
-- Clause-aware and semantic chunking strategies
-- CUAD taxonomy with 41 clause types
-- Risk analysis with rule-based and LLM approaches
-- Export utilities (JSON, CSV, Excel)
-- LangChain compatibility layer
-- Batch processing support
-- Confidence scoring and validation
-- Comprehensive examples
+- Google Gemini LLM provider (`GoogleProvider`) with support for gemini-2.0-flash, gemini-2.5-pro, and other Gemini models
+- Plain text document loader (`TextLoader`) for .txt files with automatic encoding detection
+- Support for .txt files in `AutoLoader` for simplified contract loading
 
-### Changed
-- Restructured from monolithic app to modular library
-- Migrated from dataclasses to Pydantic v2 models
-- Improved API design for simplicity and extensibility
-
-## [0.1.0] - 2024-02-09
+## [0.1.0] - 2026-02-13
 
 ### Added
-- Initial release of ContractEx library
-- Core extraction functionality
-- Basic documentation and examples
+- Full LLM extraction pipeline (`_extract_from_chunks`) supporting OpenAI, Anthropic, and local Ollama models
+- Multi-phase extraction: contract metadata + parties (Phase 1), clause + financial per-chunk (Phase 2), deduplication (Phase 3)
+- CUAD taxonomy with 41 clause types embedded in prompt templates for accurate LLM classification
+- Exponential-backoff retry logic in all three LLM providers (rate limits, network errors, 5xx responses)
+- `ContractExtractor.estimate_extraction_cost()` for pre-flight cost/token estimation with per-phase breakdown
+- LLM-based risk analysis wired into `RiskAnalyzer` alongside existing keyword rule engine
+- Internal Pydantic schemas (`LLMContractInfoResponse`, `LLMClausesResponse`, etc.) bridging LLM output to public models
+- Parallel chunk processing via `ThreadPoolExecutor` (up to 4 workers)
+- Graceful degradation: per-chunk LLM failures add warnings to `ContractMetadata` without crashing
+- Pydantic models for Contract, Party, Clause, FinancialTerm, RiskFlag, ContractMetadata
+- Storage layer with PostgreSQL + pgvector
+- Hybrid clause retrieval with Reciprocal Rank Fusion reranking
+- Document loaders for PDF and DOCX
+- Clause-aware and semantic chunking strategies
+- Export utilities (JSON, CSV, Excel)
+- LangChain compatibility layer
+- Batch processing and async extraction support
+- Confidence scoring and validation
+- Comprehensive examples (basic, advanced, batch, local LLM, FastAPI, storage, NER, datasets)
+- CI/CD with GitHub Actions (tests, type checking, linting, PyPI publish workflow)
+- `CONTRIBUTING.md` with dev setup and contribution guidelines
 
 [Unreleased]: https://github.com/aahepburn/Contract-Clause-Extractor/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/aahepburn/Contract-Clause-Extractor/releases/tag/v0.1.0

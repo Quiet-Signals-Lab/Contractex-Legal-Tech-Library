@@ -92,6 +92,9 @@ class Clause:
     # Flexible metadata
     metadata: dict[str, Any] = field(default_factory=dict)
 
+    # Vector embedding (populated by the retrieval pipeline, not returned by from_db_row)
+    embedding: Optional[list[float]] = None
+
     # Timestamp
     created_at: Optional[datetime] = None
 
