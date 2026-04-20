@@ -4,6 +4,8 @@ Unit tests for AuditLogger, AuditEvent, and the JSONL backend.
 No database, no network — only in-memory and temp-file operations.
 """
 
+from __future__ import annotations
+
 import json
 import threading
 

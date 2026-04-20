@@ -4,6 +4,8 @@ Unit tests for ProvenanceTracker and ChunkRecord.
 All tests are pure Python — no network, no LLM, no database.
 """
 
+from __future__ import annotations
+
 import pytest
 
 from contractex.core.legal_document import LegalDocument

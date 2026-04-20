@@ -7,6 +7,8 @@ Run with: pytest tests/test_smoke.py -m smoke
 Note: These tests only require the contractex.storage module - no database connection needed.
 """
 
+from __future__ import annotations
+
 import pytest
 
 

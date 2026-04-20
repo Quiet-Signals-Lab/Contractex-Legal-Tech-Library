@@ -4,6 +4,8 @@ Unit tests for LegalDocument, DocType, SourceSpan, and LegalDocumentMetadata.
 No LLM, no database, no network — pure Pydantic model tests.
 """
 
+from __future__ import annotations
+
 import pytest
 
 from contractex.core.legal_document import (

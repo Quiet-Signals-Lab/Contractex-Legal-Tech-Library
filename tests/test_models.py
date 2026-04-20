@@ -5,6 +5,8 @@ These tests don't require a database connection - they test the domain
 models in isolation.
 """
 
+from __future__ import annotations
+
 from datetime import datetime
 
 import pytest

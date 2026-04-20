@@ -4,6 +4,8 @@ Unit tests for ConfidenceRouter, RoutingDecision, ReviewItem, and RoutingResult.
 No LLM, no network, no database.
 """
 
+from __future__ import annotations
+
 import pytest
 
 from contractex.core.legal_document import LegalDocument, SourceSpan

@@ -5,6 +5,8 @@ These tests require a real PostgreSQL database connection and test
 the full stack from repository through to database.
 """
 
+from __future__ import annotations
+
 import pytest
 
 from contractex.storage.models import (

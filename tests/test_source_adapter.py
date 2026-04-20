@@ -4,6 +4,8 @@ Unit tests for SourceAdapter, URLLoader, and APILoader.
 All HTTP calls are mocked — no real network traffic.
 """
 
+from __future__ import annotations
+
 from unittest.mock import MagicMock, patch
 
 import pytest

@@ -5,6 +5,8 @@ This file is automatically discovered by pytest and provides reusable fixtures
 for all test files.
 """
 
+from __future__ import annotations
+
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
