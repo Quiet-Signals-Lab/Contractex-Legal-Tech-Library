@@ -1,5 +1,7 @@
 """Abstract base class for document loaders."""
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any

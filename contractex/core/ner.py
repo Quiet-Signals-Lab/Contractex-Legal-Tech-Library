@@ -5,6 +5,8 @@ Provides spaCy-based entity extraction with support for legal-specific models
 like Blackstone for extracting parties, legal entities, and other contract elements.
 """
 
+from __future__ import annotations
+
 import logging
 from typing import Any
 

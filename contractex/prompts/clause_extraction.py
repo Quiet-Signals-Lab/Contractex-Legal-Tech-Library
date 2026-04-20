@@ -1,5 +1,7 @@
 """Prompt templates for clause extraction."""
 
+from __future__ import annotations
+
 # Full CUAD taxonomy with one-line descriptions embedded in the prompt so
 # that any LLM — including small local models — can pick the right category
 # without needing to know the CUAD standard in advance.

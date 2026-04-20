@@ -6,6 +6,7 @@ Run with: pytest tests/test_smoke.py -m smoke
 
 Note: These tests only require the contractex.storage module - no database connection needed.
 """
+
 import pytest
 
 
@@ -17,6 +18,7 @@ class TestSmoke:
     def test_model_imports(self):
         """Test that model classes can be imported."""
         from contractex.storage.models import Clause, Document, ProcessingLog
+
         assert Document is not None
         assert Clause is not None
         assert ProcessingLog is not None
@@ -42,11 +44,7 @@ class TestSmoke:
         """Test basic ProcessingLog instantiation."""
         from contractex.storage.models import ProcessingLog
 
-        log = ProcessingLog(
-            document_id=1,
-            processing_stage="uploaded",
-            status="completed"
-        )
+        log = ProcessingLog(document_id=1, processing_stage="uploaded", status="completed")
         assert log.status == "completed"
         assert log.processing_stage == "uploaded"
 
@@ -55,9 +53,9 @@ class TestSmoke:
         from contractex.storage.config import get_db_config
 
         config = get_db_config()
-        assert 'host' in config
-        assert 'db_name' in config
-        assert 'user' in config
+        assert "host" in config
+        assert "db_name" in config
+        assert "user" in config
 
     def test_document_hash(self):
         """Test document hash computation."""
@@ -89,11 +87,11 @@ class TestSmoke:
             bbox_x=10.0,
             bbox_y=20.0,
             bbox_width=100.0,
-            bbox_height=50.0
+            bbox_height=50.0,
         )
 
         assert clause.has_bounding_box() is True
         bbox = clause.get_bounding_box()
         assert bbox is not None
-        assert bbox['x'] == 10.0
-        assert bbox['height'] == 50.0
+        assert bbox["x"] == 10.0
+        assert bbox["height"] == 50.0

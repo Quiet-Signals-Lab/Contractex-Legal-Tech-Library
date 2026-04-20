@@ -1,5 +1,7 @@
 """Prompt templates for risk analysis."""
 
+from __future__ import annotations
+
 RISK_ANALYSIS_PROMPT = """
 You are a seasoned contract attorney specializing in risk identification and mitigation.
 

@@ -20,6 +20,8 @@ Quick start::
     assert metrics.field_accuracy >= 0.90
 """
 
+from __future__ import annotations
+
 from contractex.eval.cases import EvalCase, EvalSuite
 from contractex.eval.harness import EvalHarness
 from contractex.eval.metrics import CaseResult, ExtractionMetrics, FieldResult

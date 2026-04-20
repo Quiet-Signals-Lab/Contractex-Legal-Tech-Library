@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # Re-export the canonical OllamaEmbedder from the retrieval package.
 # The retrieval implementation is more complete (host support, error handling,
 # dimensions property) so we keep a single definition there.

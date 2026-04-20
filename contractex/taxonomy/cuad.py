@@ -4,6 +4,8 @@ CUAD (Contract Understanding Atticus Dataset) taxonomy definitions.
 CUAD defines 41 common clause types found in commercial contracts.
 """
 
+from __future__ import annotations
+
 from enum import Enum
 
 
@@ -80,7 +82,7 @@ class CUADClauseType(str, Enum):
     MISCELLANEOUS = "miscellaneous"
 
     @classmethod
-    def get_description(cls, clause_type: "CUADClauseType") -> str:
+    def get_description(cls, clause_type: CUADClauseType) -> str:
         """
         Get human-readable description of a clause type.
 
@@ -177,7 +179,7 @@ class CUADClauseType(str, Enum):
     }
 
     @classmethod
-    def to_storage_type(cls, cuad_type: "CUADClauseType") -> str:
+    def to_storage_type(cls, cuad_type: CUADClauseType) -> str:
         """
         Map a fine-grained CUAD clause type to the broader storage.ClauseType vocabulary.
 

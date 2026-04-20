@@ -14,7 +14,6 @@ from contractex.utils.routing import (
     RoutingResult,
 )
 
-
 # ---------------------------------------------------------------------------
 # ConfidenceRouter — construction
 # ---------------------------------------------------------------------------
@@ -155,9 +154,9 @@ class TestRouteDocument:
     def _make_doc(self) -> LegalDocument:
         doc = LegalDocument(doc_id="doc-1")
         doc.extracted_fields = {
-            "surname": "GARCIA",       # high confidence → accept
-            "given_name": "JOSE",      # mid confidence → review
-            "passport_number": "X1234" # low confidence → reject
+            "surname": "GARCIA",  # high confidence → accept
+            "given_name": "JOSE",  # mid confidence → review
+            "passport_number": "X1234",  # low confidence → reject
         }
         doc.field_confidences = {
             "surname": 0.95,
@@ -252,7 +251,7 @@ class TestRouteDict:
         assert any(i.field_name == "field" for i in result.rejected)
 
     def test_summary_string(self):
-        router = ConfidenceRouter()
+        ConfidenceRouter()
         result = RoutingResult()
         assert "RoutingResult" in result.summary()
 

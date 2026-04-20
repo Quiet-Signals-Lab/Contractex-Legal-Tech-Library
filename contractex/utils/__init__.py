@@ -1,5 +1,7 @@
 """Utility functions for export, comparison, normalization, routing, and auditing."""
 
+from __future__ import annotations
+
 from contractex.utils.audit import (
     AuditBackend,
     AuditEvent,

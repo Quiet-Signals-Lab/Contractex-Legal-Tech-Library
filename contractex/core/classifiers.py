@@ -2,7 +2,7 @@
 Clause classifier for categorizing contract clauses using CUAD taxonomy or custom types.
 """
 
-from typing import Optional
+from __future__ import annotations
 
 from contractex.core.models import Clause, Contract
 from contractex.taxonomy.cuad import CUADClauseType
@@ -217,7 +217,7 @@ class CUADClassifier:
 
     def __init__(
         self,
-        clause_types: Optional[list[str]] = None,
+        clause_types: list[str] | None = None,
         multi_label: bool = True,
         confidence_threshold: float = 0.5,
         use_llm: bool = False,

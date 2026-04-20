@@ -1,8 +1,9 @@
 """Export utilities for various formats."""
 
+from __future__ import annotations
+
 import json
 from pathlib import Path
-from typing import Union
 
 from contractex.core.models import Contract
 
@@ -11,7 +12,7 @@ class JSONExporter:
     """Export contracts to JSON format."""
 
     @staticmethod
-    def export(contract: Contract, file_path: Union[str, Path]) -> None:
+    def export(contract: Contract, file_path: str | Path) -> None:
         """
         Export contract to JSON file.
 
@@ -25,7 +26,7 @@ class JSONExporter:
             f.write(json_str)
 
     @staticmethod
-    def export_batch(contracts: list[Contract], file_path: Union[str, Path]) -> None:
+    def export_batch(contracts: list[Contract], file_path: str | Path) -> None:
         """
         Export multiple contracts to JSON file.
 
@@ -43,7 +44,7 @@ class CSVExporter:
     """Export contracts to CSV format."""
 
     @staticmethod
-    def export_clauses(contract: Contract, file_path: Union[str, Path]) -> None:
+    def export_clauses(contract: Contract, file_path: str | Path) -> None:
         """
         Export contract clauses to CSV file.
 
@@ -62,7 +63,7 @@ class CSVExporter:
         df.to_csv(file_path, index=False, encoding="utf-8")
 
     @staticmethod
-    def export_financial_terms(contract: Contract, file_path: Union[str, Path]) -> None:
+    def export_financial_terms(contract: Contract, file_path: str | Path) -> None:
         """
         Export financial terms to CSV file.
 
@@ -101,7 +102,7 @@ class ExcelExporter:
     """Export contracts to Excel format."""
 
     @staticmethod
-    def export(contract: Contract, file_path: Union[str, Path]) -> None:
+    def export(contract: Contract, file_path: str | Path) -> None:
         """
         Export contract to Excel file with multiple sheets.
 
@@ -112,7 +113,7 @@ class ExcelExporter:
         contract.to_excel(str(file_path))
 
     @staticmethod
-    def export_batch(contracts: list[Contract], file_path: Union[str, Path]) -> None:
+    def export_batch(contracts: list[Contract], file_path: str | Path) -> None:
         """
         Export multiple contracts to Excel file.
 

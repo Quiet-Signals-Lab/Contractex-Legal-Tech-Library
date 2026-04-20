@@ -13,7 +13,6 @@ from contractex.core.legal_document import (
     SourceSpan,
 )
 
-
 # ---------------------------------------------------------------------------
 # DocType
 # ---------------------------------------------------------------------------
@@ -147,9 +146,7 @@ class TestLegalDocumentProperties:
 
 class TestLegalDocumentMutations:
     def test_add_provenance(self):
-        doc = LegalDocument(
-            metadata=LegalDocumentMetadata(source_url="https://example.com")
-        )
+        doc = LegalDocument(metadata=LegalDocumentMetadata(source_url="https://example.com"))
         doc.add_provenance(
             "citation",
             chunk_id="chunk-0001-ab12",
@@ -217,6 +214,7 @@ class TestLegalDocumentSerialisation:
         path = str(tmp_path / "doc.json")
         doc.to_json(file_path=path)
         import json
+
         with open(path) as f:
             data = json.load(f)
         assert data["title"] == "Test Doc"

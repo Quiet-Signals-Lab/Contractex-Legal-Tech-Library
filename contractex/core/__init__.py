@@ -1,5 +1,7 @@
 """Core module initialization."""
 
+from __future__ import annotations
+
 from contractex.core.legal_document import (  # noqa: F401
     DocType,
     LegalDocument,

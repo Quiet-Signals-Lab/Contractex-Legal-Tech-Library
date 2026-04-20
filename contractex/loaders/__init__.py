@@ -1,5 +1,7 @@
 """Document loaders for various file formats and remote sources."""
 
+from __future__ import annotations
+
 from contractex.loaders.auto import AutoLoader
 from contractex.loaders.base import DocumentLoader
 from contractex.loaders.docx import DOCXLoader

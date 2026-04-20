@@ -4,6 +4,7 @@ Unit tests for database models.
 These tests don't require a database connection - they test the domain
 models in isolation.
 """
+
 from datetime import datetime
 
 import pytest
@@ -20,6 +21,7 @@ from contractex.storage.models import (
 # ============================================================================
 # Document Model Tests
 # ============================================================================
+
 
 @pytest.mark.unit
 class TestDocumentModel:
@@ -83,7 +85,7 @@ class TestDocumentModel:
             "text content",  # extracted_text
             {"key": "value"},  # metadata
             datetime(2024, 1, 1),  # uploaded_at
-            datetime(2024, 1, 2)   # updated_at
+            datetime(2024, 1, 2),  # updated_at
         )
 
         doc = Document.from_db_row(row)
@@ -101,6 +103,7 @@ class TestDocumentModel:
 # ============================================================================
 # Clause Model Tests
 # ============================================================================
+
 
 @pytest.mark.unit
 class TestClauseModel:
@@ -136,10 +139,10 @@ class TestClauseModel:
         bbox = sample_clause.get_bounding_box()
 
         assert bbox is not None
-        assert bbox['x'] == 50.0
-        assert bbox['y'] == 200.0
-        assert bbox['width'] == 500.0
-        assert bbox['height'] == 50.0
+        assert bbox["x"] == 50.0
+        assert bbox["y"] == 200.0
+        assert bbox["width"] == 500.0
+        assert bbox["height"] == 50.0
 
     def test_clause_get_bounding_box_incomplete(self):
         """Test bounding box returns None when incomplete."""
@@ -162,11 +165,11 @@ class TestClauseModel:
             100.0,  # bbox_x
             200.0,  # bbox_y
             400.0,  # bbox_width
-            50.0,   # bbox_height
-            0.92,   # confidence_score
-            None,   # parent_clause_id
+            50.0,  # bbox_height
+            0.92,  # confidence_score
+            None,  # parent_clause_id
             {"custom": "data"},  # metadata
-            datetime(2024, 1, 1)  # created_at
+            datetime(2024, 1, 1),  # created_at
         )
 
         clause = Clause.from_db_row(row)
@@ -184,6 +187,7 @@ class TestClauseModel:
 # ============================================================================
 # ProcessingLog Model Tests
 # ============================================================================
+
 
 @pytest.mark.unit
 class TestProcessingLogModel:
@@ -210,14 +214,14 @@ class TestProcessingLogModel:
             document_id=1,
             processing_stage=ProcessingStage.EXTRACTED,
             status=ProcessingStatus.FAILED,
-            error_message="Extraction failed"
+            error_message="Extraction failed",
         )
         assert failed_log.is_failed() is True
 
         success_log = ProcessingLog(
             document_id=1,
             processing_stage=ProcessingStage.EXTRACTED,
-            status=ProcessingStatus.COMPLETED
+            status=ProcessingStatus.COMPLETED,
         )
         assert success_log.is_failed() is False
 
@@ -228,7 +232,7 @@ class TestProcessingLogModel:
         pending_log = ProcessingLog(
             document_id=1,
             processing_stage=ProcessingStage.UPLOADED,
-            status=ProcessingStatus.PENDING
+            status=ProcessingStatus.PENDING,
         )
         assert pending_log.is_completed() is False
 
@@ -240,7 +244,7 @@ class TestProcessingLogModel:
             "extracted",  # processing_stage
             "completed",  # status
             None,  # error_message
-            datetime(2024, 1, 1)  # created_at
+            datetime(2024, 1, 1),  # created_at
         )
 
         log = ProcessingLog.from_db_row(row)
@@ -256,6 +260,7 @@ class TestProcessingLogModel:
 # ============================================================================
 # Controlled Vocabulary Tests
 # ============================================================================
+
 
 @pytest.mark.unit
 class TestControlledVocabularies:
@@ -288,6 +293,7 @@ class TestControlledVocabularies:
 # Edge Cases and Validation Tests
 # ============================================================================
 
+
 @pytest.mark.unit
 class TestModelEdgeCases:
     """Test edge cases and boundary conditions."""
@@ -307,11 +313,7 @@ class TestModelEdgeCases:
 
     def test_clause_with_zero_confidence(self):
         """Test clause with zero confidence score."""
-        clause = Clause(
-            document_id=1,
-            clause_text="Low confidence clause",
-            confidence_score=0.0
-        )
+        clause = Clause(document_id=1, clause_text="Low confidence clause", confidence_score=0.0)
         assert clause.confidence_score == 0.0
 
     def test_clause_with_partial_bbox(self):
@@ -332,7 +334,7 @@ class TestModelEdgeCases:
             document_id=1,
             processing_stage=ProcessingStage.EXTRACTED,
             status=ProcessingStatus.FAILED,
-            error_message="Connection timeout during extraction"
+            error_message="Connection timeout during extraction",
         )
         assert log.is_failed() is True
         assert "timeout" in log.error_message.lower()

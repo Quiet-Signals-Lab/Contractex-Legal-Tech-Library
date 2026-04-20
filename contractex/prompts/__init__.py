@@ -1,5 +1,7 @@
 """Prompt templates for contract extraction."""
 
+from __future__ import annotations
+
 from contractex.prompts.clause_extraction import CLAUSE_EXTRACTION_PROMPT
 from contractex.prompts.financial_extraction import FINANCIAL_EXTRACTION_PROMPT
 from contractex.prompts.party_extraction import PARTY_EXTRACTION_PROMPT

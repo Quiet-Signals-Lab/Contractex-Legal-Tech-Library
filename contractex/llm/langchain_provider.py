@@ -1,6 +1,6 @@
 """LangChain LLM provider adapter for compatibility."""
 
-from typing import Optional
+from __future__ import annotations
 
 from pydantic import BaseModel
 
@@ -35,7 +35,7 @@ class LangChainProvider(LLMProvider):
         prompt: str,
         schema: type[BaseModel],
         temperature: float = 0.0,
-        max_tokens: Optional[int] = None,
+        max_tokens: int | None = None,
     ) -> BaseModel:
         """
         Extract structured data using LangChain LLM.
@@ -77,7 +77,7 @@ Respond with valid JSON matching this schema:
             raise LLMProviderError(f"LangChain structured extraction failed: {str(e)}") from e
 
     def complete(
-        self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs
+        self, prompt: str, temperature: float = 0.7, max_tokens: int | None = None, **kwargs
     ) -> str:
         """Get text completion from LangChain LLM."""
         try:

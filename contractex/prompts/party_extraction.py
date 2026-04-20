@@ -1,5 +1,7 @@
 """Prompt templates for party extraction."""
 
+from __future__ import annotations
+
 PARTY_EXTRACTION_PROMPT = """You are an expert legal document analyst. Extract all primary contracting parties from this contract.
 
 Contract Text:

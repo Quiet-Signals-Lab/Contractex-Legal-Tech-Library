@@ -16,7 +16,6 @@ from contractex.loaders.source_adapter import (
     URLLoader,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -132,6 +131,7 @@ class TestURLLoaderFetch:
     @patch("requests.get")
     def test_content_hash_unchanged_detection(self, mock_get):
         from contractex.loaders.source_adapter import SourceAdapter
+
         text = "same content"
         content_hash = SourceAdapter._hash(text)
         mock_get.return_value = _mock_response(text=text)
@@ -376,6 +376,7 @@ class TestChangedSince:
     def test_changed_since_true_when_content_differs(self, mock_get):
         mock_get.return_value = _mock_response(text="new content")
         from contractex.loaders.source_adapter import SourceAdapter
+
         cache = FetchCache(content_hash=SourceAdapter._hash("old content"))
         loader = URLLoader()
         assert loader.changed_since("https://example.com/", cache=cache) is True
@@ -383,6 +384,7 @@ class TestChangedSince:
     @patch("requests.get")
     def test_changed_since_false_when_same(self, mock_get):
         from contractex.loaders.source_adapter import SourceAdapter
+
         text = "same content"
         mock_get.return_value = _mock_response(text=text)
         cache = FetchCache(content_hash=SourceAdapter._hash(text))

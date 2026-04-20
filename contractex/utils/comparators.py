@@ -1,5 +1,7 @@
 """Comparator utilities for comparing contracts."""
 
+from __future__ import annotations
+
 from difflib import SequenceMatcher
 
 from contractex.core.models import Contract, ContractComparison

@@ -5,9 +5,10 @@ Provides connection lifecycle management and will support connection pooling
 when scaling to API serving.
 """
 
+from __future__ import annotations
+
 import logging
 from contextlib import contextmanager
-from typing import Optional
 
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -27,7 +28,7 @@ class DatabaseConnection:
             cursor.execute("SELECT * FROM documents")
     """
 
-    def __init__(self, config: Optional[dict] = None):
+    def __init__(self, config: dict | None = None):
         """
         Initialize connection manager.
 
@@ -36,7 +37,7 @@ class DatabaseConnection:
                    If None, loads from get_db_config()
         """
         self.config = config or get_db_config()
-        self.conn: Optional[psycopg2.extensions.connection] = None
+        self.conn: psycopg2.extensions.connection | None = None
 
     def __enter__(self):
         """Context manager entry - establish connection."""
@@ -71,7 +72,7 @@ class DatabaseConnection:
 
 
 @contextmanager
-def get_connection(config: Optional[dict] = None):
+def get_connection(config: dict | None = None):
     """
     Context manager for database connections.
 
@@ -108,7 +109,7 @@ def get_connection(config: Optional[dict] = None):
 
 
 @contextmanager
-def get_cursor(dict_cursor: bool = False, config: Optional[dict] = None):
+def get_cursor(dict_cursor: bool = False, config: dict | None = None):
     """
     Context manager for database cursor with automatic connection management.
 
@@ -130,7 +131,7 @@ def get_cursor(dict_cursor: bool = False, config: Optional[dict] = None):
             cursor.close()
 
 
-def test_connection(config: Optional[dict] = None) -> bool:
+def test_connection(config: dict | None = None) -> bool:
     """
     Test database connectivity.
 
@@ -153,7 +154,7 @@ def test_connection(config: Optional[dict] = None) -> bool:
         return False
 
 
-def connect_to_postgres_server(config: Optional[dict] = None):
+def connect_to_postgres_server(config: dict | None = None):
     """
     Connect to PostgreSQL server (not specific database).
     Used for database creation tasks.
@@ -182,7 +183,7 @@ def connect_to_postgres_server(config: Optional[dict] = None):
 
 
 @contextmanager
-def get_vector_cursor(dict_cursor: bool = False, config: Optional[dict] = None):
+def get_vector_cursor(dict_cursor: bool = False, config: dict | None = None):
     """
     Context manager for database cursor with pgvector types registered.
 

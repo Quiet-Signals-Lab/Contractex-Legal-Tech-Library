@@ -26,6 +26,8 @@ Usage:
     retrieved = repo.get_by_id(doc_id)
 """
 
+from __future__ import annotations
+
 # Models
 # Configuration
 from contractex.storage.config import get_db_config

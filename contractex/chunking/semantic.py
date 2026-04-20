@@ -1,5 +1,7 @@
 """Semantic chunking based on sentence and paragraph boundaries."""
 
+from __future__ import annotations
+
 import re
 
 from contractex.chunking.base import ChunkingStrategy

@@ -7,10 +7,10 @@ replaced with a MockLLMProvider that returns pre-canned structured
 responses.
 """
 
+from __future__ import annotations
+
 from datetime import date
 from decimal import Decimal
-from typing import Optional
-from unittest.mock import MagicMock, patch
 
 import pytest
 from pydantic import BaseModel
@@ -30,12 +30,9 @@ from contractex.core.models import (
     Clause,
     Contract,
     ContractType,
-    Party,
     PartyRole,
-    RiskSeverity,
 )
 from contractex.llm.base import LLMProvider
-
 
 # ---------------------------------------------------------------------------
 # Mock LLM provider
@@ -61,14 +58,16 @@ class MockLLMProvider(LLMProvider):
         prompt: str,
         schema: type[BaseModel],
         temperature: float = 0.0,
-        max_tokens: Optional[int] = None,
+        max_tokens: int | None = None,
     ) -> BaseModel:
         if schema in self._responses:
             return self._responses[schema]
         # Default: empty instance (all Optional fields → None, lists → [])
         return schema()  # type: ignore[call-arg]
 
-    def complete(self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs) -> str:
+    def complete(
+        self, prompt: str, temperature: float = 0.7, max_tokens: int | None = None, **kwargs
+    ) -> str:
         return ""
 
     def estimate_cost(self, text: str) -> float:
@@ -251,10 +250,13 @@ class TestContractExtractorMocked:
         llm = MockLLMProvider()
         llm.register(LLMContractInfoResponse, SAMPLE_NDA_INFO_RESPONSE)
         # Single-chunk path tries LLMFullExtractionResponse first; fallback uses LLMClausesResponse
-        llm.register(LLMFullExtractionResponse, LLMFullExtractionResponse(  # type: ignore[call-arg]
-            clauses=SAMPLE_CLAUSES_RESPONSE.clauses,
-            financial_terms=[],
-        ))
+        llm.register(
+            LLMFullExtractionResponse,
+            LLMFullExtractionResponse(  # type: ignore[call-arg]
+                clauses=SAMPLE_CLAUSES_RESPONSE.clauses,
+                financial_terms=[],
+            ),
+        )
 
         extractor = _make_extractor(llm)
         result = extractor._extract_from_chunks([SAMPLE_CONTRACT_TEXT])
@@ -312,19 +314,22 @@ class TestContractExtractorMocked:
     def test_financial_terms_parsed(self):
         llm = MockLLMProvider()
         llm.register(LLMContractInfoResponse, SAMPLE_NDA_INFO_RESPONSE)
-        llm.register(LLMFullExtractionResponse, LLMFullExtractionResponse(  # type: ignore[call-arg]
-            clauses=[],
-            financial_terms=[
-                LLMFinancialResult(
-                    term_type="service_fee",
-                    amount="50000.00",
-                    currency="USD",
-                    frequency="monthly",
-                    description="Monthly retainer",
-                    confidence=0.9,
-                )
-            ],
-        ))
+        llm.register(
+            LLMFullExtractionResponse,
+            LLMFullExtractionResponse(  # type: ignore[call-arg]
+                clauses=[],
+                financial_terms=[
+                    LLMFinancialResult(
+                        term_type="service_fee",
+                        amount="50000.00",
+                        currency="USD",
+                        frequency="monthly",
+                        description="Monthly retainer",
+                        confidence=0.9,
+                    )
+                ],
+            ),
+        )
 
         extractor = _make_extractor(llm)
         result = extractor._extract_from_chunks([SAMPLE_CONTRACT_TEXT])
@@ -405,8 +410,9 @@ class TestContractExtractorMocked:
 class TestDeduplication:
     """Unit tests for clause and financial-term deduplication."""
 
-    def _extractor(self) -> "ContractExtractor":  # noqa: F821
+    def _extractor(self) -> ContractExtractor:  # noqa: F821
         from contractex.core.extractors import ContractExtractor
+
         return ContractExtractor(llm_provider=MockLLMProvider())
 
     def test_identical_clauses_deduped(self):
@@ -420,7 +426,9 @@ class TestDeduplication:
 
     def test_substring_keeps_longer(self):
         ext = self._extractor()
-        short = LLMClauseResult(clause_type="confidentiality", text="Confidential info.", confidence=0.9)
+        short = LLMClauseResult(
+            clause_type="confidentiality", text="Confidential info.", confidence=0.9
+        )
         long_ = LLMClauseResult(
             clause_type="confidentiality",
             text="Confidential info. This obligation survives termination.",
@@ -436,13 +444,13 @@ class TestDeduplication:
             LLMClauseResult(
                 clause_type="confidentiality",
                 text="Each party agrees to hold all Confidential Information in strict confidence "
-                     "and shall not disclose it to any third party without prior written consent.",
+                "and shall not disclose it to any third party without prior written consent.",
                 confidence=0.9,
             ),
             LLMClauseResult(
                 clause_type="termination_for_convenience",
                 text="Either party may terminate this Agreement at any time upon thirty (30) days "
-                     "written notice to the other party without cause or penalty.",
+                "written notice to the other party without cause or penalty.",
                 confidence=0.85,
             ),
         ]
@@ -465,8 +473,12 @@ class TestDeduplication:
     def test_financial_terms_deduped_by_type_amount_currency(self):
         ext = self._extractor()
         terms = [
-            LLMFinancialResult(term_type="service_fee", amount="1000.00", currency="USD", confidence=0.9),
-            LLMFinancialResult(term_type="service_fee", amount="1000.00", currency="USD", confidence=0.7),
+            LLMFinancialResult(
+                term_type="service_fee", amount="1000.00", currency="USD", confidence=0.9
+            ),
+            LLMFinancialResult(
+                term_type="service_fee", amount="1000.00", currency="USD", confidence=0.7
+            ),
         ]
         result = ext._deduplicate_financial_terms(terms)
         assert len(result) == 1
@@ -475,8 +487,12 @@ class TestDeduplication:
     def test_financial_terms_different_amounts_both_kept(self):
         ext = self._extractor()
         terms = [
-            LLMFinancialResult(term_type="penalty", amount="500.00", currency="USD", confidence=0.8),
-            LLMFinancialResult(term_type="penalty", amount="1000.00", currency="USD", confidence=0.8),
+            LLMFinancialResult(
+                term_type="penalty", amount="500.00", currency="USD", confidence=0.8
+            ),
+            LLMFinancialResult(
+                term_type="penalty", amount="1000.00", currency="USD", confidence=0.8
+            ),
         ]
         result = ext._deduplicate_financial_terms(terms)
         assert len(result) == 2
@@ -491,68 +507,89 @@ class TestDeduplication:
 class TestModelConversion:
     """Test _build_parties, _build_clauses, _build_financial_terms."""
 
-    def _extractor(self) -> "ContractExtractor":  # noqa: F821
+    def _extractor(self) -> ContractExtractor:  # noqa: F821
         from contractex.core.extractors import ContractExtractor
+
         return ContractExtractor(llm_provider=MockLLMProvider())
 
     def test_build_parties_maps_role_enum(self):
         ext = self._extractor()
-        parties = ext._build_parties([
-            LLMPartyResult(name="Acme Corp", role="provider", confidence=0.9),
-        ])
+        parties = ext._build_parties(
+            [
+                LLMPartyResult(name="Acme Corp", role="provider", confidence=0.9),
+            ]
+        )
         assert len(parties) == 1
         assert parties[0].role == PartyRole.PROVIDER
 
     def test_build_parties_unknown_role_maps_to_none(self):
         ext = self._extractor()
-        parties = ext._build_parties([
-            LLMPartyResult(name="Acme Corp", role="wizard", confidence=0.9),
-        ])
+        parties = ext._build_parties(
+            [
+                LLMPartyResult(name="Acme Corp", role="wizard", confidence=0.9),
+            ]
+        )
         assert parties[0].role is None
 
     def test_build_parties_deduplicates_by_name(self):
         ext = self._extractor()
-        parties = ext._build_parties([
-            LLMPartyResult(name="Acme Corp", role="provider", confidence=0.9),
-            LLMPartyResult(name="Acme Corp", role="provider", confidence=0.8),
-        ])
+        parties = ext._build_parties(
+            [
+                LLMPartyResult(name="Acme Corp", role="provider", confidence=0.9),
+                LLMPartyResult(name="Acme Corp", role="provider", confidence=0.8),
+            ]
+        )
         assert len(parties) == 1
 
     def test_build_clauses_filters_low_confidence(self):
         ext = self._extractor()
         ext.confidence_threshold = 0.8
-        clauses = ext._build_clauses([
-            LLMClauseResult(clause_type="confidentiality", text="High conf.", confidence=0.9),
-            LLMClauseResult(clause_type="termination_for_cause", text="Low conf.", confidence=0.5),
-        ])
+        clauses = ext._build_clauses(
+            [
+                LLMClauseResult(clause_type="confidentiality", text="High conf.", confidence=0.9),
+                LLMClauseResult(
+                    clause_type="termination_for_cause", text="Low conf.", confidence=0.5
+                ),
+            ]
+        )
         assert len(clauses) == 1
         assert clauses[0].clause_type == "confidentiality"
 
     def test_build_financial_terms_parses_decimal_amount(self):
         ext = self._extractor()
-        terms = ext._build_financial_terms([
-            LLMFinancialResult(term_type="service_fee", amount="2500.50", currency="USD", confidence=0.9),
-        ])
+        terms = ext._build_financial_terms(
+            [
+                LLMFinancialResult(
+                    term_type="service_fee", amount="2500.50", currency="USD", confidence=0.9
+                ),
+            ]
+        )
         assert terms[0].amount == Decimal("2500.50")
 
     def test_build_financial_terms_handles_unparseable_amount(self):
         ext = self._extractor()
-        terms = ext._build_financial_terms([
-            LLMFinancialResult(term_type="service_fee", amount="variable", currency="USD", confidence=0.9),
-        ])
+        terms = ext._build_financial_terms(
+            [
+                LLMFinancialResult(
+                    term_type="service_fee", amount="variable", currency="USD", confidence=0.9
+                ),
+            ]
+        )
         assert terms[0].amount is None
 
     def test_build_financial_terms_parses_due_date(self):
         ext = self._extractor()
-        terms = ext._build_financial_terms([
-            LLMFinancialResult(
-                term_type="payment",
-                amount="1000.00",
-                currency="USD",
-                due_date="01/31/2024",
-                confidence=0.9,
-            )
-        ])
+        terms = ext._build_financial_terms(
+            [
+                LLMFinancialResult(
+                    term_type="payment",
+                    amount="1000.00",
+                    currency="USD",
+                    due_date="01/31/2024",
+                    confidence=0.9,
+                )
+            ]
+        )
         assert terms[0].due_date == date(2024, 1, 31)
 
 
@@ -575,6 +612,7 @@ class TestExtractorErrorHandling:
                 return schema()  # type: ignore[call-arg]
 
         from contractex.core.extractors import ContractExtractor
+
         ext = ContractExtractor(llm_provider=FailingLLM())
         info = ext._extract_contract_info("some text")
         assert info.parties == []
@@ -588,6 +626,7 @@ class TestExtractorErrorHandling:
                 raise LLMProviderError("always fails")
 
         from contractex.core.extractors import ContractExtractor
+
         ext = ContractExtractor(llm_provider=FailingLLM())
         clauses = ext._extract_clauses_from_text("some text")
         assert clauses == []
@@ -610,13 +649,12 @@ class TestExtractorErrorHandling:
                 return LLMFinancialResponse()
 
         from contractex.core.extractors import ContractExtractor
+
         ext = ContractExtractor(
             llm_provider=SelectiveFailLLM(),
             parallel_processing=False,
         )
-        result = ext._extract_from_chunks(
-            ["chunk one", "chunk two"], extract_financial=False
-        )
+        result = ext._extract_from_chunks(["chunk one", "chunk two"], extract_financial=False)
         # chunk two should contribute its clauses
         assert len(result["clauses"]) > 0
 
@@ -672,7 +710,7 @@ class TestRiskAnalyzerLLM:
 
         risk_types = {r.risk_type for r in risks}
         assert "unlimited_liability" in risk_types  # rule-based
-        assert "data_security_gap" in risk_types    # LLM-based
+        assert "data_security_gap" in risk_types  # LLM-based
 
     def test_llm_risk_deduped_with_rule_based(self):
         """LLM returning the same risk_type+clause_reference as a rule-based hit is skipped."""
@@ -722,8 +760,12 @@ class TestRiskAnalyzerLLM:
             LLMRiskResponse,
             LLMRiskResponse(
                 risks=[
-                    LLMRiskResult(risk_type="low_risk", severity="low", description="x", confidence=0.8),
-                    LLMRiskResult(risk_type="high_risk", severity="high", description="y", confidence=0.8),
+                    LLMRiskResult(
+                        risk_type="low_risk", severity="low", description="x", confidence=0.8
+                    ),
+                    LLMRiskResult(
+                        risk_type="high_risk", severity="high", description="y", confidence=0.8
+                    ),
                 ]
             ),
         )

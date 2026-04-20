@@ -4,6 +4,7 @@ Pytest configuration and shared fixtures.
 This file is automatically discovered by pytest and provides reusable fixtures
 for all test files.
 """
+
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
@@ -13,6 +14,7 @@ import pytest
 try:
     import psycopg2
     from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
+
     PSYCOPG2_AVAILABLE = True
 except ImportError:
     PSYCOPG2_AVAILABLE = False
@@ -44,11 +46,11 @@ def _postgres_available() -> bool:
     try:
         config = get_db_config()
         conn = psycopg2.connect(
-            dbname='postgres',
-            user=config['user'],
-            password=config['password'],
-            host=config['host'],
-            port=config['port'],
+            dbname="postgres",
+            user=config["user"],
+            password=config["password"],
+            host=config["host"],
+            port=config["port"],
             connect_timeout=3,
         )
         conn.close()
@@ -74,11 +76,12 @@ def pytest_collection_modifyitems(config, items):
 # Configuration Fixtures
 # ============================================================================
 
+
 @pytest.fixture(scope="session")
 def test_db_config():
     """Test database configuration (separate from production)."""
     config = get_db_config()
-    config['db_name'] = 'clause_docs_test'  # Use test database
+    config["db_name"] = "clause_docs_test"  # Use test database
     return config
 
 
@@ -86,6 +89,7 @@ def test_db_config():
 def db_schema_sql():
     """Load schema SQL for test database setup."""
     import pathlib
+
     schema_file = pathlib.Path(__file__).parent.parent / "contractex" / "storage" / "schema.sql"
     with open(schema_file) as f:
         # Skip database creation and extension lines
@@ -93,19 +97,22 @@ def db_schema_sql():
         sql_lines = []
         skip_until_blank = False
         for line in lines:
-            if line.strip().startswith('-- CREATE DATABASE') or line.strip().startswith('-- CREATE EXTENSION'):
+            if line.strip().startswith("-- CREATE DATABASE") or line.strip().startswith(
+                "-- CREATE EXTENSION"
+            ):
                 skip_until_blank = True
-            if skip_until_blank and line.strip() == '':
+            if skip_until_blank and line.strip() == "":
                 skip_until_blank = False
                 continue
-            if not skip_until_blank and not line.strip().startswith('-- CREATE'):
+            if not skip_until_blank and not line.strip().startswith("-- CREATE"):
                 sql_lines.append(line)
-        return ''.join(sql_lines)
+        return "".join(sql_lines)
 
 
 # ============================================================================
 # Database Fixtures (Integration Tests)
 # ============================================================================
+
 
 @pytest.fixture(scope="session")
 def test_database(test_db_config, db_schema_sql):
@@ -120,17 +127,17 @@ def test_database(test_db_config, db_schema_sql):
 
     # Connect to postgres database to create test database
     conn = psycopg2.connect(
-        dbname='postgres',
-        user=test_db_config['user'],
-        password=test_db_config['password'],
-        host=test_db_config['host'],
-        port=test_db_config['port']
+        dbname="postgres",
+        user=test_db_config["user"],
+        password=test_db_config["password"],
+        host=test_db_config["host"],
+        port=test_db_config["port"],
     )
     conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
     cursor = conn.cursor()
 
     # Drop and create test database
-    db_name = test_db_config['db_name']
+    db_name = test_db_config["db_name"]
     cursor.execute(f"DROP DATABASE IF EXISTS {db_name}")
     cursor.execute(f"CREATE DATABASE {db_name} ENCODING 'UTF8'")
     cursor.close()
@@ -138,11 +145,11 @@ def test_database(test_db_config, db_schema_sql):
 
     # Connect to test database and create schema
     test_conn = psycopg2.connect(
-        dbname=test_db_config['db_name'],
-        user=test_db_config['user'],
-        password=test_db_config['password'],
-        host=test_db_config['host'],
-        port=test_db_config['port']
+        dbname=test_db_config["db_name"],
+        user=test_db_config["user"],
+        password=test_db_config["password"],
+        host=test_db_config["host"],
+        port=test_db_config["port"],
     )
     test_conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
     cursor = test_conn.cursor()
@@ -154,11 +161,11 @@ def test_database(test_db_config, db_schema_sql):
 
     # Teardown: Drop test database after all tests
     conn = psycopg2.connect(
-        dbname='postgres',
-        user=test_db_config['user'],
-        password=test_db_config['password'],
-        host=test_db_config['host'],
-        port=test_db_config['port']
+        dbname="postgres",
+        user=test_db_config["user"],
+        password=test_db_config["password"],
+        host=test_db_config["host"],
+        port=test_db_config["port"],
     )
     conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
     cursor = conn.cursor()
@@ -176,11 +183,11 @@ def db_connection(test_database):
     a clean database state.
     """
     conn = psycopg2.connect(
-        dbname=test_database['db_name'],
-        user=test_database['user'],
-        password=test_database['password'],
-        host=test_database['host'],
-        port=test_database['port']
+        dbname=test_database["db_name"],
+        user=test_database["user"],
+        password=test_database["password"],
+        host=test_database["host"],
+        port=test_database["port"],
     )
 
     yield conn
@@ -207,13 +214,15 @@ def clean_db(db_connection):
 # Repository Fixtures
 # ============================================================================
 
+
 @pytest.fixture
 def doc_repo(clean_db):
     """Document repository with clean database."""
-    with patch('contractex.storage.repository.get_cursor') as mock_cursor:
+    with patch("contractex.storage.repository.get_cursor") as mock_cursor:
         # Make mock_cursor return a context manager that yields the real cursor
         def cursor_context(*args, **kwargs):
             from contextlib import contextmanager
+
             @contextmanager
             def _cursor():
                 cur = clean_db.cursor()
@@ -222,6 +231,7 @@ def doc_repo(clean_db):
                     clean_db.commit()
                 finally:
                     cur.close()
+
             return _cursor()
 
         mock_cursor.side_effect = cursor_context
@@ -231,9 +241,11 @@ def doc_repo(clean_db):
 @pytest.fixture
 def clause_repo(clean_db):
     """Clause repository with clean database."""
-    with patch('contractex.storage.repository.get_cursor') as mock_cursor:
+    with patch("contractex.storage.repository.get_cursor") as mock_cursor:
+
         def cursor_context(*args, **kwargs):
             from contextlib import contextmanager
+
             @contextmanager
             def _cursor():
                 cur = clean_db.cursor()
@@ -242,6 +254,7 @@ def clause_repo(clean_db):
                     clean_db.commit()
                 finally:
                     cur.close()
+
             return _cursor()
 
         mock_cursor.side_effect = cursor_context
@@ -251,9 +264,11 @@ def clause_repo(clean_db):
 @pytest.fixture
 def log_repo(clean_db):
     """Processing log repository with clean database."""
-    with patch('contractex.storage.repository.get_cursor') as mock_cursor:
+    with patch("contractex.storage.repository.get_cursor") as mock_cursor:
+
         def cursor_context(*args, **kwargs):
             from contextlib import contextmanager
+
             @contextmanager
             def _cursor():
                 cur = clean_db.cursor()
@@ -262,6 +277,7 @@ def log_repo(clean_db):
                     clean_db.commit()
                 finally:
                     cur.close()
+
             return _cursor()
 
         mock_cursor.side_effect = cursor_context
@@ -271,6 +287,7 @@ def log_repo(clean_db):
 # ============================================================================
 # Model Fixtures (Test Data)
 # ============================================================================
+
 
 @pytest.fixture
 def sample_document():
@@ -285,8 +302,8 @@ def sample_document():
             "parties": ["Company A", "Company B"],
             "effective_date": "2024-01-01",
             "expiration_date": "2026-01-01",
-            "governing_law": "Delaware"
-        }
+            "governing_law": "Delaware",
+        },
     )
 
 
@@ -303,7 +320,7 @@ def sample_clause():
         bbox_width=500.0,
         bbox_height=50.0,
         confidence_score=0.95,
-        metadata={"amount": 10000, "currency": "USD"}
+        metadata={"amount": 10000, "currency": "USD"},
     )
 
 
@@ -314,7 +331,7 @@ def sample_processing_log():
         document_id=1,
         processing_stage=ProcessingStage.UPLOADED,
         status=ProcessingStatus.COMPLETED,
-        error_message=None
+        error_message=None,
     )
 
 
@@ -329,8 +346,8 @@ def multiple_documents():
             metadata={
                 "contract_type": "NDA" if i % 2 == 0 else "MSA",
                 "parties": [f"Company {chr(65+i)}", f"Company {chr(66+i)}"],
-                "effective_date": f"2024-{i+1:02d}-01"
-            }
+                "effective_date": f"2024-{i+1:02d}-01",
+            },
         )
         for i in range(5)
     ]
@@ -346,7 +363,7 @@ def multiple_clauses():
             clause_text=f"Clause {i} text with {clause_types[i % 4]} content.",
             clause_type=clause_types[i % 4],
             page_number=(i % 10) + 1,
-            confidence_score=0.8 + (i * 0.02)
+            confidence_score=0.8 + (i * 0.02),
         )
         for i in range(10)
     ]
@@ -356,11 +373,21 @@ def multiple_clauses():
 # Mock Fixtures (Unit Tests)
 # ============================================================================
 
+
 @pytest.fixture
 def mock_cursor():
     """Mock database cursor for unit tests."""
     cursor = MagicMock()
-    cursor.fetchone.return_value = (1, "test.pdf", "hash123", b"data", "text", {}, datetime.now(), datetime.now())
+    cursor.fetchone.return_value = (
+        1,
+        "test.pdf",
+        "hash123",
+        b"data",
+        "text",
+        {},
+        datetime.now(),
+        datetime.now(),
+    )
     cursor.fetchall.return_value = []
     return cursor
 
@@ -378,26 +405,23 @@ def mock_connection():
 # Pytest Configuration
 # ============================================================================
 
+
 def pytest_configure(config):
     """Configure pytest with custom markers."""
-    config.addinivalue_line(
-        "markers", "unit: Unit tests that don't require database"
-    )
-    config.addinivalue_line(
-        "markers", "integration: Integration tests that require database"
-    )
-    config.addinivalue_line(
-        "markers", "slow: Slow tests that may take longer to run"
-    )
+    config.addinivalue_line("markers", "unit: Unit tests that don't require database")
+    config.addinivalue_line("markers", "integration: Integration tests that require database")
+    config.addinivalue_line("markers", "slow: Slow tests that may take longer to run")
 
 
 # ============================================================================
 # Helper Functions
 # ============================================================================
 
+
 @pytest.fixture
 def assert_document_equal():
     """Helper fixture to compare documents."""
+
     def _assert_equal(doc1: Document, doc2: Document, ignore_timestamps=True):
         assert doc1.filename == doc2.filename
         assert doc1.file_hash == doc2.file_hash
@@ -406,4 +430,5 @@ def assert_document_equal():
         if not ignore_timestamps:
             assert doc1.uploaded_at == doc2.uploaded_at
             assert doc1.updated_at == doc2.updated_at
+
     return _assert_equal

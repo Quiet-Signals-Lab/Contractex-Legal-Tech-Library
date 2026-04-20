@@ -4,6 +4,8 @@ ContractEx: Modern Contract Intelligence for Python
 A comprehensive library for LLM-powered contract analysis and legal document intelligence.
 """
 
+from __future__ import annotations
+
 from contractex.__version__ import __version__
 from contractex.core.analyzers import RiskAnalyzer
 from contractex.core.classifiers import CUADClassifier

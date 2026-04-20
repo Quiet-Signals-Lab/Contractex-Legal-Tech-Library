@@ -1,5 +1,7 @@
 """LLM provider abstractions and implementations."""
 
+from __future__ import annotations
+
 from contractex.llm.anthropic_provider import AnthropicProvider
 from contractex.llm.base import LLMProvider
 from contractex.llm.google_provider import GoogleProvider

@@ -9,10 +9,11 @@ Usage:
     python -m dbase.setup
 """
 
+from __future__ import annotations
+
 import logging
 import sys
 from pathlib import Path
-from typing import Optional
 
 import psycopg2
 from psycopg2 import sql
@@ -139,7 +140,7 @@ def setup_schema() -> None:
         raise
 
 
-def ingest_initial_data(limit: Optional[int] = None) -> None:
+def ingest_initial_data(limit: int | None = None) -> None:
     """
     Ingest initial documents from data directory.
 
@@ -282,7 +283,7 @@ def verify_setup() -> bool:
         return False
 
 
-def run_setup(ingest_data: bool = True, data_limit: Optional[int] = None) -> None:
+def run_setup(ingest_data: bool = True, data_limit: int | None = None) -> None:
     """
     Run complete database setup process.
 

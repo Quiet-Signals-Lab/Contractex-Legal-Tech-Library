@@ -1,5 +1,7 @@
 """Clause-aware chunking that preserves clause boundaries."""
 
+from __future__ import annotations
+
 import re
 
 from contractex.chunking.base import ChunkingStrategy

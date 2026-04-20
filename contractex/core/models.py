@@ -5,10 +5,12 @@ These models represent the structured data extracted from legal documents,
 providing type-safe interfaces with validation and convenience methods.
 """
 
+from __future__ import annotations
+
 from datetime import date, datetime, timezone
 from decimal import Decimal
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -79,11 +81,11 @@ class Party(BaseModel):
     )
 
     name: str = Field(..., description="Legal name of the party")
-    role: Optional[PartyRole] = Field(None, description="Role in the contract")
-    entity_type: Optional[str] = Field(None, description="Type of entity (LLC, Corp, etc.)")
-    jurisdiction: Optional[str] = Field(None, description="Jurisdiction of incorporation")
+    role: PartyRole | None = Field(None, description="Role in the contract")
+    entity_type: str | None = Field(None, description="Type of entity (LLC, Corp, etc.)")
+    jurisdiction: str | None = Field(None, description="Jurisdiction of incorporation")
     contact_info: dict[str, Any] = Field(default_factory=dict, description="Contact information")
-    address: Optional[str] = Field(None, description="Physical address")
+    address: str | None = Field(None, description="Physical address")
     confidence: float = Field(0.0, ge=0.0, le=1.0, description="Extraction confidence score")
 
     def __str__(self) -> str:
@@ -107,11 +109,11 @@ class Clause(BaseModel):
 
     clause_type: str = Field(..., description="Type/category of the clause")
     text: str = Field(..., description="Full text of the clause")
-    page_number: Optional[int] = Field(None, description="Page number where clause appears")
-    section_number: Optional[str] = Field(None, description="Section number (e.g., '3.2.1')")
+    page_number: int | None = Field(None, description="Page number where clause appears")
+    section_number: str | None = Field(None, description="Section number (e.g., '3.2.1')")
 
     # Spatial metadata for visual grounding
-    bbox: Optional[dict[str, float]] = Field(
+    bbox: dict[str, float] | None = Field(
         None, description="Bounding box coordinates {x, y, width, height}"
     )
 
@@ -123,7 +125,7 @@ class Clause(BaseModel):
     tags: list[str] = Field(default_factory=list, description="Custom tags")
 
     # Relationships
-    parent_clause_id: Optional[str] = Field(None, description="ID of parent clause if nested")
+    parent_clause_id: str | None = Field(None, description="ID of parent clause if nested")
     related_clauses: list[str] = Field(default_factory=list, description="IDs of related clauses")
 
     # Additional metadata
@@ -153,12 +155,12 @@ class FinancialTerm(BaseModel):
     term_type: str = Field(
         ..., description="Type of financial term (payment_amount, penalty, bonus, etc.)"
     )
-    amount: Optional[Decimal] = Field(None, description="Monetary amount")
+    amount: Decimal | None = Field(None, description="Monetary amount")
     currency: str = Field("USD", description="Currency code (ISO 4217)")
-    frequency: Optional[str] = Field(
+    frequency: str | None = Field(
         None, description="Payment frequency (one-time, monthly, quarterly, annually)"
     )
-    due_date: Optional[date] = Field(None, description="Payment due date")
+    due_date: date | None = Field(None, description="Payment due date")
     description: str = Field("", description="Description of the financial term")
     conditions: list[str] = Field(
         default_factory=list, description="Conditions that apply to this term"
@@ -189,13 +191,13 @@ class RiskFlag(BaseModel):
     risk_type: str = Field(..., description="Type of risk identified")
     severity: RiskSeverity = Field(..., description="Risk severity level")
     description: str = Field(..., description="Description of the risk")
-    clause_reference: Optional[str] = Field(
+    clause_reference: str | None = Field(
         None, description="Reference to the clause containing the risk"
     )
-    clause_text: Optional[str] = Field(None, description="Text of the risky clause")
-    recommendation: Optional[str] = Field(None, description="Recommended action to mitigate risk")
-    impact: Optional[str] = Field(None, description="Potential impact of the risk")
-    likelihood: Optional[str] = Field(None, description="Likelihood of risk occurring")
+    clause_text: str | None = Field(None, description="Text of the risky clause")
+    recommendation: str | None = Field(None, description="Recommended action to mitigate risk")
+    impact: str | None = Field(None, description="Potential impact of the risk")
+    likelihood: str | None = Field(None, description="Likelihood of risk occurring")
     confidence: float = Field(0.0, ge=0.0, le=1.0, description="Detection confidence score")
 
     def __str__(self) -> str:
@@ -219,24 +221,24 @@ class ContractMetadata(BaseModel):
     )
 
     # Document information
-    filename: Optional[str] = Field(None, description="Original filename")
-    file_hash: Optional[str] = Field(None, description="SHA-256 hash of the document")
-    file_type: Optional[str] = Field(None, description="File type (pdf, docx, etc.)")
-    file_size_bytes: Optional[int] = Field(None, description="File size in bytes")
-    page_count: Optional[int] = Field(None, description="Number of pages")
+    filename: str | None = Field(None, description="Original filename")
+    file_hash: str | None = Field(None, description="SHA-256 hash of the document")
+    file_type: str | None = Field(None, description="File type (pdf, docx, etc.)")
+    file_size_bytes: int | None = Field(None, description="File size in bytes")
+    page_count: int | None = Field(None, description="Number of pages")
 
     # Extraction metadata
     extraction_date: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
         description="When extraction was performed",
     )
-    llm_provider: Optional[str] = Field(None, description="LLM provider used")
-    llm_model: Optional[str] = Field(None, description="Specific model used")
-    processing_time_seconds: Optional[float] = Field(None, description="Time taken to process")
-    token_usage: Optional[dict[str, int]] = Field(None, description="Token usage statistics")
+    llm_provider: str | None = Field(None, description="LLM provider used")
+    llm_model: str | None = Field(None, description="Specific model used")
+    processing_time_seconds: float | None = Field(None, description="Time taken to process")
+    token_usage: dict[str, int] | None = Field(None, description="Token usage statistics")
 
     # Quality metrics
-    overall_confidence: Optional[float] = Field(
+    overall_confidence: float | None = Field(
         None, ge=0.0, le=1.0, description="Overall extraction confidence"
     )
     warnings: list[str] = Field(default_factory=list, description="Extraction warnings")
@@ -267,8 +269,8 @@ class Contract(BaseModel):
     )
 
     # Basic information
-    contract_type: Optional[ContractType] = Field(None, description="Type of contract")
-    title: Optional[str] = Field(None, description="Contract title")
+    contract_type: ContractType | None = Field(None, description="Type of contract")
+    title: str | None = Field(None, description="Contract title")
 
     # Parties
     parties: list[Party] = Field(
@@ -276,9 +278,9 @@ class Contract(BaseModel):
     )
 
     # Dates
-    effective_date: Optional[date] = Field(None, description="Contract effective date")
-    expiration_date: Optional[date] = Field(None, description="Contract expiration date")
-    signature_date: Optional[date] = Field(None, description="Date contract was signed")
+    effective_date: date | None = Field(None, description="Contract effective date")
+    expiration_date: date | None = Field(None, description="Contract expiration date")
+    signature_date: date | None = Field(None, description="Date contract was signed")
 
     # Structural elements
     clauses: list[Clause] = Field(default_factory=list, description="Extracted clauses")
@@ -290,8 +292,8 @@ class Contract(BaseModel):
     risks: list[RiskFlag] = Field(default_factory=list, description="Identified risks")
 
     # Additional information
-    governing_law: Optional[str] = Field(None, description="Governing law jurisdiction")
-    amendment_to: Optional[str] = Field(None, description="Reference if this is an amendment")
+    governing_law: str | None = Field(None, description="Governing law jurisdiction")
+    amendment_to: str | None = Field(None, description="Reference if this is an amendment")
 
     # Metadata
     metadata: ContractMetadata = Field(
@@ -300,7 +302,7 @@ class Contract(BaseModel):
     )
 
     # Extracted text
-    full_text: Optional[str] = Field(None, description="Full extracted text")
+    full_text: str | None = Field(None, description="Full extracted text")
 
     # Convenience properties
     @property
@@ -314,14 +316,14 @@ class Contract(BaseModel):
         return [c for c in self.clauses if c.confidence >= 0.8]
 
     @property
-    def duration_days(self) -> Optional[int]:
+    def duration_days(self) -> int | None:
         """Calculate contract duration in days."""
         if self.effective_date and self.expiration_date:
             return (self.expiration_date - self.effective_date).days
         return None
 
     # Export methods
-    def to_json(self, file_path: Optional[str] = None, **kwargs) -> str:
+    def to_json(self, file_path: str | None = None, **kwargs) -> str:
         """
         Export to JSON format.
 
@@ -344,7 +346,7 @@ class Contract(BaseModel):
         """Export to dictionary."""
         return self.model_dump()
 
-    def to_dataframe(self) -> "pd.DataFrame":
+    def to_dataframe(self) -> pd.DataFrame:
         """
         Export to pandas DataFrame (clauses as rows).
 
@@ -438,7 +440,7 @@ class Contract(BaseModel):
                 ]
                 pd.DataFrame(risk_data).to_excel(writer, sheet_name="Risks", index=False)
 
-    def compare_with(self, other: "Contract") -> "ContractComparison":
+    def compare_with(self, other: Contract) -> ContractComparison:
         """
         Compare with another contract.
 

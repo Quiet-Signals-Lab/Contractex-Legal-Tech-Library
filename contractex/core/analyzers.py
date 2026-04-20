@@ -2,10 +2,12 @@
 Risk analyzer for detecting potential risks and issues in contracts.
 """
 
+from __future__ import annotations
+
 import json
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from contractex.core.models import Clause, Contract, RiskFlag, RiskSeverity
 
@@ -32,10 +34,10 @@ class RiskAnalyzer:
 
     def __init__(
         self,
-        playbook_path: Optional[str] = None,
-        severity_thresholds: Optional[dict[str, float]] = None,
+        playbook_path: str | None = None,
+        severity_thresholds: dict[str, float] | None = None,
         use_llm: bool = True,
-        llm_provider: Optional["LLMProvider"] = None,
+        llm_provider: LLMProvider | None = None,
     ):
         """
         Initialize the risk analyzer.
@@ -56,7 +58,7 @@ class RiskAnalyzer:
         self.use_llm = use_llm
         self.llm_provider = llm_provider
 
-    def _load_playbook(self, playbook_path: Optional[str]) -> dict[str, Any]:
+    def _load_playbook(self, playbook_path: str | None) -> dict[str, Any]:
         """Load risk detection playbook."""
         if playbook_path and Path(playbook_path).exists():
             with open(playbook_path) as f:

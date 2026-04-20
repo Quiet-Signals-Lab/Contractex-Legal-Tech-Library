@@ -1,6 +1,6 @@
 """Schemas and metadata for clause types."""
 
-from typing import Optional
+from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -13,7 +13,7 @@ class ClauseTypeSchema(BaseModel):
     description: str = Field(..., description="Description of what this clause type represents")
 
     # Optional metadata
-    risk_level: Optional[str] = Field(None, description="Risk level (low, medium, high, critical)")
+    risk_level: str | None = Field(None, description="Risk level (low, medium, high, critical)")
     keywords: list[str] = Field(
         default_factory=list, description="Keywords associated with this type"
     )
@@ -51,7 +51,7 @@ class CustomClauseRegistry:
         """
         self._registry[clause_type.name] = clause_type
 
-    def get(self, name: str) -> Optional[ClauseTypeSchema]:
+    def get(self, name: str) -> ClauseTypeSchema | None:
         """
         Get a clause type by name.
 
@@ -97,7 +97,7 @@ def register_clause_type(clause_type: ClauseTypeSchema) -> None:
     _global_registry.register(clause_type)
 
 
-def get_clause_type(name: str) -> Optional[ClauseTypeSchema]:
+def get_clause_type(name: str) -> ClauseTypeSchema | None:
     """Get a clause type from the global registry."""
     return _global_registry.get(name)
 

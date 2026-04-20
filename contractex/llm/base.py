@@ -4,8 +4,9 @@ Abstract base class for LLM providers.
 All LLM providers must implement this interface to be compatible with ContractEx.
 """
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from typing import Optional
 
 from pydantic import BaseModel
 
@@ -19,7 +20,7 @@ class LLMProvider(ABC):
         prompt: str,
         schema: type[BaseModel],
         temperature: float = 0.0,
-        max_tokens: Optional[int] = None,
+        max_tokens: int | None = None,
     ) -> BaseModel:
         """
         Extract structured data from text using the LLM.
@@ -40,7 +41,7 @@ class LLMProvider(ABC):
 
     @abstractmethod
     def complete(
-        self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs
+        self, prompt: str, temperature: float = 0.7, max_tokens: int | None = None, **kwargs
     ) -> str:
         """
         Get a text completion from the LLM.

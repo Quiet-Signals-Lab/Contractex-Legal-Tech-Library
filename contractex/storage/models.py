@@ -5,10 +5,12 @@ These dataclasses represent business entities and encapsulate domain logic,
 providing type-safe interfaces between database and application code.
 """
 
+from __future__ import annotations
+
 import hashlib
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 
 @dataclass
@@ -16,13 +18,13 @@ class Document:
     """Represents a source legal document (PDF, DOCX, etc.)."""
 
     # Core fields
-    id: Optional[int] = None
+    id: int | None = None
     filename: str = ""
-    file_hash: Optional[str] = None
+    file_hash: str | None = None
 
     # Content
-    file_data: Optional[bytes] = None
-    extracted_text: Optional[str] = None
+    file_data: bytes | None = None
+    extracted_text: str | None = None
 
     # Metadata (flexible JSONB storage)
     # Expected keys: contract_type, parties, effective_date, expiration_date,
@@ -30,11 +32,11 @@ class Document:
     metadata: dict[str, Any] = field(default_factory=dict)
 
     # Timestamps
-    uploaded_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    uploaded_at: datetime | None = None
+    updated_at: datetime | None = None
 
     @classmethod
-    def from_db_row(cls, row: tuple) -> "Document":
+    def from_db_row(cls, row: tuple) -> Document:
         """
         Convert psycopg2 query result tuple to Document object.
 
@@ -71,35 +73,35 @@ class Clause:
     """Represents an extracted clause from a document."""
 
     # Core fields
-    id: Optional[int] = None
+    id: int | None = None
     document_id: int = 0
 
     # Content
     clause_text: str = ""
-    clause_type: Optional[str] = None  # termination, payment, liability, etc.
+    clause_type: str | None = None  # termination, payment, liability, etc.
 
     # Spatial metadata for visual grounding
-    page_number: Optional[int] = None
-    bbox_x: Optional[float] = None
-    bbox_y: Optional[float] = None
-    bbox_width: Optional[float] = None
-    bbox_height: Optional[float] = None
+    page_number: int | None = None
+    bbox_x: float | None = None
+    bbox_y: float | None = None
+    bbox_width: float | None = None
+    bbox_height: float | None = None
 
     # Extraction metadata
-    confidence_score: Optional[float] = None
-    parent_clause_id: Optional[int] = None
+    confidence_score: float | None = None
+    parent_clause_id: int | None = None
 
     # Flexible metadata
     metadata: dict[str, Any] = field(default_factory=dict)
 
     # Vector embedding (populated by the retrieval pipeline, not returned by from_db_row)
-    embedding: Optional[list[float]] = None
+    embedding: list[float] | None = None
 
     # Timestamp
-    created_at: Optional[datetime] = None
+    created_at: datetime | None = None
 
     @classmethod
-    def from_db_row(cls, row: tuple) -> "Clause":
+    def from_db_row(cls, row: tuple) -> Clause:
         """
         Convert psycopg2 query result tuple to Clause object.
 
@@ -135,7 +137,7 @@ class Clause:
             ]
         )
 
-    def get_bounding_box(self) -> Optional[dict[str, float]]:
+    def get_bounding_box(self) -> dict[str, float] | None:
         """Return bounding box as dict, or None if incomplete."""
         if (
             self.has_bounding_box()
@@ -157,21 +159,21 @@ class Clause:
 class ProcessingLog:
     """Audit trail entry for document processing lifecycle."""
 
-    id: Optional[int] = None
-    document_id: Optional[int] = None
+    id: int | None = None
+    document_id: int | None = None
 
     # Processing state
     processing_stage: str = ""  # uploaded, extracted, embedded, indexed
     status: str = ""  # pending, completed, failed
 
     # Error tracking
-    error_message: Optional[str] = None
+    error_message: str | None = None
 
     # Timestamp
-    created_at: Optional[datetime] = None
+    created_at: datetime | None = None
 
     @classmethod
-    def from_db_row(cls, row: tuple) -> "ProcessingLog":
+    def from_db_row(cls, row: tuple) -> ProcessingLog:
         """
         Convert psycopg2 query result tuple to ProcessingLog object.
 

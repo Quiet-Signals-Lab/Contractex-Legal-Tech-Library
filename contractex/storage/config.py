@@ -13,6 +13,8 @@ For production, set environment variables:
     export POSTGRES_PASSWORD=your_password
 """
 
+from __future__ import annotations
+
 import os
 from typing import Any
 

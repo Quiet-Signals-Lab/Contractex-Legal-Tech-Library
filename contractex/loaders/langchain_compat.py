@@ -1,5 +1,7 @@
 """LangChain document loader compatibility adapter."""
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING, Any
 
 from contractex.exceptions import DocumentLoadError

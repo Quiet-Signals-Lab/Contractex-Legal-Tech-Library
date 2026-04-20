@@ -1,10 +1,11 @@
 """Local LLM provider using Ollama for privacy-first deployments."""
 
+from __future__ import annotations
+
 import json
 import logging
 import os
 import time
-from typing import Optional
 
 from pydantic import BaseModel
 
@@ -35,7 +36,7 @@ class LocalProvider(LLMProvider):
     def __init__(
         self,
         model: str = "llama-3.1-70b",
-        host: Optional[str] = None,
+        host: str | None = None,
         temperature: float = 0.0,
         max_tokens: int = 4000,
     ):
@@ -109,7 +110,7 @@ class LocalProvider(LLMProvider):
         prompt: str,
         schema: type[BaseModel],
         temperature: float = 0.0,
-        max_tokens: Optional[int] = None,
+        max_tokens: int | None = None,
     ) -> BaseModel:
         """Extract structured data using local LLM with JSON mode."""
         json_schema = schema.model_json_schema()
@@ -135,7 +136,7 @@ class LocalProvider(LLMProvider):
         return self._call_with_retry(_call, "Local LLM structured extraction")  # type: ignore[no-any-return]
 
     def complete(
-        self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs
+        self, prompt: str, temperature: float = 0.7, max_tokens: int | None = None, **kwargs
     ) -> str:
         """Get text completion from local LLM."""
 

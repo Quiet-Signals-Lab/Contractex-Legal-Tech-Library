@@ -1,5 +1,7 @@
 """Prompt templates for financial term extraction."""
 
+from __future__ import annotations
+
 FINANCIAL_EXTRACTION_PROMPT = """You are a financial analyst specialising in contract review. Extract all financial terms from this contract section.
 
 Contract Text:

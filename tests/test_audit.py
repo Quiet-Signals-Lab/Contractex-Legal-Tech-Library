@@ -6,9 +6,6 @@ No database, no network — only in-memory and temp-file operations.
 
 import json
 import threading
-import time
-from datetime import timezone
-from pathlib import Path
 
 import pytest
 
@@ -19,7 +16,6 @@ from contractex.utils.audit import (
     JSONLAuditBackend,
     NullAuditBackend,
 )
-
 
 # ---------------------------------------------------------------------------
 # AuditEvent
@@ -54,7 +50,9 @@ class TestAuditEvent:
         assert data["document_id"] == "doc-123"
 
     def test_overall_confidence_bounds(self):
-        with pytest.raises(Exception):
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError):
             AuditEvent(
                 event_type=AuditEventType.FIELDS_EXTRACTED,
                 overall_confidence=1.5,  # out of range
@@ -106,10 +104,12 @@ class TestJSONLAuditBackend:
         path = tmp_path / "audit.jsonl"
         backend = JSONLAuditBackend(path)
         for i in range(5):
-            backend.write(AuditEvent(
-                event_type=AuditEventType.FIELDS_EXTRACTED,
-                document_id=f"doc-{i}",
-            ))
+            backend.write(
+                AuditEvent(
+                    event_type=AuditEventType.FIELDS_EXTRACTED,
+                    document_id=f"doc-{i}",
+                )
+            )
         backend.close()
 
         lines = path.read_text().strip().split("\n")
@@ -151,7 +151,7 @@ class TestJSONLAuditBackend:
             t.join()
         backend.close()
 
-        lines = [l for l in path.read_text().split("\n") if l.strip()]
+        lines = [line for line in path.read_text().split("\n") if line.strip()]
         assert len(lines) == n_threads * n_events_per_thread
         # Every line must be valid JSON
         for line in lines:
@@ -241,6 +241,7 @@ class TestAuditLogger:
     def test_backend_error_does_not_propagate(self):
         """AuditLogger must never interrupt calling code on write failure."""
         from unittest.mock import MagicMock
+
         bad_backend = MagicMock()
         bad_backend.write.side_effect = RuntimeError("disk full")
         audit = AuditLogger(backend=bad_backend)

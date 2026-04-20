@@ -13,7 +13,7 @@ After extraction the caller is responsible for:
   - Deduplicating results across chunks
 """
 
-from typing import Optional
+from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
@@ -26,22 +26,22 @@ class LLMPartyResult(BaseModel):
     """A single contracting party extracted by the LLM."""
 
     name: str = Field(..., description="Full legal name of the entity or person")
-    role: Optional[str] = Field(
+    role: str | None = Field(
         None,
         description=(
             "Role in the contract. Must be one of: provider, client, licensor, "
             "licensee, buyer, seller, employer, employee, landlord, tenant, partner, other"
         ),
     )
-    entity_type: Optional[str] = Field(
+    entity_type: str | None = Field(
         None,
         description="Legal form of the entity (e.g. corporation, LLC, individual, partnership)",
     )
-    jurisdiction: Optional[str] = Field(
+    jurisdiction: str | None = Field(
         None,
         description="State or country of incorporation (e.g. 'Delaware', 'England and Wales')",
     )
-    address: Optional[str] = Field(None, description="Physical or registered address if stated")
+    address: str | None = Field(None, description="Physical or registered address if stated")
     confidence: float = Field(
         0.7,
         ge=0.0,
@@ -58,7 +58,7 @@ class LLMContractInfoResponse(BaseModel):
     to capture everything that appears in the contract header / preamble.
     """
 
-    contract_type: Optional[str] = Field(
+    contract_type: str | None = Field(
         None,
         description=(
             "Contract type. Must be one of: nda, master_service_agreement, "
@@ -68,20 +68,20 @@ class LLMContractInfoResponse(BaseModel):
             "reseller_agreement, consulting_agreement, unknown"
         ),
     )
-    title: Optional[str] = Field(None, description="Official title of the agreement")
-    effective_date: Optional[str] = Field(
+    title: str | None = Field(None, description="Official title of the agreement")
+    effective_date: str | None = Field(
         None,
         description="Effective date as a string (e.g. 'January 1, 2024' or '2024-01-01')",
     )
-    expiration_date: Optional[str] = Field(
+    expiration_date: str | None = Field(
         None,
         description="Expiration or end date as a string",
     )
-    signature_date: Optional[str] = Field(
+    signature_date: str | None = Field(
         None,
         description="Date the agreement was signed, as a string",
     )
-    governing_law: Optional[str] = Field(
+    governing_law: str | None = Field(
         None,
         description="Jurisdiction whose laws govern this agreement (e.g. 'State of New York')",
     )
@@ -107,7 +107,7 @@ class LLMClauseResult(BaseModel):
         ),
     )
     text: str = Field(..., description="Complete verbatim text of the clause")
-    section_number: Optional[str] = Field(
+    section_number: str | None = Field(
         None,
         description="Section identifier as it appears in the document (e.g. '8.2', 'Article IV')",
     )
@@ -143,7 +143,7 @@ class LLMFinancialResult(BaseModel):
             "royalty, commission, bonus, penalty, deposit, reimbursement, insurance_minimum"
         ),
     )
-    amount: Optional[str] = Field(
+    amount: str | None = Field(
         None,
         description=(
             "Numeric amount as a plain string without commas or currency symbols "
@@ -154,14 +154,14 @@ class LLMFinancialResult(BaseModel):
         "USD",
         description="ISO 4217 currency code (e.g. 'USD', 'EUR', 'GBP'). Default: USD",
     )
-    frequency: Optional[str] = Field(
+    frequency: str | None = Field(
         None,
         description=(
             "Payment frequency. Must be one of: one-time, monthly, quarterly, "
             "annually, weekly, per-use, or null if not applicable"
         ),
     )
-    due_date: Optional[str] = Field(
+    due_date: str | None = Field(
         None,
         description="Due date or payment trigger as a string (e.g. 'net 30', 'upon delivery')",
     )
@@ -203,12 +203,12 @@ class LLMFullExtractionResponse(BaseModel):
     structured output.  Used when the entire contract fits in one chunk.
     """
 
-    contract_type: Optional[str] = None
-    title: Optional[str] = None
-    effective_date: Optional[str] = None
-    expiration_date: Optional[str] = None
-    signature_date: Optional[str] = None
-    governing_law: Optional[str] = None
+    contract_type: str | None = None
+    title: str | None = None
+    effective_date: str | None = None
+    expiration_date: str | None = None
+    signature_date: str | None = None
+    governing_law: str | None = None
     parties: list[LLMPartyResult] = Field(default_factory=list)
     clauses: list[LLMClauseResult] = Field(default_factory=list)
     financial_terms: list[LLMFinancialResult] = Field(default_factory=list)
@@ -228,19 +228,19 @@ class LLMRiskResult(BaseModel):
         description="Risk severity: critical, high, medium, low, or info",
     )
     description: str = Field(..., description="Clear explanation of the risk")
-    clause_reference: Optional[str] = Field(
+    clause_reference: str | None = Field(
         None,
         description="Section number or heading where this risk appears",
     )
-    clause_text: Optional[str] = Field(
+    clause_text: str | None = Field(
         None,
         description="Relevant excerpt (up to 200 characters) showing the risk",
     )
-    recommendation: Optional[str] = Field(
+    recommendation: str | None = Field(
         None,
         description="Suggested action to mitigate or negotiate away this risk",
     )
-    impact: Optional[str] = Field(
+    impact: str | None = Field(
         None,
         description="Potential business or financial consequences if this risk materialises",
     )

@@ -6,9 +6,8 @@ All tests are pure Python — no network, no LLM, no database.
 
 import pytest
 
-from contractex.core.legal_document import LegalDocument, SourceSpan
+from contractex.core.legal_document import LegalDocument
 from contractex.utils.provenance import ChunkRecord, ProvenanceTracker
-
 
 # ---------------------------------------------------------------------------
 # ChunkRecord

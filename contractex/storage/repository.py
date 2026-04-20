@@ -6,8 +6,10 @@ providing a clean API that hides SQL details from application code.
 This makes the codebase testable (mock repositories) and database-agnostic.
 """
 
+from __future__ import annotations
+
 import logging
-from typing import Any, Optional
+from typing import Any
 
 import psycopg2
 import psycopg2.extras
@@ -75,7 +77,7 @@ class DocumentRepository:
             logger.error(f"Failed to insert document: {e}")
             raise
 
-    def get_by_id(self, doc_id: int) -> Optional[Document]:
+    def get_by_id(self, doc_id: int) -> Document | None:
         """
         Retrieve document by ID.
 
@@ -103,7 +105,7 @@ class DocumentRepository:
             logger.error(f"Failed to retrieve document {doc_id}: {e}")
             raise
 
-    def get_by_filename(self, filename: str) -> Optional[Document]:
+    def get_by_filename(self, filename: str) -> Document | None:
         """Retrieve document by filename."""
         query = """
             SELECT id, filename, file_hash, file_data, extracted_text,
@@ -123,7 +125,7 @@ class DocumentRepository:
             logger.error(f"Failed to retrieve document by filename: {e}")
             raise
 
-    def get_id_by_filename(self, filename: str) -> Optional[int]:
+    def get_id_by_filename(self, filename: str) -> int | None:
         """Get document ID by filename."""
         query = "SELECT id FROM documents WHERE filename = %s"
         try:
@@ -169,7 +171,7 @@ class DocumentRepository:
             logger.error(f"Failed to search documents: {e}")
             raise
 
-    def get_all(self, limit: Optional[int] = None) -> list[Document]:
+    def get_all(self, limit: int | None = None) -> list[Document]:
         """
         Retrieve all documents.
 
@@ -350,7 +352,7 @@ class ClauseRepository:
             logger.error(f"Failed to batch insert clauses: {e}")
             raise
 
-    def get_by_id(self, clause_id: int) -> Optional[Clause]:
+    def get_by_id(self, clause_id: int) -> Clause | None:
         """Retrieve clause by ID."""
         query = """
             SELECT id, document_id, clause_text, clause_type, page_number,
@@ -391,7 +393,7 @@ class ClauseRepository:
             logger.error(f"Failed to retrieve clauses for document: {e}")
             raise
 
-    def search_by_type(self, clause_type: str, limit: Optional[int] = None) -> list[Clause]:
+    def search_by_type(self, clause_type: str, limit: int | None = None) -> list[Clause]:
         """Search clauses by type across all documents."""
         query = """
             SELECT id, document_id, clause_text, clause_type, page_number,
@@ -454,7 +456,7 @@ class ClauseRepository:
                 [(emb, cid) for cid, emb in pairs],
             )
 
-    def get_unembedded(self, document_id: Optional[int] = None) -> list[Clause]:
+    def get_unembedded(self, document_id: int | None = None) -> list[Clause]:
         """Return clauses that have not yet been embedded."""
         base = """
             SELECT id, document_id, clause_text, clause_type, page_number,
@@ -541,7 +543,7 @@ class ProcessingLogRepository:
             logger.error(f"Failed to retrieve failed documents: {e}")
             raise
 
-    def get_latest_by_stage(self, document_id: int, stage: str) -> Optional[ProcessingLog]:
+    def get_latest_by_stage(self, document_id: int, stage: str) -> ProcessingLog | None:
         """Get most recent log entry for a document and stage."""
         query = """
             SELECT id, document_id, processing_stage, status, error_message, created_at

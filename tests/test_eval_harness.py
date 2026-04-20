@@ -4,14 +4,14 @@ Unit tests for EvalHarness, EvalCase, EvalSuite, and ExtractionMetrics.
 No LLM, no network, no database — all extractor_fns are pure Python stubs.
 """
 
+from __future__ import annotations
+
 import json
-from pathlib import Path
 
 import pytest
 
 from contractex.eval import EvalCase, EvalHarness, EvalSuite, ExtractionMetrics
 from contractex.eval.metrics import CaseResult, FieldResult, _values_match
-
 
 # ---------------------------------------------------------------------------
 # _values_match helper
@@ -248,10 +248,15 @@ def _error_extractor(case: EvalCase) -> dict:
 
 class TestEvalHarness:
     def _suite(self) -> EvalSuite:
-        return EvalSuite.from_cases([
-            EvalCase(id="c1", expected_fields={"jurisdiction": "US-Federal", "citation": "17 U.S.C. § 107"}),
-            EvalCase(id="c2", expected_fields={"surname": "GARCIA", "given_name": "JOSE"}),
-        ])
+        return EvalSuite.from_cases(
+            [
+                EvalCase(
+                    id="c1",
+                    expected_fields={"jurisdiction": "US-Federal", "citation": "17 U.S.C. § 107"},
+                ),
+                EvalCase(id="c2", expected_fields={"surname": "GARCIA", "given_name": "JOSE"}),
+            ]
+        )
 
     def test_perfect_extractor_field_accuracy(self):
         harness = EvalHarness(_perfect_extractor)
@@ -278,10 +283,12 @@ class TestEvalHarness:
         assert metrics.error_cases == 1
 
     def test_mixed_extractor(self):
-        suite = EvalSuite.from_cases([
-            EvalCase(id="ok", expected_fields={"name": "SMITH"}),
-            EvalCase(id="bad", expected_fields={"name": "JONES"}),
-        ])
+        suite = EvalSuite.from_cases(
+            [
+                EvalCase(id="ok", expected_fields={"name": "SMITH"}),
+                EvalCase(id="bad", expected_fields={"name": "JONES"}),
+            ]
+        )
 
         def mixed(case: EvalCase) -> dict:
             if case.id == "ok":
@@ -311,13 +318,15 @@ class TestEvalHarness:
         assert result.passed is True
 
     def test_weighted_field_accuracy(self):
-        suite = EvalSuite.from_cases([
-            EvalCase(
-                id="weighted",
-                expected_fields={"citation": "§ 107", "title": "Fair Use"},
-                field_weights={"citation": 3.0, "title": 1.0},
-            )
-        ])
+        suite = EvalSuite.from_cases(
+            [
+                EvalCase(
+                    id="weighted",
+                    expected_fields={"citation": "§ 107", "title": "Fair Use"},
+                    field_weights={"citation": 3.0, "title": 1.0},
+                )
+            ]
+        )
 
         def partial(case: EvalCase) -> dict:
             return {"citation": "§ 107"}  # title missing → weight 1 lost

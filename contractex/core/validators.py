@@ -2,6 +2,8 @@
 Validators for confidence scoring and data validation.
 """
 
+from __future__ import annotations
+
 from contractex.core.models import Contract
 
 

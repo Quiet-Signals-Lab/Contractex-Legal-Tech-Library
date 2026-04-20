@@ -1,9 +1,10 @@
 """Normalization utilities for dates, currencies, and entities."""
 
+from __future__ import annotations
+
 import re
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Optional, Union
 
 
 class DateNormalizer:
@@ -18,7 +19,7 @@ class DateNormalizer:
     ]
 
     @staticmethod
-    def normalize(date_string: str) -> Optional[date]:
+    def normalize(date_string: str) -> date | None:
         """
         Normalize a date string to a date object.
 
@@ -60,7 +61,7 @@ class CurrencyNormalizer:
     }
 
     @staticmethod
-    def extract_amount(text: str) -> Optional[Decimal]:
+    def extract_amount(text: str) -> Decimal | None:
         """
         Extract numeric amount from text.
 
@@ -108,7 +109,7 @@ class CurrencyNormalizer:
         return "USD"
 
     @staticmethod
-    def format_amount(amount: Union[Decimal, float, int], currency: str = "USD") -> str:
+    def format_amount(amount: Decimal | float | int, currency: str = "USD") -> str:
         """
         Format amount with currency.
 
@@ -180,7 +181,7 @@ class EntityNormalizer:
         return normalized
 
     @staticmethod
-    def extract_legal_entity_type(name: str) -> Optional[str]:
+    def extract_legal_entity_type(name: str) -> str | None:
         """
         Extract legal entity type from company name.
 

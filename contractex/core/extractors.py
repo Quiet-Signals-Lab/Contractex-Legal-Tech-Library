@@ -2,6 +2,8 @@
 Contract extractor - main orchestration logic for extracting contract data.
 """
 
+from __future__ import annotations
+
 import asyncio
 import logging
 import time
@@ -9,7 +11,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from decimal import Decimal, InvalidOperation
 from difflib import SequenceMatcher
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from contractex.chunking.base import ChunkingStrategy
 from contractex.core.extraction_schemas import (
@@ -55,10 +57,10 @@ class ContractExtractor:
 
     def __init__(
         self,
-        llm_provider: Optional[LLMProvider] = None,
-        llm_provider_name: Optional[str] = None,
-        document_loader: Optional[DocumentLoader] = None,
-        chunking_strategy: Optional[ChunkingStrategy] = None,
+        llm_provider: LLMProvider | None = None,
+        llm_provider_name: str | None = None,
+        document_loader: DocumentLoader | None = None,
+        chunking_strategy: ChunkingStrategy | None = None,
         confidence_threshold: float = 0.7,
         parallel_processing: bool = True,
     ):
@@ -194,10 +196,10 @@ class ContractExtractor:
     def extract(
         self,
         document_path: str,
-        contract_type: Optional[ContractType] = None,
+        contract_type: ContractType | None = None,
         analyze_risks: bool = True,
         extract_financial: bool = True,
-        known_parties: Optional[list[str]] = None,
+        known_parties: list[str] | None = None,
     ) -> Contract:
         """
         Extract all data from a contract document.
@@ -303,8 +305,8 @@ class ContractExtractor:
     def _extract_from_chunks(
         self,
         chunks: list[str],
-        contract_type: Optional[ContractType] = None,
-        known_parties: Optional[list[str]] = None,
+        contract_type: ContractType | None = None,
+        known_parties: list[str] | None = None,
         extract_financial: bool = True,
     ) -> dict[str, Any]:
         """
@@ -395,8 +397,8 @@ class ContractExtractor:
     def _extract_contract_info(
         self,
         text: str,
-        contract_type_hint: Optional[ContractType] = None,
-        known_parties: Optional[list[str]] = None,
+        contract_type_hint: ContractType | None = None,
+        known_parties: list[str] | None = None,
     ) -> LLMContractInfoResponse:
         """Extract contract metadata and parties from the opening section."""
         hint_lines: list[str] = []
@@ -611,7 +613,7 @@ class ContractExtractor:
             normalised = EntityNormalizer.normalize_company_name(p.name)
             key = normalised.lower()
 
-            role: Optional[PartyRole] = None
+            role: PartyRole | None = None
             if p.role:
                 try:
                     role = PartyRole(p.role.lower())
@@ -663,7 +665,7 @@ class ContractExtractor:
             if not t.term_type:
                 continue
 
-            amount: Optional[Decimal] = None
+            amount: Decimal | None = None
             if t.amount:
                 parsed = CurrencyNormalizer.extract_amount(t.amount)
                 if parsed is not None:
@@ -696,9 +698,9 @@ class ContractExtractor:
 
     def _resolve_contract_type(
         self,
-        llm_type: Optional[str],
-        hint: Optional[ContractType],
-    ) -> Optional[ContractType]:
+        llm_type: str | None,
+        hint: ContractType | None,
+    ) -> ContractType | None:
         """Map the LLM-returned type string to a ContractType enum value."""
         if hint:
             return hint
@@ -761,7 +763,7 @@ class ContractExtractor:
         Returns:
             List of successfully extracted Contract objects (failed paths are skipped).
         """
-        results: list[Optional[Contract]] = [None] * len(document_paths)
+        results: list[Contract | None] = [None] * len(document_paths)
 
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             future_to_idx = {

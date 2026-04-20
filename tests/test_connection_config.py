@@ -1,6 +1,7 @@
 """
 Tests for database configuration and connection management.
 """
+
 import os
 from unittest.mock import MagicMock, patch
 
@@ -20,6 +21,7 @@ from contractex.storage.connection import (
 # Configuration Tests
 # ============================================================================
 
+
 @pytest.mark.unit
 class TestConfiguration:
     """Test database configuration."""
@@ -29,57 +31,55 @@ class TestConfiguration:
         with patch.dict(os.environ, {}, clear=True):
             config = get_db_config()
 
-            assert config['host'] == 'localhost'
-            assert config['port'] == 5432
-            assert config['user'] == 'aahepburn'
-            assert config['db_name'] == 'clause_docs'
-            assert config['password'] == ''
+            assert config["host"] == "localhost"
+            assert config["port"] == 5432
+            assert config["user"] == "aahepburn"
+            assert config["db_name"] == "clause_docs"
+            assert config["password"] == ""
 
     def test_get_db_config_from_env(self):
         """Test configuration from environment variables."""
         env_vars = {
-            'POSTGRES_HOST': 'testhost',
-            'POSTGRES_PORT': '5433',
-            'POSTGRES_USER': 'testuser',
-            'POSTGRES_DB': 'testdb',
-            'POSTGRES_PASSWORD': 'testpass'
+            "POSTGRES_HOST": "testhost",
+            "POSTGRES_PORT": "5433",
+            "POSTGRES_USER": "testuser",
+            "POSTGRES_DB": "testdb",
+            "POSTGRES_PASSWORD": "testpass",
         }
 
         with patch.dict(os.environ, env_vars):
             config = get_db_config()
 
-            assert config['host'] == 'testhost'
-            assert config['port'] == 5433
-            assert config['user'] == 'testuser'
-            assert config['db_name'] == 'testdb'
-            assert config['password'] == 'testpass'
+            assert config["host"] == "testhost"
+            assert config["port"] == 5433
+            assert config["user"] == "testuser"
+            assert config["db_name"] == "testdb"
+            assert config["password"] == "testpass"
 
     def test_get_db_config_partial_env(self):
         """Test configuration with partial environment variables."""
-        env_vars = {
-            'POSTGRES_HOST': 'customhost',
-            'POSTGRES_DB': 'customdb'
-        }
+        env_vars = {"POSTGRES_HOST": "customhost", "POSTGRES_DB": "customdb"}
 
         with patch.dict(os.environ, env_vars, clear=True):
             config = get_db_config()
 
-            assert config['host'] == 'customhost'
-            assert config['db_name'] == 'customdb'
+            assert config["host"] == "customhost"
+            assert config["db_name"] == "customdb"
             # Other values should be defaults
-            assert config['user'] == 'aahepburn'
-            assert config['port'] == 5432
+            assert config["user"] == "aahepburn"
+            assert config["port"] == 5432
 
 
 # ============================================================================
 # DatabaseConnection Context Manager Tests
 # ============================================================================
 
+
 @pytest.mark.unit
 class TestDatabaseConnection:
     """Test DatabaseConnection context manager."""
 
-    @patch('contractex.storage.connection.psycopg2.connect')
+    @patch("contractex.storage.connection.psycopg2.connect")
     def test_connection_context_manager_success(self, mock_connect):
         """Test successful connection context manager."""
         mock_conn = MagicMock()
@@ -91,7 +91,7 @@ class TestDatabaseConnection:
         mock_conn.commit.assert_called_once()
         mock_conn.close.assert_called_once()
 
-    @patch('contractex.storage.connection.psycopg2.connect')
+    @patch("contractex.storage.connection.psycopg2.connect")
     def test_connection_context_manager_exception(self, mock_connect):
         """Test connection context manager with exception."""
         mock_conn = MagicMock()
@@ -107,26 +107,22 @@ class TestDatabaseConnection:
         mock_conn.commit.assert_not_called()
         mock_conn.close.assert_called_once()
 
-    @patch('contractex.storage.connection.psycopg2.connect')
+    @patch("contractex.storage.connection.psycopg2.connect")
     def test_connection_with_custom_config(self, mock_connect):
         """Test connection with custom configuration."""
         custom_config = {
-            'host': 'custom',
-            'port': 5433,
-            'user': 'custom_user',
-            'db_name': 'custom_db',
-            'password': 'custom_pass'
+            "host": "custom",
+            "port": 5433,
+            "user": "custom_user",
+            "db_name": "custom_db",
+            "password": "custom_pass",
         }
 
         with DatabaseConnection(config=custom_config):
             pass
 
         mock_connect.assert_called_once_with(
-            dbname='custom_db',
-            user='custom_user',
-            password='custom_pass',
-            host='custom',
-            port=5433
+            dbname="custom_db", user="custom_user", password="custom_pass", host="custom", port=5433
         )
 
 
@@ -134,11 +130,12 @@ class TestDatabaseConnection:
 # Connection Function Tests
 # ============================================================================
 
+
 @pytest.mark.unit
 class TestConnectionFunctions:
     """Test connection utility functions."""
 
-    @patch('contractex.storage.connection.psycopg2.connect')
+    @patch("contractex.storage.connection.psycopg2.connect")
     def test_get_connection_success(self, mock_connect):
         """Test get_connection context manager."""
         mock_conn = MagicMock()
@@ -150,7 +147,7 @@ class TestConnectionFunctions:
         mock_conn.commit.assert_called_once()
         mock_conn.close.assert_called_once()
 
-    @patch('contractex.storage.connection.psycopg2.connect')
+    @patch("contractex.storage.connection.psycopg2.connect")
     def test_get_connection_exception(self, mock_connect):
         """Test get_connection with exception."""
         mock_conn = MagicMock()
@@ -166,7 +163,7 @@ class TestConnectionFunctions:
         mock_conn.rollback.assert_not_called()
         mock_conn.close.assert_called_once()
 
-    @patch('contractex.storage.connection.psycopg2.connect')
+    @patch("contractex.storage.connection.psycopg2.connect")
     def test_get_cursor(self, mock_connect):
         """Test get_cursor context manager."""
         mock_conn = MagicMock()
@@ -180,7 +177,7 @@ class TestConnectionFunctions:
         mock_cursor.close.assert_called_once()
         mock_conn.commit.assert_called_once()
 
-    @patch('contractex.storage.connection.psycopg2.connect')
+    @patch("contractex.storage.connection.psycopg2.connect")
     def test_get_cursor_dict_cursor(self, mock_connect):
         """Test get_cursor with dict cursor."""
         mock_conn = MagicMock()
@@ -194,7 +191,7 @@ class TestConnectionFunctions:
         call_args = mock_conn.cursor.call_args
         assert call_args is not None
 
-    @patch('contractex.storage.connection.psycopg2.connect')
+    @patch("contractex.storage.connection.psycopg2.connect")
     def test_connect_to_postgres_server(self, mock_connect):
         """Test connecting to postgres server."""
         mock_conn = MagicMock()
@@ -205,7 +202,7 @@ class TestConnectionFunctions:
         # Should connect to 'postgres' database
         mock_connect.assert_called_once()
         call_kwargs = mock_connect.call_args[1]
-        assert call_kwargs['dbname'] == 'postgres'
+        assert call_kwargs["dbname"] == "postgres"
 
         # Should set autocommit
         assert mock_conn.autocommit is True
@@ -215,11 +212,12 @@ class TestConnectionFunctions:
 # Connection Test Function Tests
 # ============================================================================
 
+
 @pytest.mark.unit
 class TestConnectionTesting:
     """Test connection testing utilities."""
 
-    @patch('contractex.storage.connection.get_connection')
+    @patch("contractex.storage.connection.get_connection")
     def test_test_connection_success(self, mock_get_conn):
         """Test successful connection test."""
         mock_conn = MagicMock()
@@ -236,7 +234,7 @@ class TestConnectionTesting:
         assert result is True
         mock_cursor.execute.assert_called_once_with("SELECT 1")
 
-    @patch('contractex.storage.connection.get_connection')
+    @patch("contractex.storage.connection.get_connection")
     def test_test_connection_failure(self, mock_get_conn):
         """Test failed connection test."""
         mock_get_conn.side_effect = psycopg2.OperationalError("Connection failed")
@@ -249,6 +247,7 @@ class TestConnectionTesting:
 # ============================================================================
 # Integration Tests
 # ============================================================================
+
 
 @pytest.mark.integration
 class TestConnectionIntegration:
@@ -284,17 +283,19 @@ class TestConnectionIntegration:
         from contractex.storage.repository import DocumentRepository
 
         # Use repository to insert
-        with patch('contractex.storage.repository.get_cursor') as mock_cursor:
+        with patch("contractex.storage.repository.get_cursor") as mock_cursor:
+
             def cursor_context(*args, **kwargs):
                 from contextlib import contextmanager
+
                 @contextmanager
                 def _cursor():
                     conn = psycopg2.connect(
-                        dbname=test_database['db_name'],
-                        user=test_database['user'],
-                        password=test_database['password'],
-                        host=test_database['host'],
-                        port=test_database['port']
+                        dbname=test_database["db_name"],
+                        user=test_database["user"],
+                        password=test_database["password"],
+                        host=test_database["host"],
+                        port=test_database["port"],
                     )
                     cur = conn.cursor()
                     try:
@@ -304,6 +305,7 @@ class TestConnectionIntegration:
                     finally:
                         cur.close()
                         conn.close()
+
                 return _cursor()
 
             mock_cursor.side_effect = cursor_context
@@ -317,7 +319,9 @@ class TestConnectionIntegration:
         # Verify document was not persisted
         with get_connection(test_database) as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT COUNT(*) FROM documents WHERE filename = %s", ("test_rollback.pdf",))
+            cursor.execute(
+                "SELECT COUNT(*) FROM documents WHERE filename = %s", ("test_rollback.pdf",)
+            )
             count = cursor.fetchone()[0]
             cursor.close()
 
@@ -330,11 +334,12 @@ class TestConnectionIntegration:
 # Error Handling Tests
 # ============================================================================
 
+
 @pytest.mark.unit
 class TestConnectionErrorHandling:
     """Test connection error handling."""
 
-    @patch('contractex.storage.connection.psycopg2.connect')
+    @patch("contractex.storage.connection.psycopg2.connect")
     def test_connection_error_raises(self, mock_connect):
         """Test that connection errors are properly raised."""
         mock_connect.side_effect = psycopg2.OperationalError("Cannot connect")
@@ -343,7 +348,7 @@ class TestConnectionErrorHandling:
             with get_connection():
                 pass
 
-    @patch('contractex.storage.connection.psycopg2.connect')
+    @patch("contractex.storage.connection.psycopg2.connect")
     def test_connection_error_in_context(self, mock_connect):
         """Test error handling within connection context."""
         mock_conn = MagicMock()

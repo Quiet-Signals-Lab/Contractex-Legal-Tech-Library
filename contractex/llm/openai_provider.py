@@ -1,9 +1,11 @@
 """OpenAI provider implementation for GPT models."""
 
+from __future__ import annotations
+
 import logging
 import os
 import time
-from typing import Optional, cast
+from typing import cast
 
 from pydantic import BaseModel
 
@@ -63,7 +65,7 @@ class OpenAIProvider(LLMProvider):
     def __init__(
         self,
         model: str = "gpt-4o",
-        api_key: Optional[str] = None,
+        api_key: str | None = None,
         temperature: float = 0.0,
         max_tokens: int = 4000,
     ):
@@ -135,7 +137,7 @@ class OpenAIProvider(LLMProvider):
         prompt: str,
         schema: type[BaseModel],
         temperature: float = 0.0,
-        max_tokens: Optional[int] = None,
+        max_tokens: int | None = None,
     ) -> BaseModel:
         """Extract structured data using OpenAI's structured output feature."""
 
@@ -158,7 +160,7 @@ class OpenAIProvider(LLMProvider):
         return self._call_with_retry(_call, "OpenAI structured extraction")  # type: ignore[no-any-return]
 
     def complete(
-        self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs
+        self, prompt: str, temperature: float = 0.7, max_tokens: int | None = None, **kwargs
     ) -> str:
         """Get text completion from OpenAI."""
 

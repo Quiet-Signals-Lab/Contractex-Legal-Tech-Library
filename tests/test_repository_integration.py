@@ -4,6 +4,7 @@ Integration tests for database repositories.
 These tests require a real PostgreSQL database connection and test
 the full stack from repository through to database.
 """
+
 import pytest
 
 from contractex.storage.models import (
@@ -17,6 +18,7 @@ from contractex.storage.models import (
 # ============================================================================
 # DocumentRepository Integration Tests
 # ============================================================================
+
 
 @pytest.mark.integration
 class TestDocumentRepositoryIntegration:
@@ -103,11 +105,7 @@ class TestDocumentRepositoryIntegration:
         """Test updating metadata."""
         doc_id = doc_repo.insert(sample_document)
 
-        new_metadata = {
-            **sample_document.metadata,
-            "reviewed": True,
-            "reviewer": "Jane Doe"
-        }
+        new_metadata = {**sample_document.metadata, "reviewed": True, "reviewer": "Jane Doe"}
         doc_repo.update_metadata(doc_id, new_metadata)
 
         retrieved = doc_repo.get_by_id(doc_id)
@@ -140,6 +138,7 @@ class TestDocumentRepositoryIntegration:
 # ============================================================================
 # ClauseRepository Integration Tests
 # ============================================================================
+
 
 @pytest.mark.integration
 class TestClauseRepositoryIntegration:
@@ -212,7 +211,9 @@ class TestClauseRepositoryIntegration:
         assert len(payment_clauses) > 0
         assert all(c.clause_type == "payment" for c in payment_clauses)
 
-    def test_search_by_type_with_limit(self, doc_repo, clause_repo, sample_document, multiple_clauses):
+    def test_search_by_type_with_limit(
+        self, doc_repo, clause_repo, sample_document, multiple_clauses
+    ):
         """Test searching clauses by type with limit."""
         doc_id = doc_repo.insert(sample_document)
 
@@ -274,6 +275,7 @@ class TestClauseRepositoryIntegration:
 # ProcessingLogRepository Integration Tests
 # ============================================================================
 
+
 @pytest.mark.integration
 class TestProcessingLogRepositoryIntegration:
     """Test ProcessingLogRepository with real database."""
@@ -300,11 +302,7 @@ class TestProcessingLogRepositoryIntegration:
         ]
 
         for stage, status in stages:
-            log = ProcessingLog(
-                document_id=doc_id,
-                processing_stage=stage,
-                status=status
-            )
+            log = ProcessingLog(document_id=doc_id, processing_stage=stage, status=status)
             log_repo.insert(log)
 
         logs = log_repo.get_by_document(doc_id)
@@ -324,7 +322,7 @@ class TestProcessingLogRepositoryIntegration:
                 document_id=doc_id,
                 processing_stage=ProcessingStage.EXTRACTED,
                 status=status,
-                error_message="Error" if status == ProcessingStatus.FAILED else None
+                error_message="Error" if status == ProcessingStatus.FAILED else None,
             )
             log_repo.insert(log)
 
@@ -340,9 +338,7 @@ class TestProcessingLogRepositoryIntegration:
         # Insert multiple logs for same stage
         for status in [ProcessingStatus.PENDING, ProcessingStatus.COMPLETED]:
             log = ProcessingLog(
-                document_id=doc_id,
-                processing_stage=ProcessingStage.EXTRACTED,
-                status=status
+                document_id=doc_id, processing_stage=ProcessingStage.EXTRACTED, status=status
             )
             log_repo.insert(log)
 
@@ -361,6 +357,7 @@ class TestProcessingLogRepositoryIntegration:
 # Cross-Repository Integration Tests
 # ============================================================================
 
+
 @pytest.mark.integration
 class TestCrossRepositoryIntegration:
     """Test interactions between multiple repositories."""
@@ -371,34 +368,38 @@ class TestCrossRepositoryIntegration:
         doc = Document(
             filename="workflow_test.pdf",
             extracted_text="Contract text...",
-            metadata={"contract_type": "MSA"}
+            metadata={"contract_type": "MSA"},
         )
         doc_id = doc_repo.insert(doc)
 
         # 2. Log upload
-        log_repo.insert(ProcessingLog(
-            document_id=doc_id,
-            processing_stage=ProcessingStage.UPLOADED,
-            status=ProcessingStatus.COMPLETED
-        ))
+        log_repo.insert(
+            ProcessingLog(
+                document_id=doc_id,
+                processing_stage=ProcessingStage.UPLOADED,
+                status=ProcessingStatus.COMPLETED,
+            )
+        )
 
         # 3. Extract clauses
         clauses = [
             Clause(
                 document_id=doc_id,
                 clause_text=f"Clause {i}",
-                clause_type="payment" if i % 2 == 0 else "termination"
+                clause_type="payment" if i % 2 == 0 else "termination",
             )
             for i in range(5)
         ]
         clause_repo.insert_batch(clauses)
 
         # 4. Log extraction
-        log_repo.insert(ProcessingLog(
-            document_id=doc_id,
-            processing_stage=ProcessingStage.EXTRACTED,
-            status=ProcessingStatus.COMPLETED
-        ))
+        log_repo.insert(
+            ProcessingLog(
+                document_id=doc_id,
+                processing_stage=ProcessingStage.EXTRACTED,
+                status=ProcessingStatus.COMPLETED,
+            )
+        )
 
         # Verify everything
         assert doc_repo.get_by_id(doc_id) is not None
@@ -412,11 +413,13 @@ class TestCrossRepositoryIntegration:
         doc_id = doc_repo.insert(doc)
 
         clause_repo.insert(Clause(document_id=doc_id, clause_text="Test"))
-        log_repo.insert(ProcessingLog(
-            document_id=doc_id,
-            processing_stage=ProcessingStage.UPLOADED,
-            status=ProcessingStatus.COMPLETED
-        ))
+        log_repo.insert(
+            ProcessingLog(
+                document_id=doc_id,
+                processing_stage=ProcessingStage.UPLOADED,
+                status=ProcessingStatus.COMPLETED,
+            )
+        )
 
         # Delete document
         doc_repo.delete(doc_id)

@@ -1,5 +1,7 @@
 """Confidence scoring utilities."""
 
+from __future__ import annotations
+
 from contractex.core.models import Contract
 
 
