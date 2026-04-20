@@ -144,6 +144,10 @@ ignore_missing_imports = true
 plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
+module = ["yaml"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
 module = ["mcp", "mcp.*"]
 follow_imports = "skip"
 

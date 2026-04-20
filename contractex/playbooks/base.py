@@ -158,7 +158,7 @@ class Playbook:
                 for r in self.rules
             ],
         }
-        return _yaml.dump(data, default_flow_style=False, sort_keys=False)
+        return str(_yaml.dump(data, default_flow_style=False, sort_keys=False))
 
     @classmethod
     def from_yaml(cls, yaml_text: str) -> Playbook:
