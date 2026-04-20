@@ -258,6 +258,13 @@ class ContractExtractor:
 
             # Build ContractMetadata
             processing_time = time.monotonic() - start_time
+
+            # Import prompt versions for provenance tracking
+            try:
+                from contractex.prompts import PROMPT_VERSIONS as _pv
+            except Exception:
+                _pv = {}
+
             contract_metadata = ContractMetadata(  # type: ignore[call-arg]
                 filename=extraction_meta.get("filename"),
                 file_type=extraction_meta.get("file_type"),
@@ -266,6 +273,7 @@ class ContractExtractor:
                 processing_time_seconds=round(processing_time, 2),
                 token_usage=extraction_meta.get("token_usage"),
                 warnings=extraction_meta.get("warnings", []),
+                prompt_versions=dict(_pv),
             )
             contract_data["metadata"] = contract_metadata
 

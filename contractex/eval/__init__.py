@@ -22,6 +22,8 @@ Quick start::
 
 from __future__ import annotations
 
+from contractex.eval.benchmark import BenchmarkResult, ClauseTypeMetrics, CUADBenchmark
+from contractex.eval.calibration import CalibrationAnalyzer, CalibrationResult
 from contractex.eval.cases import EvalCase, EvalSuite
 from contractex.eval.harness import EvalHarness
 from contractex.eval.metrics import (
@@ -33,6 +35,14 @@ from contractex.eval.metrics import (
 )
 
 __all__ = [
+    # CUAD benchmark
+    "CUADBenchmark",
+    "BenchmarkResult",
+    "ClauseTypeMetrics",
+    # Calibration
+    "CalibrationAnalyzer",
+    "CalibrationResult",
+    # Generic eval harness
     "EvalCase",
     "EvalSuite",
     "EvalHarness",

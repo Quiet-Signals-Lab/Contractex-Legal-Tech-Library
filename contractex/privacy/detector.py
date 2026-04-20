@@ -282,6 +282,7 @@ class PIIDetector:
         return AnalyzerEngine()
 
     def _detect_presidio(self, text: str, language: str) -> list[PIISpan]:
+        assert self._presidio_analyzer is not None, "presidio analyzer not initialised"
         results = self._presidio_analyzer.analyze(
             text=text,
             entities=self._entities,

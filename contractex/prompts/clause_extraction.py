@@ -1,6 +1,26 @@
-"""Prompt templates for clause extraction."""
+"""
+Prompt templates for clause extraction.
+
+Every prompt exported from this module has a corresponding version constant.
+Extraction results record which prompt version produced them, enabling:
+  - Reproducibility: re-run the same doc + version → same output
+  - Regression testing: measure quality change when prompts are updated
+  - Debugging: the prompt is part of the provenance chain
+
+Version format: "<major>.<minor>"
+  - Major: breaking change to output schema or interpretation
+  - Minor: wording improvements, examples added, bug fixes
+"""
 
 from __future__ import annotations
+
+# ---------------------------------------------------------------------------
+# Prompt versions — bump these when templates change
+# ---------------------------------------------------------------------------
+
+CLAUSE_EXTRACTION_PROMPT_VERSION = "2.0"
+CONTRACT_INFO_PROMPT_VERSION = "1.3"
+CLAUSE_CLASSIFICATION_PROMPT_VERSION = "1.2"
 
 # Full CUAD taxonomy with one-line descriptions embedded in the prompt so
 # that any LLM — including small local models — can pick the right category

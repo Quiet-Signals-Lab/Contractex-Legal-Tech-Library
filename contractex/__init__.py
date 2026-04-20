@@ -1,13 +1,57 @@
 """
-ContractEx: Modern Contract Intelligence for Python
+ContractEx: A Python library for building contract analysis pipelines.
 
-A comprehensive library for LLM-powered contract analysis and legal document intelligence.
+Architecture (four layers):
+
+    LAYER 3 · ANALYSIS          Risk · Obligations · Comparison
+    LAYER 2 · EXTRACTION        LLM (scoped, schema-constrained)
+    LAYER 1 · STRUCTURAL PARSE  Deterministic, fully testable
+    LAYER 0 · INGEST            Format-specific loaders
+
+Layer 1 has zero LLM calls.  Every structural decision is deterministic
+and auditable — which matters enormously in the legal context.
+
+Quick start::
+
+    # Full pipeline
+    from contractex import ContractExtractor
+    from contractex.structure import parse_structure
+    from contractex.analysis import RiskAnalyzer
+    from contractex.playbooks import StandardNDAPlaybook
+
+    # Layer 1: deterministic structural parse (no LLM)
+    structure = parse_structure(open("nda.txt").read())
+
+    # Layer 2: schema-constrained LLM extraction
+    extractor = ContractExtractor(llm_provider_name="claude-sonnet-4", temperature=0.0)
+    result = extractor.extract("nda.pdf")
+
+    # Layer 3: playbook-based analysis (no LLM)
+    analyzer = RiskAnalyzer(playbook=StandardNDAPlaybook())
+    risks = analyzer.analyze(result)
+    gaps = analyzer.missing_clauses(result)
+
+    # Prompt version provenance
+    print(result.metadata.prompt_versions)
+
+Privacy-first: the full pipeline runs locally with Llama 3.1.
+Benchmarked against CUAD: use contractex.eval.CUADBenchmark.
 """
 
 from __future__ import annotations
 
 from contractex.__version__ import __version__
-from contractex.core.analyzers import RiskAnalyzer
+
+# Layer 3: analysis (no LLM)
+from contractex.analysis import (
+    ObligationTimeline,
+    RiskAnalyzer,
+)
+from contractex.analysis import (
+    compare as compare_contracts,
+)
+
+# Layer 2: extraction
 from contractex.core.classifiers import CUADClassifier
 from contractex.core.document import LegalDoc, LegalDocMetadata
 from contractex.core.extractors import ContractExtractor
@@ -19,6 +63,24 @@ from contractex.core.models import (
     FinancialTerm,
     Party,
     RiskFlag,
+)
+
+# Eval
+from contractex.eval import CalibrationAnalyzer, CUADBenchmark
+
+# Playbooks
+from contractex.playbooks import (
+    Playbook,
+    SaaSPlaybook,
+    StandardNDAPlaybook,
+)
+
+# Layer 1: structural parse (deterministic, no LLM)
+from contractex.structure import (
+    DefinedTerm,
+    DocumentStructure,
+    Section,
+    parse_structure,
 )
 from contractex.utils.audit import AuditLogger
 from contractex.utils.provenance import ProvenanceTracker
@@ -93,22 +155,36 @@ def extract_contract(
 __all__ = [
     "__version__",
     "extract_contract",
-    # Contract models
+    # Layer 1: structural parse
+    "parse_structure",
+    "DocumentStructure",
+    "Section",
+    "DefinedTerm",
+    # Layer 2: extraction
+    "ContractExtractor",
+    "CUADClassifier",
     "Contract",
     "Party",
     "Clause",
     "FinancialTerm",
     "RiskFlag",
     "ContractMetadata",
-    "ContractExtractor",
-    "CUADClassifier",
+    # Layer 3: analysis
     "RiskAnalyzer",
+    "ObligationTimeline",
+    "compare_contracts",
+    # Playbooks
+    "Playbook",
+    "StandardNDAPlaybook",
+    "SaaSPlaybook",
+    # Eval
+    "CUADBenchmark",
+    "CalibrationAnalyzer",
     # General legal document models
     "LegalDocument",
     "LegalDocumentMetadata",
     "DocType",
     "SourceSpan",
-    # RAG document model
     "LegalDoc",
     "LegalDocMetadata",
     # Pipeline utilities
@@ -122,5 +198,4 @@ __all__ = [
 # - contractex.data:      Dataset loaders            pip install contractex[datasets]
 # - contractex.core.ner:  Named Entity Recognition   pip install contractex[spacy]
 # - contractex.retrieval: Search and ranking         pip install contractex[retrieval]
-# - contractex.loaders.source_adapter: URL/API loaders  pip install contractex[network]
 # - contractex.eval:      Eval harness               pip install contractex[eval]

@@ -1,0 +1,49 @@
+# ContractEx Playbook YAML Schema
+#
+# A playbook defines which clauses are required and what constitutes a risk
+# for a specific contract type or practice area.
+#
+# Load with:
+#   from contractex.playbooks import Playbook
+#   pb = Playbook.from_yaml_file("my_playbook.yaml")
+#
+# ---
+
+# Required fields
+name: "My Playbook"                   # Human-readable playbook name
+version: "1.0"                        # Semantic version string
+description: "Description here."     # Optional but recommended
+
+# List of CUAD clause types that MUST be present in the contract.
+# See contractex/taxonomy/cuad.py for the full 41-type taxonomy.
+required_clauses:
+  - governing_law
+  - effective_date
+  - termination_for_cause
+  # Add more as needed
+
+# Risk rules — each rule fires when the condition is satisfied
+rules:
+  - id: "example.rule_id"              # unique, dot-namespaced identifier
+    clause_type: "governing_law"       # CUAD clause type this rule targets
+    description: "Risk description."  # human-readable problem description
+    severity: "high"                   # critical | high | medium | low | info
+    recommended_language: |            # optional sample remedial language
+      This Agreement shall be governed by the laws of [STATE].
+
+    # Trigger conditions (at least one should be set):
+
+    # ALL of these keywords must be ABSENT from the clause text to fire.
+    required_keywords: []
+
+    # ANY of these keywords present in the clause text fires the rule.
+    forbidden_keywords: []
+
+    # Python regex that must MATCH for the rule to fire (absent = flag).
+    required_pattern: ""
+
+    # Python regex that must NOT match for the rule to fire (present = flag).
+    forbidden_pattern: ""
+
+    # If true: fire this rule when clause_type is entirely missing from the contract.
+    flag_if_missing: false

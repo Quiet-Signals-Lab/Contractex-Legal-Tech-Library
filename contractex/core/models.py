@@ -243,6 +243,15 @@ class ContractMetadata(BaseModel):
     )
     warnings: list[str] = Field(default_factory=list, description="Extraction warnings")
 
+    # Prompt provenance — populated automatically from contractex.prompts.PROMPT_VERSIONS
+    prompt_versions: dict[str, str] = Field(
+        default_factory=dict,
+        description=(
+            "Map of prompt name → version string for every prompt used during extraction. "
+            "Enables reproducibility and regression testing."
+        ),
+    )
+
     # Custom metadata
     custom_fields: dict[str, Any] = Field(default_factory=dict, description="User-defined metadata")
 

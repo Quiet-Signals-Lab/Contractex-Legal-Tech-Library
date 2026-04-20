@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+RISK_ANALYSIS_PROMPT_VERSION = "1.0"
+
 RISK_ANALYSIS_PROMPT = """
 You are a seasoned contract attorney specializing in risk identification and mitigation.
 
