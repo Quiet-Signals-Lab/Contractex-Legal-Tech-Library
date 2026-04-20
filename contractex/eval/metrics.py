@@ -246,7 +246,7 @@ class PrivacyCaseResult(BaseModel):
         was_blocked: bool,
         error: str | None = None,
         elapsed: float | None = None,
-    ) -> "PrivacyCaseResult":
+    ) -> PrivacyCaseResult:
         """Compute PII precision/recall/F1 and blocking accuracy."""
         result = cls(
             case_id=case_id,
@@ -262,15 +262,13 @@ class PrivacyCaseResult(BaseModel):
 
         # PII detection precision / recall
         if expected_pii is not None and detected_pii is not None:
-            exp_set = set(e.upper() for e in expected_pii)
-            det_set = set(e.upper() for e in detected_pii)
+            exp_set = {e.upper() for e in expected_pii}
+            det_set = {e.upper() for e in detected_pii}
             tp = len(exp_set & det_set)
             result.pii_precision = tp / len(det_set) if det_set else 0.0
             result.pii_recall = tp / len(exp_set) if exp_set else 1.0
             denom = result.pii_precision + result.pii_recall
-            result.pii_f1 = (
-                2 * result.pii_precision * result.pii_recall / denom if denom else 0.0
-            )
+            result.pii_f1 = 2 * result.pii_precision * result.pii_recall / denom if denom else 0.0
 
         # Redaction count
         if expected_redaction_count is not None and actual_redaction_count is not None:
@@ -286,8 +284,8 @@ class PrivacyMetrics(BaseModel):
     """Aggregate privacy / redaction metrics across an EvalSuite run."""
 
     total_cases: int = 0
-    pii_cases: int = 0           # cases with expected_pii_entities set
-    blocking_cases: int = 0      # cases with should_be_blocked set
+    pii_cases: int = 0  # cases with expected_pii_entities set
+    blocking_cases: int = 0  # cases with should_be_blocked set
 
     # Micro-averaged PII precision / recall / F1 (across all pii_cases)
     pii_precision: float | None = None
@@ -303,7 +301,7 @@ class PrivacyMetrics(BaseModel):
     case_results: list[PrivacyCaseResult] = Field(default_factory=list)
 
     @classmethod
-    def from_case_results(cls, results: list[PrivacyCaseResult]) -> "PrivacyMetrics":
+    def from_case_results(cls, results: list[PrivacyCaseResult]) -> PrivacyMetrics:
         """Aggregate a list of PrivacyCaseResult into summary metrics."""
         m = cls(total_cases=len(results))
 
@@ -370,7 +368,9 @@ class PrivacyMetrics(BaseModel):
     def assert_min_pii_recall(self, threshold: float) -> None:
         """Assert that PII recall is at or above *threshold*."""
         if self.pii_recall is None:
-            raise AssertionError("No PII recall data available — no cases with expected_pii_entities")
+            raise AssertionError(
+                "No PII recall data available — no cases with expected_pii_entities"
+            )
         if self.pii_recall < threshold:
             raise AssertionError(
                 f"PII recall {self.pii_recall:.1%} < required {threshold:.1%}\n" + self.report()

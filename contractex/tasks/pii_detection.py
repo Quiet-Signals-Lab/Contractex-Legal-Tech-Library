@@ -55,22 +55,28 @@ class PIIDetectionTask(LegalTask):
 
         if spans:
             entity_types = list({s.entity_type for s in spans})
-            profile = profile.model_copy(update={
-                "contains_pii": True,
-                "pii_entities_found": list(
-                    dict.fromkeys(profile.pii_entities_found + entity_types)
-                ),
-                "sensitivity": self._sensitivity
-                if profile.sensitivity == "public"
-                else profile.sensitivity,
-            })
+            profile = profile.model_copy(
+                update={
+                    "contains_pii": True,
+                    "pii_entities_found": list(
+                        dict.fromkeys(profile.pii_entities_found + entity_types)
+                    ),
+                    "sensitivity": (
+                        self._sensitivity
+                        if profile.sensitivity == "public"
+                        else profile.sensitivity
+                    ),
+                }
+            )
         else:
             profile = profile.model_copy(update={"contains_pii": False})
 
-        doc = doc.model_copy(update={
-            "privacy_profile": profile,
-            "extracted": {**doc.extracted, "pii_spans": spans},
-        })
+        doc = doc.model_copy(
+            update={
+                "privacy_profile": profile,
+                "extracted": {**doc.extracted, "pii_spans": spans},
+            }
+        )
         return doc
 
 

@@ -242,9 +242,7 @@ class TaskPipeline:
 
     def estimate_total_cost(self, doc: LegalDoc) -> float:
         """Sum cost estimates across all tasks that support *doc*."""
-        return sum(
-            t.estimate_cost(doc) for t in self._tasks if t.supports(doc)
-        )
+        return sum(t.estimate_cost(doc) for t in self._tasks if t.supports(doc))
 
     def __len__(self) -> int:
         return len(self._tasks)

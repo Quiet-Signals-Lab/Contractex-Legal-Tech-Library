@@ -9,7 +9,6 @@ from contractex.core.legal_document import DocType
 from contractex.tasks.base import LegalTask
 from contractex.tasks.registry import TaskRegistry
 
-
 _SUMMARIZATION_PROMPT = """\
 You are a legal analyst.  Summarize the following legal document in clear,
 plain English.  Be concise (3–5 sentences).  Identify: document type, parties
@@ -74,9 +73,11 @@ class SummarizationTask(LegalTask):
         provider = self._get_provider()
         summary = provider.complete(prompt, temperature=0.3)
 
-        doc = doc.model_copy(update={
-            "extracted": {**doc.extracted, "summary": summary.strip()},
-        })
+        doc = doc.model_copy(
+            update={
+                "extracted": {**doc.extracted, "summary": summary.strip()},
+            }
+        )
         return doc
 
 

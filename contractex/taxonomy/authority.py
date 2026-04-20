@@ -55,19 +55,19 @@ class AuthorityLevel(IntEnum):
       secondary literature.
     """
 
-    CONSTITUTIONAL      = 100
-    BINDING_STATUTE     = 95
-    BINDING_TREATY      = 88
-    REGULATION          = 85
-    SUPREME_COURT       = 90
-    APPELLATE_COURT     = 75
-    TRIAL_COURT         = 60
-    AGENCY_GUIDANCE     = 55
-    SECONDARY_TREATISE  = 30
-    LAW_REVIEW          = 25
-    BAR_ASSOCIATION     = 20
-    BLOG_NEWS           = 5
-    UNKNOWN             = 1
+    CONSTITUTIONAL = 100
+    BINDING_STATUTE = 95
+    BINDING_TREATY = 88
+    REGULATION = 85
+    SUPREME_COURT = 90
+    APPELLATE_COURT = 75
+    TRIAL_COURT = 60
+    AGENCY_GUIDANCE = 55
+    SECONDARY_TREATISE = 30
+    LAW_REVIEW = 25
+    BAR_ASSOCIATION = 20
+    BLOG_NEWS = 5
+    UNKNOWN = 1
 
     @property
     def normalised(self) -> float:
@@ -160,7 +160,7 @@ class AuthorityProfile(BaseModel):
         jurisdiction: JurisdictionTag | None = None,
         court_name: str | None = None,
         publication_year: int | None = None,
-    ) -> "AuthorityProfile":
+    ) -> AuthorityProfile:
         """Convenience constructor — creates a profile for a given authority level."""
         if isinstance(level, (str, int)):
             level = AuthorityLevel(int(level))

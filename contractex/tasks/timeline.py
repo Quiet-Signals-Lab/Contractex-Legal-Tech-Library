@@ -81,19 +81,19 @@ class TimelineTask(LegalTask):
         import json
 
         schema_str = json.dumps(TimelineResult.model_json_schema(), indent=2)
-        prompt = _TIMELINE_PROMPT.format(
-            schema=schema_str, text=doc.full_text[:12_000]
-        )
+        prompt = _TIMELINE_PROMPT.format(schema=schema_str, text=doc.full_text[:12_000])
 
         provider = self._get_provider()
         result = provider.extract_structured(prompt, TimelineResult)
 
-        doc = doc.model_copy(update={
-            "extracted": {
-                **doc.extracted,
-                "timeline": [e.model_dump() for e in result.events],
-            },
-        })
+        doc = doc.model_copy(
+            update={
+                "extracted": {
+                    **doc.extracted,
+                    "timeline": [e.model_dump() for e in result.events],
+                },
+            }
+        )
         return doc
 
 

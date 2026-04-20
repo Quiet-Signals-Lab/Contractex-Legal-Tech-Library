@@ -72,9 +72,11 @@ class ContractExtractionTask(LegalTask):
 
         # Merge typed contract fields into doc.extracted
         contract_dict = contract.model_dump(mode="python")
-        doc = doc.model_copy(update={
-            "extracted": {**doc.extracted, "contract": contract_dict},
-        })
+        doc = doc.model_copy(
+            update={
+                "extracted": {**doc.extracted, "contract": contract_dict},
+            }
+        )
         return doc
 
     def estimate_cost(self, doc: LegalDoc) -> float:

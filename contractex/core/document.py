@@ -187,6 +187,7 @@ class LegalDoc(BaseModel):
         if self.jurisdiction:
             try:
                 from contractex.taxonomy.jurisdiction import JurisdictionTag
+
                 return JurisdictionTag.from_string(self.jurisdiction)
             except Exception:
                 return None
@@ -275,7 +276,7 @@ class LegalDoc(BaseModel):
             snippet=snippet,
         )
 
-    def merge(self, other: "LegalDoc") -> "LegalDoc":
+    def merge(self, other: LegalDoc) -> LegalDoc:
         """
         Return a new ``LegalDoc`` that merges *other*'s extracted fields and
         provenance into ``self``.  Fields in *other* overwrite ``self`` on

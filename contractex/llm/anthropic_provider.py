@@ -169,7 +169,7 @@ class AnthropicProvider(LLMProvider):
         self, prompt: str, temperature: float = 0.7, max_tokens: int | None = None, **kwargs
     ):
         """Stream a text completion from Anthropic token-by-token."""
-        from typing import Iterator
+        from collections.abc import Iterator
 
         def _generate() -> Iterator[str]:
             with self.client.messages.stream(
@@ -179,8 +179,7 @@ class AnthropicProvider(LLMProvider):
                 messages=[{"role": "user", "content": prompt}],
                 **kwargs,
             ) as stream:
-                for text in stream.text_stream:
-                    yield text
+                yield from stream.text_stream
 
         return _generate()
 

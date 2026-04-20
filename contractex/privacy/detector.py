@@ -44,7 +44,6 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-
 # ---------------------------------------------------------------------------
 # Public data types
 # ---------------------------------------------------------------------------
@@ -247,10 +246,7 @@ class PIIDetector:
                 spans.extend(self._apply_regex_recognizer(text, recognizer, language))
 
         # Filter by threshold and sort
-        spans = [
-            s for s in spans
-            if s.score >= self._thresholds.get(s.entity_type, 0.75)
-        ]
+        spans = [s for s in spans if s.score >= self._thresholds.get(s.entity_type, 0.75)]
         spans.sort(key=lambda s: s.start)
         return self._deduplicate(spans)
 
@@ -275,12 +271,14 @@ class PIIDetector:
     def _check_presidio() -> bool:
         try:
             import presidio_analyzer  # noqa: F401
+
             return True
         except ImportError:
             return False
 
     def _build_presidio_analyzer(self) -> Any:
         from presidio_analyzer import AnalyzerEngine
+
         return AnalyzerEngine()
 
     def _detect_presidio(self, text: str, language: str) -> list[PIISpan]:
@@ -291,14 +289,16 @@ class PIIDetector:
         )
         spans = []
         for r in results:
-            spans.append(PIISpan(
-                entity_type=r.entity_type,
-                start=r.start,
-                end=r.end,
-                score=r.score,
-                text=text[r.start:r.end],
-                language=language,
-            ))
+            spans.append(
+                PIISpan(
+                    entity_type=r.entity_type,
+                    start=r.start,
+                    end=r.end,
+                    score=r.score,
+                    text=text[r.start : r.end],
+                    language=language,
+                )
+            )
         return spans
 
     # ------------------------------------------------------------------
@@ -314,13 +314,15 @@ class PIIDetector:
                 # For grouped patterns (DOB) the matched text may be in group 1
                 start = m.start(1) if m.lastindex else m.start()
                 end = m.end(1) if m.lastindex else m.end()
-                spans.append(PIISpan(
-                    entity_type=entity_type,
-                    start=start,
-                    end=end,
-                    score=0.80,
-                    text=text[start:end],
-                ))
+                spans.append(
+                    PIISpan(
+                        entity_type=entity_type,
+                        start=start,
+                        end=end,
+                        score=0.80,
+                        text=text[start:end],
+                    )
+                )
         return spans
 
     @staticmethod
@@ -331,14 +333,16 @@ class PIIDetector:
         for m in re.finditer(recognizer.pattern, text):
             start = m.start(1) if m.lastindex else m.start()
             end = m.end(1) if m.lastindex else m.end()
-            spans.append(PIISpan(
-                entity_type=recognizer.entity_type,
-                start=start,
-                end=end,
-                score=recognizer.score,
-                text=text[start:end],
-                language=language,
-            ))
+            spans.append(
+                PIISpan(
+                    entity_type=recognizer.entity_type,
+                    start=start,
+                    end=end,
+                    score=recognizer.score,
+                    text=text[start:end],
+                    language=language,
+                )
+            )
         return spans
 
     # ------------------------------------------------------------------

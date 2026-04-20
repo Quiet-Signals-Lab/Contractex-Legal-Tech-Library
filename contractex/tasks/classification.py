@@ -53,9 +53,11 @@ class ClassificationTask(LegalTask):
         classifier = self._get_classifier()
         labels = classifier.classify(doc.full_text)
 
-        doc = doc.model_copy(update={
-            "extracted": {**doc.extracted, "cuad_labels": labels},
-        })
+        doc = doc.model_copy(
+            update={
+                "extracted": {**doc.extracted, "cuad_labels": labels},
+            }
+        )
         return doc
 
 

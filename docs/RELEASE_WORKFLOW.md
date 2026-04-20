@@ -2,9 +2,13 @@
 
 This document describes the end-to-end steps for releasing a new version of ContractEx to PyPI.
 
+> **MANDATORY**: The pre-release quality gate in Step 0 is **never optional**.
+> No version bump, no tag, no PyPI upload until every check passes locally.
+> Skipping it guarantees CI failures and a broken release.
+
 ---
 
-## Pre-release Quality Gate
+## Step 0 — Pre-release Quality Gate (MANDATORY, NEVER SKIP)
 
 Run all checks locally before touching versions or git tags.  The `make pre-release` command is the canonical way to do this:
 
@@ -27,25 +31,30 @@ This runs in order:
 # Auto-fix formatting
 black contractex/ tests/
 
-# Auto-fix safe lint issues
+# Auto-fix all safe lint issues (isort, UP-series, C4, etc.)
 ruff check --fix contractex/ tests/
 
-# Then re-run the gate
+# Manually fix anything ruff could not auto-fix (B904, F841, etc.)
+ruff check contractex/ tests/   # re-run to see remaining manual fixes
+
+# Then re-run the full gate — it must be completely clean
 make pre-release
 ```
+
+Do **not** proceed to Step 1 until `make pre-release` exits 0 with no errors.
 
 ---
 
 ## Release Steps
 
-### 1. Commit feature work on `main`
+### Step 1 — Commit feature work on `main`
 
 ```bash
 git add .
 git commit -m "feat: <description>"
 ```
 
-### 2. Bump the version
+### Step 2 — Bump the version
 
 Edit two files:
 
@@ -59,7 +68,7 @@ git add contractex/__version__.py pyproject.toml
 git commit -m "chore: bump version to X.Y.Z"
 ```
 
-### 3. Update CHANGELOG.md
+### Step 3 — Update CHANGELOG.md
 
 Add an entry under `## [Unreleased]` (or create a new versioned heading):
 
@@ -80,13 +89,13 @@ git add CHANGELOG.md
 git commit -m "docs: update changelog for X.Y.Z"
 ```
 
-### 4. Push to main
+### Step 4 — Push to main
 
 ```bash
 git push origin main
 ```
 
-### 5. Build the distribution
+### Step 5 — Build the distribution
 
 ```bash
 rm -rf dist/
@@ -101,15 +110,20 @@ ls dist/
 # contractex-X.Y.Z.tar.gz
 ```
 
-### 6. Publish to PyPI
+### Step 6 — Publish to PyPI
 
 ```bash
-python3 -m twine upload dist/*
+python3 -m twine upload dist/* -u __token__
 ```
 
-You will be prompted for your PyPI API token (or it can be set via `TWINE_PASSWORD`).
+Set your PyPI API token via the environment variable to avoid interactive prompts:
 
-### 7. Tag the release
+```bash
+export TWINE_PASSWORD="pypi-..."
+python3 -m twine upload dist/* -u __token__
+```
+
+### Step 7 — Tag the release
 
 ```bash
 git tag vX.Y.Z

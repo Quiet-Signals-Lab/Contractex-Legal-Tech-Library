@@ -190,33 +190,45 @@ class LegalKnowledgeGraph:
                 label=jurisdiction,
             )
             self._add_node(j_node)
-            self._add_edge(GraphEdge(
-                source_id=doc_node.node_id,
-                target_id=j_id,
-                edge_type="GOVERNED_BY",
-            ))
+            self._add_edge(
+                GraphEdge(
+                    source_id=doc_node.node_id,
+                    target_id=j_id,
+                    edge_type="GOVERNED_BY",
+                )
+            )
 
         # Parties (from doc.extracted["contract"]["parties"] or similar)
         extracted = getattr(doc, "extracted", {})
         contract = extracted.get("contract", {})
         parties = contract.get("parties", [])
         for party_data in parties:
-            party_name = party_data.get("name", "") if isinstance(party_data, dict) else str(party_data)
+            party_name = (
+                party_data.get("name", "") if isinstance(party_data, dict) else str(party_data)
+            )
             if not party_name:
                 continue
             canonical = self._resolve_or_create_party(party_name)
-            self._add_edge(GraphEdge(
-                source_id=canonical.node_id,
-                target_id=doc_node.node_id,
-                edge_type="PARTY_IN",
-                properties={"role": party_data.get("role", "") if isinstance(party_data, dict) else ""},
-            ))
+            self._add_edge(
+                GraphEdge(
+                    source_id=canonical.node_id,
+                    target_id=doc_node.node_id,
+                    edge_type="PARTY_IN",
+                    properties={
+                        "role": party_data.get("role", "") if isinstance(party_data, dict) else ""
+                    },
+                )
+            )
 
         # Clauses
         clauses = contract.get("clauses", [])
         for i, clause_data in enumerate(clauses):
             clause_id = f"clause:{doc_id}:{i}"
-            clause_type = clause_data.get("clause_type", "unknown") if isinstance(clause_data, dict) else "unknown"
+            clause_type = (
+                clause_data.get("clause_type", "unknown")
+                if isinstance(clause_data, dict)
+                else "unknown"
+            )
             clause_node = GraphNode(
                 node_id=clause_id,
                 node_type="Clause",
@@ -224,11 +236,13 @@ class LegalKnowledgeGraph:
                 properties=clause_data if isinstance(clause_data, dict) else {},
             )
             self._add_node(clause_node)
-            self._add_edge(GraphEdge(
-                source_id=doc_node.node_id,
-                target_id=clause_id,
-                edge_type="CONTAINS",
-            ))
+            self._add_edge(
+                GraphEdge(
+                    source_id=doc_node.node_id,
+                    target_id=clause_id,
+                    edge_type="CONTAINS",
+                )
+            )
 
             # Concept link (CUAD taxonomy)
             if clause_type and clause_type != "unknown":
@@ -239,11 +253,13 @@ class LegalKnowledgeGraph:
                     label=clause_type,
                 )
                 self._add_node(concept_node)
-                self._add_edge(GraphEdge(
-                    source_id=clause_id,
-                    target_id=concept_id,
-                    edge_type="INSTANCE_OF",
-                ))
+                self._add_edge(
+                    GraphEdge(
+                        source_id=clause_id,
+                        target_id=concept_id,
+                        edge_type="INSTANCE_OF",
+                    )
+                )
 
         logger.debug("Added document %r to knowledge graph", doc_id)
 
@@ -299,11 +315,13 @@ class LegalKnowledgeGraph:
 
         Creates a REFERENCES edge between the two Document nodes.
         """
-        self._add_edge(GraphEdge(
-            source_id=f"doc:{citing_doc_id}",
-            target_id=f"doc:{cited_doc_id}",
-            edge_type="REFERENCES",
-        ))
+        self._add_edge(
+            GraphEdge(
+                source_id=f"doc:{citing_doc_id}",
+                target_id=f"doc:{cited_doc_id}",
+                edge_type="REFERENCES",
+            )
+        )
 
     def export_rdf(self, path: Path) -> None:
         """
@@ -317,7 +335,6 @@ class LegalKnowledgeGraph:
             Output ``.ttl`` file path.
         """
         try:
-            import rdflib
             from rdflib import RDF, Graph, Literal, Namespace, URIRef
 
             g = Graph()
@@ -344,9 +361,8 @@ class LegalKnowledgeGraph:
 
         except ImportError:
             raise ImportError(
-                "rdflib is required for RDF export.\n"
-                "Install with: pip install rdflib"
-            )
+                "rdflib is required for RDF export.\n" "Install with: pip install rdflib"
+            ) from None
 
     # ------------------------------------------------------------------
     # Backend-specific internals
@@ -362,11 +378,9 @@ class LegalKnowledgeGraph:
             raise ImportError(
                 "networkx is required for the in-memory graph backend.\n"
                 "Install with: pip install contractex[graph]"
-            )
+            ) from None
 
-    def _init_neo4j(
-        self, uri: str | None, auth: tuple[str, str] | None
-    ) -> Any:
+    def _init_neo4j(self, uri: str | None, auth: tuple[str, str] | None) -> Any:
         try:
             from neo4j import GraphDatabase
 
@@ -379,7 +393,7 @@ class LegalKnowledgeGraph:
             raise ImportError(
                 "neo4j driver is required for the Neo4j backend.\n"
                 "Install with: pip install contractex[graph]"
-            )
+            ) from None
 
     def _add_node(self, node: GraphNode) -> None:
         if self._backend_name == "networkx":
@@ -411,8 +425,7 @@ class LegalKnowledgeGraph:
                     node_id=nid,
                     node_type=data.get("node_type", ""),
                     label=data.get("label", nid),
-                    properties={k: v for k, v in data.items()
-                                if k not in ("node_type", "label")},
+                    properties={k: v for k, v in data.items() if k not in ("node_type", "label")},
                 )
                 for nid, data in self._graph.nodes(data=True)
             ]
@@ -451,7 +464,8 @@ class LegalKnowledgeGraph:
                 node_type=self._graph.nodes[nid].get("node_type", ""),
                 label=self._graph.nodes[nid].get("label", nid),
             )
-            for nid in node_ids if self._graph.has_node(nid)
+            for nid in node_ids
+            if self._graph.has_node(nid)
         ]
         edges = [
             GraphEdge(source_id=u, target_id=v, edge_type=d.get("edge_type", ""))
@@ -471,15 +485,15 @@ class LegalKnowledgeGraph:
                 # Link as SAME_ENTITY if not exact match
                 if name.lower() != node.label.lower():
                     new_id = f"party:{name.lower().replace(' ', '_')}"
-                    new_node = GraphNode(
-                        node_id=new_id, node_type="Party", label=name
-                    )
+                    new_node = GraphNode(node_id=new_id, node_type="Party", label=name)
                     self._add_node(new_node)
-                    self._add_edge(GraphEdge(
-                        source_id=new_id,
-                        target_id=node.node_id,
-                        edge_type="SAME_ENTITY",
-                    ))
+                    self._add_edge(
+                        GraphEdge(
+                            source_id=new_id,
+                            target_id=node.node_id,
+                            edge_type="SAME_ENTITY",
+                        )
+                    )
                     return new_node
                 return node
 

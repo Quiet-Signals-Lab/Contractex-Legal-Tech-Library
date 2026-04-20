@@ -163,7 +163,7 @@ class OpenAIProvider(LLMProvider):
         self, prompt: str, temperature: float = 0.7, max_tokens: int | None = None, **kwargs
     ):
         """Stream a text completion from OpenAI token-by-token."""
-        from typing import Iterator
+        from collections.abc import Iterator
 
         def _generate() -> Iterator[str]:
             stream = self.client.chat.completions.create(

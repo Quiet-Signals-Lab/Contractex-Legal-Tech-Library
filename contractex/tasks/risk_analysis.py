@@ -57,9 +57,11 @@ class RiskAnalysisTask(LegalTask):
         analyzer = self._get_analyzer()
         risks = analyzer.analyze(doc.full_text)
 
-        doc = doc.model_copy(update={
-            "extracted": {**doc.extracted, "risks": risks},
-        })
+        doc = doc.model_copy(
+            update={
+                "extracted": {**doc.extracted, "risks": risks},
+            }
+        )
         return doc
 
 

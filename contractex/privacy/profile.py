@@ -96,7 +96,7 @@ class PrivacyProfile(BaseModel):
     consent_reference: str | None = None
 
     @model_validator(mode="after")
-    def _derive_routing(self) -> "PrivacyProfile":
+    def _derive_routing(self) -> PrivacyProfile:
         """
         If ``llm_routing`` is not explicitly set, derive it from
         ``sensitivity``:

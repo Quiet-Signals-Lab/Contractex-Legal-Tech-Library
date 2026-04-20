@@ -93,12 +93,14 @@ class CitationTask(LegalTask):
 
         citations = self._extract_regex(doc.full_text)
 
-        doc = doc.model_copy(update={
-            "extracted": {
-                **doc.extracted,
-                "citations": [c.model_dump() for c in citations],
-            },
-        })
+        doc = doc.model_copy(
+            update={
+                "extracted": {
+                    **doc.extracted,
+                    "citations": [c.model_dump() for c in citations],
+                },
+            }
+        )
         return doc
 
     def _extract_regex(self, text: str) -> list[LegalCitation]:
@@ -111,12 +113,14 @@ class CitationTask(LegalTask):
                 if raw in seen:
                     continue
                 seen.add(raw)
-                citations.append(LegalCitation(
-                    raw_text=raw,
-                    citation_type=citation_type,
-                    char_start=m.start(),
-                    char_end=m.end(),
-                ))
+                citations.append(
+                    LegalCitation(
+                        raw_text=raw,
+                        citation_type=citation_type,
+                        char_start=m.start(),
+                        char_end=m.end(),
+                    )
+                )
 
         # Sort by position in document
         citations.sort(key=lambda c: c.char_start)

@@ -255,9 +255,7 @@ class PrivacyAwareLLMRouter:
         # Mutate the profile in-place
         profile.contains_pii = True
         profile.redaction_applied = True
-        profile.pii_entities_found = list(
-            dict.fromkeys(profile.pii_entities_found + entity_types)
-        )
+        profile.pii_entities_found = list(dict.fromkeys(profile.pii_entities_found + entity_types))
 
         logger.info(
             "Auto-redacted %d PII span(s) (%s) before LLM call",

@@ -186,9 +186,7 @@ class ConflictDetector:
             lines.append(
                 f"  [{c.conflict_type.value.upper()}] {c.description or 'See sources below.'}"
             )
-        lines.append(
-            "\nLabel each position with its source [N] and note whether it is binding."
-        )
+        lines.append("\nLabel each position with its source [N] and note whether it is binding.")
         return "\n".join(lines)
 
     # ------------------------------------------------------------------
@@ -207,18 +205,20 @@ class ConflictDetector:
         jur_b = doc_b.effective_jurisdiction_tag
         if jur_a is not None and jur_b is not None:
             if jur_a.conflicts_with(jur_b):
-                results.append(Conflict(
-                    conflict_type=ConflictType.JURISDICTION_CONFLICT,
-                    source_a_id=doc_a.doc_id,
-                    source_b_id=doc_b.doc_id,
-                    source_a_title=self._title(doc_a),
-                    source_b_title=self._title(doc_b),
-                    description=(
-                        f"Source A applies to {jur_a} while Source B applies to {jur_b} "
-                        f"— the answer may differ across these jurisdictions."
-                    ),
-                    severity="high" if self._both_binding(jur_a, jur_b) else "medium",
-                ))
+                results.append(
+                    Conflict(
+                        conflict_type=ConflictType.JURISDICTION_CONFLICT,
+                        source_a_id=doc_a.doc_id,
+                        source_b_id=doc_b.doc_id,
+                        source_a_title=self._title(doc_a),
+                        source_b_title=self._title(doc_b),
+                        description=(
+                            f"Source A applies to {jur_a} while Source B applies to {jur_b} "
+                            f"— the answer may differ across these jurisdictions."
+                        ),
+                        severity="high" if self._both_binding(jur_a, jur_b) else "medium",
+                    )
+                )
 
         # --- Authority conflict & unsettled question ----------------------
         if profile_a is not None and profile_b is not None:
@@ -230,34 +230,38 @@ class ConflictDetector:
             year_a = getattr(profile_a, "publication_year", None)
             year_b = getattr(profile_b, "publication_year", None)
             if year_a and year_b and abs(year_a - year_b) >= self._temporal_gap:
-                results.append(Conflict(
-                    conflict_type=ConflictType.TEMPORAL_CONFLICT,
-                    source_a_id=doc_a.doc_id,
-                    source_b_id=doc_b.doc_id,
-                    source_a_title=self._title(doc_a),
-                    source_b_title=self._title(doc_b),
-                    description=(
-                        f"Source A ({year_a}) and Source B ({year_b}) are separated by "
-                        f"{abs(year_a - year_b)} years — verify which reflects current law."
-                    ),
-                    severity="high" if gap < self._authority_gap else "medium",
-                ))
+                results.append(
+                    Conflict(
+                        conflict_type=ConflictType.TEMPORAL_CONFLICT,
+                        source_a_id=doc_a.doc_id,
+                        source_b_id=doc_b.doc_id,
+                        source_a_title=self._title(doc_a),
+                        source_b_title=self._title(doc_b),
+                        description=(
+                            f"Source A ({year_a}) and Source B ({year_b}) are separated by "
+                            f"{abs(year_a - year_b)} years — verify which reflects current law."
+                        ),
+                        severity="high" if gap < self._authority_gap else "medium",
+                    )
+                )
 
             # Authority conflict (clear hierarchy difference)
             if gap >= self._authority_gap and not results:
                 higher, lower = (doc_a, doc_b) if level_a > level_b else (doc_b, doc_a)
-                results.append(Conflict(
-                    conflict_type=ConflictType.AUTHORITY_CONFLICT,
-                    source_a_id=higher.doc_id,
-                    source_b_id=lower.doc_id,
-                    source_a_title=self._title(higher),
-                    source_b_title=self._title(lower),
-                    description=(
-                        f"Source A ({self._title(higher)}) has higher authority than "
-                        f"Source B ({self._title(lower)}).  If they conflict, Source A governs."
-                    ),
-                    severity="medium",
-                ))
+                results.append(
+                    Conflict(
+                        conflict_type=ConflictType.AUTHORITY_CONFLICT,
+                        source_a_id=higher.doc_id,
+                        source_b_id=lower.doc_id,
+                        source_a_title=self._title(higher),
+                        source_b_title=self._title(lower),
+                        description=(
+                            f"Source A ({self._title(higher)}) has higher authority than "
+                            f"Source B ({self._title(lower)}).  If they conflict, Source A governs."
+                        ),
+                        severity="medium",
+                    )
+                )
 
         return results
 

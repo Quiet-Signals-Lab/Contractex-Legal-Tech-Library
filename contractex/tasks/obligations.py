@@ -84,19 +84,19 @@ class ObligationsTask(LegalTask):
         import json
 
         schema_str = json.dumps(ObligationsResult.model_json_schema(), indent=2)
-        prompt = _OBLIGATIONS_PROMPT.format(
-            schema=schema_str, text=doc.full_text[:12_000]
-        )
+        prompt = _OBLIGATIONS_PROMPT.format(schema=schema_str, text=doc.full_text[:12_000])
 
         provider = self._get_provider()
         result = provider.extract_structured(prompt, ObligationsResult)
 
-        doc = doc.model_copy(update={
-            "extracted": {
-                **doc.extracted,
-                "obligations": [o.model_dump() for o in result.obligations],
-            },
-        })
+        doc = doc.model_copy(
+            update={
+                "extracted": {
+                    **doc.extracted,
+                    "obligations": [o.model_dump() for o in result.obligations],
+                },
+            }
+        )
         return doc
 
 

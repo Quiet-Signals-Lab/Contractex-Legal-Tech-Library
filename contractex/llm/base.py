@@ -7,7 +7,7 @@ All LLM providers must implement this interface to be compatible with ContractEx
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import AsyncIterator, Iterator
+from collections.abc import AsyncIterator, Iterator
 
 from pydantic import BaseModel
 
@@ -158,6 +158,7 @@ class LLMProvider(ABC):
         Yields:
             str — successive token fragments of the completion.
         """
-        for chunk in self.stream_complete(prompt, temperature=temperature,
-                                          max_tokens=max_tokens, **kwargs):
+        for chunk in self.stream_complete(
+            prompt, temperature=temperature, max_tokens=max_tokens, **kwargs
+        ):
             yield chunk

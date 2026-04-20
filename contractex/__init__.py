@@ -24,11 +24,14 @@ from contractex.utils.audit import AuditLogger
 from contractex.utils.provenance import ProvenanceTracker
 from contractex.utils.routing import ConfidenceRouter
 
+
 # New architectural components (lazy-imported to avoid hard deps)
 def _lazy(module: str, attr: str):
     """Return a lazy accessor to avoid importing optional deps at package load time."""
     import importlib
+
     return getattr(importlib.import_module(module), attr)
+
 
 try:
     from contractex.privacy.profile import PrivacyProfile
@@ -105,6 +108,9 @@ __all__ = [
     "LegalDocumentMetadata",
     "DocType",
     "SourceSpan",
+    # RAG document model
+    "LegalDoc",
+    "LegalDocMetadata",
     # Pipeline utilities
     "ProvenanceTracker",
     "ConfidenceRouter",

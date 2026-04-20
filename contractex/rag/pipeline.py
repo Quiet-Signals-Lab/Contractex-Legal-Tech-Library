@@ -62,8 +62,9 @@ from __future__ import annotations
 
 import logging
 import time
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Any, Iterator, Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -173,18 +174,27 @@ class _InMemoryVectorStore:
     def __init__(self) -> None:
         self._entries: list[dict[str, Any]] = []
 
-    def add(self, doc_id: str, chunk_id: str, text: str, embedding: list[float],
-            metadata: dict[str, Any]) -> None:
-        self._entries.append({
-            "doc_id": doc_id,
-            "chunk_id": chunk_id,
-            "text": text,
-            "embedding": embedding,
-            "metadata": metadata,
-        })
+    def add(
+        self,
+        doc_id: str,
+        chunk_id: str,
+        text: str,
+        embedding: list[float],
+        metadata: dict[str, Any],
+    ) -> None:
+        self._entries.append(
+            {
+                "doc_id": doc_id,
+                "chunk_id": chunk_id,
+                "text": text,
+                "embedding": embedding,
+                "metadata": metadata,
+            }
+        )
 
-    def search(self, query_embedding: list[float], top_k: int = 5,
-               filters: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+    def search(
+        self, query_embedding: list[float], top_k: int = 5, filters: dict[str, Any] | None = None
+    ) -> list[dict[str, Any]]:
         """Cosine similarity search."""
         import math
 
@@ -194,16 +204,9 @@ class _InMemoryVectorStore:
             nb = math.sqrt(sum(x * x for x in b))
             return dot / (na * nb) if na and nb else 0.0
 
-        scored = [
-            (cosine(query_embedding, e["embedding"]), e)
-            for e in self._entries
-        ]
+        scored = [(cosine(query_embedding, e["embedding"]), e) for e in self._entries]
         scored.sort(key=lambda t: t[0], reverse=True)
-        return [
-            {**e, "score": score}
-            for score, e in scored[:top_k]
-            if score > 0
-        ]
+        return [{**e, "score": score} for score, e in scored[:top_k] if score > 0]
 
     def __len__(self) -> int:
         return len(self._entries)
@@ -288,6 +291,7 @@ class LegalRAGPipeline:
             self._router = privacy_router
         else:
             from contractex.privacy.router import PrivacyAwareLLMRouter
+
             self._router = PrivacyAwareLLMRouter()
 
         # Source tracking for sync
@@ -336,20 +340,22 @@ class LegalRAGPipeline:
                         doc_id=doc.doc_id or source_str,
                         chunk_id=chunk_id,
                         text=chunk.text,
-                        embedding=embedding.tolist() if hasattr(embedding, "tolist") else list(embedding),
+                        embedding=(
+                            embedding.tolist() if hasattr(embedding, "tolist") else list(embedding)
+                        ),
                         metadata={
                             "source_url": source_str,
                             "doc_type": str(doc.doc_type),
                             "llm_routing": (
-                                doc.privacy_profile.llm_routing
-                                if doc.privacy_profile else "any"
+                                doc.privacy_profile.llm_routing if doc.privacy_profile else "any"
                             ),
                             "page": getattr(chunk, "page", None),
                             # Authority + jurisdiction metadata for weighted scoring
                             "authority_weight": doc.authority_weight,
                             "publication_year": (
                                 getattr(doc.authority_profile, "publication_year", None)
-                                if doc.authority_profile else None
+                                if doc.authority_profile
+                                else None
                             ),
                             "jurisdiction_country": (
                                 getattr(doc.effective_jurisdiction_tag, "country", None)
@@ -359,7 +365,8 @@ class LegalRAGPipeline:
                             ),
                             "is_superseded": (
                                 getattr(doc.authority_profile, "is_superseded", False)
-                                if doc.authority_profile else False
+                                if doc.authority_profile
+                                else False
                             ),
                         },
                     )
@@ -378,7 +385,9 @@ class LegalRAGPipeline:
         result.elapsed_seconds = round(time.perf_counter() - t0, 3)
         logger.info(
             "Ingest complete: %d ingested, %d failed in %.1fs",
-            result.ingested, result.failed, result.elapsed_seconds,
+            result.ingested,
+            result.failed,
+            result.elapsed_seconds,
         )
         return result
 
@@ -393,7 +402,7 @@ class LegalRAGPipeline:
         top_k: int = 5,
         stream: bool = False,
         jurisdiction_filter: Any | None = None,
-    ) -> "RAGResponse | Iterator[RAGResponse]":
+    ) -> RAGResponse | Iterator[RAGResponse]:
         """
         Answer *question* using retrieved source passages.
 
@@ -444,20 +453,22 @@ class LegalRAGPipeline:
                     filtered.append(h)
                     continue
                 from contractex.taxonomy.jurisdiction import JurisdictionTag
-                source_tag = JurisdictionTag(country=country, region=region or None,
-                                              applicability="binding")
+
+                source_tag = JurisdictionTag(
+                    country=country, region=region or None, applicability="binding"
+                )
                 if source_tag.matches(jurisdiction_filter):
                     filtered.append(h)
             hits = filtered
 
         # 4. Authority-weighted rescoring
-        import math
 
         def _recency_weight(year: int | None) -> float:
             """Normalised recency: current year = 1.0, each decade ≈ -0.1."""
             if year is None:
                 return 0.5  # unknown → neutral
             import datetime
+
             age = max(0, datetime.date.today().year - year)
             return max(0.0, 1.0 - age * 0.02)  # decay 2% per year, floor 0
 
@@ -467,11 +478,7 @@ class LegalRAGPipeline:
             meta = h.get("metadata", {})
             auth_w = float(meta.get("authority_weight", 0.01))
             rec_w = _recency_weight(meta.get("publication_year"))
-            final = (
-                self._alpha * sem_score
-                + self._beta * auth_w
-                + self._gamma * rec_w
-            )
+            final = self._alpha * sem_score + self._beta * auth_w + self._gamma * rec_w
             rescored.append((final, h))
 
         rescored.sort(key=lambda t: t[0], reverse=True)
@@ -505,13 +512,15 @@ class LegalRAGPipeline:
                 source_url=meta.get("source_url"),
                 page=meta.get("page"),
             )
-            citations.append(Citation(
-                text_fragment="",
-                source_title=title,
-                source_url=meta.get("source_url"),
-                source_span=span,
-                index=i,
-            ))
+            citations.append(
+                Citation(
+                    text_fragment="",
+                    source_title=title,
+                    source_url=meta.get("source_url"),
+                    source_span=span,
+                    index=i,
+                )
+            )
 
         context = "\n\n".join(context_parts)
         conflict_addendum = ""
@@ -524,16 +533,18 @@ class LegalRAGPipeline:
         avg_score = sum(scores) / len(scores) if scores else 0.0
 
         # Authority range
-        auth_weights = [float(h.get("metadata", {}).get("authority_weight", 0.01))
-                        for h in context_hits]
+        auth_weights = [
+            float(h.get("metadata", {}).get("authority_weight", 0.01)) for h in context_hits
+        ]
         authority_range = (min(auth_weights, default=0.0), max(auth_weights, default=0.0))
 
         # Format citation strings
         self._formatter.format_all(citations, style=self._citation_format)
 
         if stream:
-            return self._stream_query(prompt, citations, avg_score, conflicts, authority_range,
-                                      source_docs)
+            return self._stream_query(
+                prompt, citations, avg_score, conflicts, authority_range, source_docs
+            )
 
         # Non-streaming
         answer = self._provider.complete(prompt, temperature=0.1)
@@ -559,8 +570,9 @@ class LegalRAGPipeline:
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(
             None,
-            lambda: self.query(question, filters=filters, top_k=top_k,
-                               jurisdiction_filter=jurisdiction_filter),
+            lambda: self.query(
+                question, filters=filters, top_k=top_k, jurisdiction_filter=jurisdiction_filter
+            ),
         )
 
     def _stream_query(
@@ -614,9 +626,6 @@ class LegalRAGPipeline:
             result.checked += 1
             try:
                 # Use URLLoader / AutoLoader's ETag support
-                from contractex.loaders.auto import AutoLoader
-
-                loader = AutoLoader()
                 # For sync, we just re-ingest (idempotent for in-memory store)
                 ingest_result = self.ingest([url])
                 if ingest_result.ingested > 0:
@@ -642,7 +651,7 @@ class LegalRAGPipeline:
                 raise ImportError(
                     "sentence-transformers is required for RAG embeddings.\n"
                     "Install with: pip install contractex[rag]"
-                )
+                ) from None
         return self._embedder
 
     def __repr__(self) -> str:

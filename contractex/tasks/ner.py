@@ -40,9 +40,11 @@ class NERTask(LegalTask):
         ner = self._get_ner()
         entities = ner.extract(doc.full_text)
 
-        doc = doc.model_copy(update={
-            "extracted": {**doc.extracted, "ner_entities": entities},
-        })
+        doc = doc.model_copy(
+            update={
+                "extracted": {**doc.extracted, "ner_entities": entities},
+            }
+        )
         return doc
 
 

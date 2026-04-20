@@ -46,13 +46,11 @@ from __future__ import annotations
 import hashlib
 import hmac
 import os
-import re
 from dataclasses import dataclass, field
 from typing import Any
 
 from contractex.privacy.detector import PIISpan
 from contractex.privacy.profile import RedactionStrategy
-
 
 # ---------------------------------------------------------------------------
 # Public data types
@@ -103,7 +101,7 @@ class RedactionMap:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "RedactionMap":
+    def from_dict(cls, data: dict[str, Any]) -> RedactionMap:
         forward = data.get("placeholder_to_original", {})
         reverse = {v: k for k, v in forward.items()}
         return cls(

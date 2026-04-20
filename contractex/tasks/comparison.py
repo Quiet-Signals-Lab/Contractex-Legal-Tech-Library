@@ -95,12 +95,14 @@ class ComparisonTask(LegalTask):
         if not doc.full_text:
             return doc
         if doc_b is None or not doc_b.full_text:
-            doc = doc.model_copy(update={
-                "extracted": {
-                    **doc.extracted,
-                    "comparison": {"error": "doc_b not provided or has no text"},
-                },
-            })
+            doc = doc.model_copy(
+                update={
+                    "extracted": {
+                        **doc.extracted,
+                        "comparison": {"error": "doc_b not provided or has no text"},
+                    },
+                }
+            )
             return doc
 
         import json
@@ -115,9 +117,11 @@ class ComparisonTask(LegalTask):
         provider = self._get_provider()
         result = provider.extract_structured(prompt, ComparisonResult)
 
-        doc = doc.model_copy(update={
-            "extracted": {**doc.extracted, "comparison": result.model_dump()},
-        })
+        doc = doc.model_copy(
+            update={
+                "extracted": {**doc.extracted, "comparison": result.model_dump()},
+            }
+        )
         return doc
 
 

@@ -182,7 +182,9 @@ class EvalHarness:
 
             except Exception as exc:
                 error = f"{type(exc).__name__}: {exc}"
-                logger.warning("Privacy eval case %r raised %s: %s", case.id, type(exc).__name__, exc)
+                logger.warning(
+                    "Privacy eval case %r raised %s: %s", case.id, type(exc).__name__, exc
+                )
 
             elapsed = time.monotonic() - start
             case_results.append(

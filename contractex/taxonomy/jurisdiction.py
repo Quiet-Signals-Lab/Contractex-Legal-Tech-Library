@@ -79,7 +79,7 @@ class JurisdictionTag(BaseModel):
     )
 
     @model_validator(mode="after")
-    def _normalise(self) -> "JurisdictionTag":
+    def _normalise(self) -> JurisdictionTag:
         object.__setattr__(self, "country", self.country.upper())
         if self.region:
             object.__setattr__(self, "region", self.region.upper())
@@ -89,7 +89,7 @@ class JurisdictionTag(BaseModel):
     # Hierarchy reasoning
     # ------------------------------------------------------------------
 
-    def is_broader_than(self, other: "JurisdictionTag") -> bool:
+    def is_broader_than(self, other: JurisdictionTag) -> bool:
         """
         Return True when *self* has wider geographic scope than *other*.
 
@@ -106,7 +106,7 @@ class JurisdictionTag(BaseModel):
         # Same country: federal (no region) is broader than state
         return self.region is None and other.region is not None
 
-    def conflicts_with(self, other: "JurisdictionTag") -> bool:
+    def conflicts_with(self, other: JurisdictionTag) -> bool:
         """
         Return True when the two tags describe the same country but different
         regions — a signal that the sources may give conflicting answers.
@@ -120,7 +120,7 @@ class JurisdictionTag(BaseModel):
             return True
         return False
 
-    def matches(self, query_filter: "JurisdictionTag") -> bool:
+    def matches(self, query_filter: JurisdictionTag) -> bool:
         """
         Return True when *self* is compatible with *query_filter*.
 
@@ -145,7 +145,7 @@ class JurisdictionTag(BaseModel):
     # ------------------------------------------------------------------
 
     @classmethod
-    def from_string(cls, s: str) -> "JurisdictionTag":
+    def from_string(cls, s: str) -> JurisdictionTag:
         """
         Parse a legacy flat jurisdiction string.
 

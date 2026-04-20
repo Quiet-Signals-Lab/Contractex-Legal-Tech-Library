@@ -62,7 +62,7 @@ class TaskRegistry:
         IDs of all currently registered tasks.
     """
 
-    _default_instance: "TaskRegistry | None" = None
+    _default_instance: TaskRegistry | None = None
 
     def __init__(self) -> None:
         self._tasks: dict[str, type[LegalTask]] = {}
@@ -73,7 +73,7 @@ class TaskRegistry:
     # ------------------------------------------------------------------
 
     @classmethod
-    def default(cls) -> "TaskRegistry":
+    def default(cls) -> TaskRegistry:
         """
         Return the shared global registry.
 
@@ -111,9 +111,7 @@ class TaskRegistry:
 
         task_id = task_cls.task_id
         if not task_id:
-            raise ValueError(
-                f"Cannot register {task_cls.__name__}: task_id is empty."
-            )
+            raise ValueError(f"Cannot register {task_cls.__name__}: task_id is empty.")
 
         if task_id in self._tasks:
             logger.debug("Re-registering task %r (overwriting)", task_id)
@@ -223,7 +221,7 @@ class TaskRegistry:
             )
 
         try:
-            module = importlib.import_module(module_path)
+            importlib.import_module(module_path)
         except ImportError as exc:
             raise ImportError(
                 f"Could not load task {task_id!r} from {module_path!r}: {exc}\n"
@@ -234,6 +232,4 @@ class TaskRegistry:
         # (``TaskRegistry.default().register(...)`` at the bottom of each
         # task module).  If it didn't, look for a class matching task_id.
         if task_id not in self._tasks:
-            logger.warning(
-                "Module %r did not self-register task %r", module_path, task_id
-            )
+            logger.warning("Module %r did not self-register task %r", module_path, task_id)
