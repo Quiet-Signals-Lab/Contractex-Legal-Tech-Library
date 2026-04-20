@@ -481,9 +481,7 @@ class ContractExtractor:
         else:
             for idx, chunk in enumerate(chunks):
                 try:
-                    chunk_clauses, chunk_financial = self._extract_chunk(
-                        chunk, extract_financial
-                    )
+                    chunk_clauses, chunk_financial = self._extract_chunk(chunk, extract_financial)
                     all_clauses.extend(chunk_clauses)
                     all_financial.extend(chunk_financial)
                 except Exception as e:
@@ -510,7 +508,7 @@ class ContractExtractor:
         try:
             prompt = CLAUSE_EXTRACTION_PROMPT.format(contract_text=text)
             result = self.llm_provider.extract_structured(prompt, LLMClausesResponse)
-            return result.clauses  # type: ignore[attr-defined]
+            return result.clauses  # type: ignore[attr-defined, no-any-return]
         except Exception as e:
             logger.warning("Clause extraction from chunk failed: %s", e)
             return []
@@ -520,7 +518,7 @@ class ContractExtractor:
         try:
             prompt = FINANCIAL_EXTRACTION_PROMPT.format(contract_text=text)
             result = self.llm_provider.extract_structured(prompt, LLMFinancialResponse)
-            return result.financial_terms  # type: ignore[attr-defined]
+            return result.financial_terms  # type: ignore[attr-defined, no-any-return]
         except Exception as e:
             logger.warning("Financial extraction from chunk failed: %s", e)
             return []
@@ -529,9 +527,7 @@ class ContractExtractor:
     # Deduplication helpers
     # ------------------------------------------------------------------
 
-    def _deduplicate_clauses(
-        self, clauses: list[LLMClauseResult]
-    ) -> list[LLMClauseResult]:
+    def _deduplicate_clauses(self, clauses: list[LLMClauseResult]) -> list[LLMClauseResult]:
         """
         Remove near-duplicate clauses produced by chunk overlap.
 
@@ -562,8 +558,7 @@ class ContractExtractor:
                 ratio = SequenceMatcher(None, c_text, e_text).ratio()
                 if ratio >= _CLAUSE_DEDUP_RATIO:
                     if len(c_text) > len(e_text) or (
-                        len(c_text) == len(e_text)
-                        and candidate.confidence > existing.confidence
+                        len(c_text) == len(e_text) and candidate.confidence > existing.confidence
                     ):
                         kept[i] = candidate
                     is_dup = True
@@ -661,9 +656,7 @@ class ContractExtractor:
             )
         return result
 
-    def _build_financial_terms(
-        self, llm_terms: list[LLMFinancialResult]
-    ) -> list[FinancialTerm]:
+    def _build_financial_terms(self, llm_terms: list[LLMFinancialResult]) -> list[FinancialTerm]:
         """Convert deduplicated LLM financial results to public FinancialTerm models."""
         result: list[FinancialTerm] = []
         for t in llm_terms:
@@ -733,8 +726,7 @@ class ContractExtractor:
 
         if low:
             contract.metadata.warnings.append(
-                f"Items below confidence threshold ({self.confidence_threshold}): "
-                + "; ".join(low)
+                f"Items below confidence threshold ({self.confidence_threshold}): " + "; ".join(low)
             )
 
     # ------------------------------------------------------------------
@@ -750,9 +742,7 @@ class ContractExtractor:
             **kwargs: Additional arguments passed to extract()
         """
         loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(
-            None, lambda: self.extract(document_path, **kwargs)
-        )
+        return await loop.run_in_executor(None, lambda: self.extract(document_path, **kwargs))
 
     def extract_batch(
         self,

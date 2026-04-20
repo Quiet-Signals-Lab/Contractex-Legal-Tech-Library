@@ -62,7 +62,7 @@ class AuditEventType(str, Enum):
     DOCUMENT_INGESTED = "document_ingested"
     DOCUMENT_LOADED = "document_loaded"
     FIELDS_EXTRACTED = "fields_extracted"
-    FIELD_REJECTED = "field_rejected"      # confidence below auto-reject threshold
+    FIELD_REJECTED = "field_rejected"  # confidence below auto-reject threshold
     REVIEW_REQUESTED = "review_requested"  # routed to human-review queue
     REVIEW_COMPLETED = "review_completed"
     DOCUMENT_DELETED = "document_deleted"

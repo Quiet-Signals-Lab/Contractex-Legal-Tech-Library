@@ -34,7 +34,7 @@ def _openai_is_retryable(exc: Exception) -> bool:
     if _OPENAI_RETRYABLE and isinstance(exc, _OPENAI_RETRYABLE):
         return True
     # Retry 5xx server errors (but not 4xx client errors)
-    if _OAIStatusError and isinstance(exc, _OAIStatusError):
+    if _OAIStatusError and isinstance(exc, _OAIStatusError):  # type: ignore[truthy-function]
         return bool(exc.status_code >= 500)
     return False
 
@@ -126,7 +126,9 @@ class OpenAIProvider(LLMProvider):
                         delay,
                     )
                     time.sleep(delay)
-        raise LLMProviderError(f"{label} failed after {max_retries} retries: {last_exc}") from last_exc
+        raise LLMProviderError(
+            f"{label} failed after {max_retries} retries: {last_exc}"
+        ) from last_exc
 
     def extract_structured(
         self,
@@ -136,6 +138,7 @@ class OpenAIProvider(LLMProvider):
         max_tokens: Optional[int] = None,
     ) -> BaseModel:
         """Extract structured data using OpenAI's structured output feature."""
+
         def _call():
             response = self.client.beta.chat.completions.parse(
                 model=self._model,
@@ -152,12 +155,13 @@ class OpenAIProvider(LLMProvider):
                 raise LLMProviderError("OpenAI returned None for parsed response")
             return parsed
 
-        return self._call_with_retry(_call, "OpenAI structured extraction")  # type: ignore[return-value]
+        return self._call_with_retry(_call, "OpenAI structured extraction")  # type: ignore[no-any-return]
 
     def complete(
         self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs
     ) -> str:
         """Get text completion from OpenAI."""
+
         def _call():
             response = self.client.chat.completions.create(
                 model=self._model,
@@ -171,7 +175,7 @@ class OpenAIProvider(LLMProvider):
                 raise LLMProviderError("OpenAI returned empty response")
             return cast(str, content)
 
-        return self._call_with_retry(_call, "OpenAI completion")  # type: ignore[return-value]
+        return self._call_with_retry(_call, "OpenAI completion")  # type: ignore[no-any-return]
 
     def estimate_cost(self, text: str) -> float:
         """Estimate cost for processing text."""

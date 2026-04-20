@@ -197,8 +197,7 @@ class ConfidenceRouter:
         elif confidence >= reject_t:
             decision = RoutingDecision.HUMAN_REVIEW
             reason = (
-                f"confidence {confidence:.2f} in review band "
-                f"[{reject_t:.2f}, {accept_t:.2f})"
+                f"confidence {confidence:.2f} in review band " f"[{reject_t:.2f}, {accept_t:.2f})"
             )
         else:
             decision = RoutingDecision.AUTO_REJECT

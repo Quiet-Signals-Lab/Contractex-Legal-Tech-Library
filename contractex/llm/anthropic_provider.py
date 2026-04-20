@@ -32,7 +32,7 @@ except ImportError:
 def _anthropic_is_retryable(exc: Exception) -> bool:
     if _ANTHROPIC_RETRYABLE and isinstance(exc, _ANTHROPIC_RETRYABLE):
         return True
-    if _ANTStatusError and isinstance(exc, _ANTStatusError):
+    if _ANTStatusError and isinstance(exc, _ANTStatusError):  # type: ignore[truthy-function]
         return bool(exc.status_code >= 500)
     return False
 
@@ -119,7 +119,9 @@ class AnthropicProvider(LLMProvider):
                         delay,
                     )
                     time.sleep(delay)
-        raise LLMProviderError(f"{label} failed after {max_retries} retries: {last_exc}") from last_exc
+        raise LLMProviderError(
+            f"{label} failed after {max_retries} retries: {last_exc}"
+        ) from last_exc
 
     def extract_structured(
         self,
@@ -159,12 +161,13 @@ class AnthropicProvider(LLMProvider):
             data = json.loads(content)
             return schema(**data)
 
-        return self._call_with_retry(_call, "Anthropic structured extraction")  # type: ignore[return-value]
+        return self._call_with_retry(_call, "Anthropic structured extraction")  # type: ignore[no-any-return]
 
     def complete(
         self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs
     ) -> str:
         """Get text completion from Anthropic."""
+
         def _call():
             response = self.client.messages.create(
                 model=self._model,
@@ -178,7 +181,7 @@ class AnthropicProvider(LLMProvider):
                 raise LLMProviderError(f"Unexpected response block type: {type(block).__name__}")
             return cast(str, block.text)
 
-        return self._call_with_retry(_call, "Anthropic completion")  # type: ignore[return-value]
+        return self._call_with_retry(_call, "Anthropic completion")  # type: ignore[no-any-return]
 
     def estimate_cost(self, text: str) -> float:
         """Estimate cost for processing text."""

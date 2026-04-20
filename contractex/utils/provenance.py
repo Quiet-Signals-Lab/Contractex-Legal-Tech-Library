@@ -33,7 +33,7 @@ from contractex.core.legal_document import LegalDocument, SourceSpan
 
 logger = logging.getLogger(__name__)
 
-_SNIPPET_MAX = 200   # characters in a SourceSpan snippet
+_SNIPPET_MAX = 200  # characters in a SourceSpan snippet
 _SIM_THRESHOLD_DEFAULT = 0.85
 
 
@@ -337,10 +337,7 @@ class ProvenanceTracker:
         return len(self._chunks)
 
     def __repr__(self) -> str:
-        return (
-            f"ProvenanceTracker(chunks={len(self._chunks)}, "
-            f"source_url={self.source_url!r})"
-        )
+        return f"ProvenanceTracker(chunks={len(self._chunks)}, " f"source_url={self.source_url!r})"
 
     # ------------------------------------------------------------------
     # Internal

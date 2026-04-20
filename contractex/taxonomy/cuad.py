@@ -138,7 +138,7 @@ class CUADClauseType(str, Enum):
 
     # Mapping from fine-grained CUAD type to the broader storage.ClauseType vocabulary.
     # storage.ClauseType intentionally has a smaller set (13 types); CUAD has 41.
-    _STORAGE_TYPE_MAP: dict[str, str] = {
+    _STORAGE_TYPE_MAP = {
         # Termination
         "termination_for_cause": "termination",
         "termination_for_convenience": "termination",
@@ -188,7 +188,7 @@ class CUADClauseType(str, Enum):
             The matching storage ClauseType value string, or ``"other"`` if no
             mapping exists.
         """
-        return cls._STORAGE_TYPE_MAP.get(cuad_type.value, "other")
+        return cls._STORAGE_TYPE_MAP.get(cuad_type.value, "other")  # type: ignore[attr-defined, no-any-return]
 
     @classmethod
     def get_all_types(cls) -> list:

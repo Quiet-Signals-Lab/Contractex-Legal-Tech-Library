@@ -179,9 +179,7 @@ class SourceAdapter(DocumentLoader):
                     wait,
                 )
                 time.sleep(wait)
-        raise DocumentLoadError(
-            f"All {self.max_retries} retry attempts failed"
-        ) from last_exc
+        raise DocumentLoadError(f"All {self.max_retries} retry attempts failed") from last_exc
 
     # ------------------------------------------------------------------
     # Utility
@@ -237,8 +235,7 @@ class URLLoader(SourceAdapter):
             import requests
         except ImportError as exc:
             raise DocumentLoadError(
-                "requests is required for URLLoader. "
-                "Install with: pip install requests"
+                "requests is required for URLLoader. " "Install with: pip install requests"
             ) from exc
 
         req_headers: dict[str, str] = {
@@ -264,22 +261,18 @@ class URLLoader(SourceAdapter):
                 source_url=source,
                 etag=cache.etag if cache else None,
                 last_modified=cache.last_modified if cache else None,
-                content_hash=cache.content_hash if cache else "",
+                content_hash=(cache.content_hash or "") if cache else "",
                 changed=False,
             )
 
         if not response.ok:
-            raise DocumentLoadError(
-                f"HTTP {response.status_code} fetching {source!r}"
-            )
+            raise DocumentLoadError(f"HTTP {response.status_code} fetching {source!r}")
 
         content_type = response.headers.get("Content-Type", "").lower()
 
         if "application/pdf" in content_type or source.lower().endswith(".pdf"):
             content = self._load_pdf_bytes(response.content, source)
-        elif self.strip_html and (
-            "text/html" in content_type or source.lower().endswith(".html")
-        ):
+        elif self.strip_html and ("text/html" in content_type or source.lower().endswith(".html")):
             content = self._strip_html(response.text)
         else:
             content = response.text
@@ -348,8 +341,7 @@ class URLLoader(SourceAdapter):
             import fitz  # PyMuPDF
         except ImportError as exc:
             raise DocumentLoadError(
-                "PyMuPDF is required to load PDF URLs. "
-                "Install with: pip install pymupdf"
+                "PyMuPDF is required to load PDF URLs. " "Install with: pip install pymupdf"
             ) from exc
 
         doc = fitz.open(stream=io.BytesIO(data), filetype="pdf")
@@ -412,8 +404,7 @@ class APILoader(SourceAdapter):
             import requests
         except ImportError as exc:
             raise DocumentLoadError(
-                "requests is required for APILoader. "
-                "Install with: pip install requests"
+                "requests is required for APILoader. " "Install with: pip install requests"
             ) from exc
 
         req_headers: dict[str, str] = {
@@ -441,14 +432,12 @@ class APILoader(SourceAdapter):
                 content_type="application/json",
                 source_url=source,
                 etag=cache.etag if cache else None,
-                content_hash=cache.content_hash if cache else "",
+                content_hash=(cache.content_hash or "") if cache else "",
                 changed=False,
             )
 
         if not response.ok:
-            raise DocumentLoadError(
-                f"API returned HTTP {response.status_code} for {source!r}"
-            )
+            raise DocumentLoadError(f"API returned HTTP {response.status_code} for {source!r}")
 
         data = response.json()
         page_texts = [self._extract_text(data)]
@@ -508,7 +497,7 @@ class APILoader(SourceAdapter):
     def _next_link(response: Any, data: Any) -> str | None:
         """Extract the next-page URL from Link header or JSON body."""
         # RFC 5988: Link: <url>; rel="next"
-        link_header = response.headers.get("Link", "")
+        link_header: str = str(response.headers.get("Link", ""))
         if link_header:
             for part in link_header.split(","):
                 part = part.strip()

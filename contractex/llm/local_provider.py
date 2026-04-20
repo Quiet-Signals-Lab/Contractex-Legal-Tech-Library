@@ -100,7 +100,9 @@ class LocalProvider(LLMProvider):
                         delay,
                     )
                     time.sleep(delay)
-        raise LLMProviderError(f"{label} failed after {max_retries} retries: {last_exc}") from last_exc
+        raise LLMProviderError(
+            f"{label} failed after {max_retries} retries: {last_exc}"
+        ) from last_exc
 
     def extract_structured(
         self,
@@ -130,12 +132,13 @@ class LocalProvider(LLMProvider):
             data = json.loads(content)
             return schema(**data)
 
-        return self._call_with_retry(_call, "Local LLM structured extraction")  # type: ignore[return-value]
+        return self._call_with_retry(_call, "Local LLM structured extraction")  # type: ignore[no-any-return]
 
     def complete(
         self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs
     ) -> str:
         """Get text completion from local LLM."""
+
         def _call():
             response = self.client.generate(
                 model=self._model,
@@ -148,7 +151,7 @@ class LocalProvider(LLMProvider):
             result: str = response["response"]
             return result
 
-        return self._call_with_retry(_call, "Local LLM completion")  # type: ignore[return-value]
+        return self._call_with_retry(_call, "Local LLM completion")  # type: ignore[no-any-return]
 
     def estimate_cost(self, text: str) -> float:
         """

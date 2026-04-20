@@ -52,7 +52,7 @@ def _values_match(expected: Any, actual: Any) -> bool:
         return isinstance(actual, bool) and expected == actual
     if isinstance(expected, str) and isinstance(actual, str):
         return expected.strip().lower() == actual.strip().lower()
-    return expected == actual
+    return bool(expected == actual)
 
 
 # ---------------------------------------------------------------------------
@@ -77,8 +77,7 @@ class FieldResult(BaseModel):
     def __str__(self) -> str:
         status = "PASS" if self.match else "FAIL"
         return (
-            f"[{status}] {self.field_name}: "
-            f"expected={self.expected!r}, actual={self.actual!r}"
+            f"[{status}] {self.field_name}: " f"expected={self.expected!r}, actual={self.actual!r}"
         )
 
 
@@ -150,11 +149,7 @@ class ExtractionMetrics(BaseModel):
     @property
     def field_accuracy(self) -> float:
         """Weighted fraction of individual fields that matched."""
-        return (
-            self.total_weighted_score / self.total_max_score
-            if self.total_max_score
-            else 0.0
-        )
+        return self.total_weighted_score / self.total_max_score if self.total_max_score else 0.0
 
     def report(self) -> str:
         """Return a human-readable summary table."""
@@ -164,8 +159,7 @@ class ExtractionMetrics(BaseModel):
             "  ContractEx Eval Report",
             sep,
             f"  Suite size:     {self.total_cases} cases",
-            f"  Passed:         {self.passed_cases} "
-            f"({self.case_accuracy:.1%} case accuracy)",
+            f"  Passed:         {self.passed_cases} " f"({self.case_accuracy:.1%} case accuracy)",
             f"  Errors:         {self.error_cases}",
             f"  Field accuracy: {self.field_accuracy:.1%} (weighted)",
         ]
@@ -179,9 +173,7 @@ class ExtractionMetrics(BaseModel):
                 n = stats["total"]
                 correct = stats["correct"]
                 acc = correct / n if n else 0.0
-                lines.append(
-                    f"  {fname:<32s} {correct:>8d} {n:>7d}  {acc:.0%}"
-                )
+                lines.append(f"  {fname:<32s} {correct:>8d} {n:>7d}  {acc:.0%}")
 
         lines.append(sep)
         return "\n".join(lines)

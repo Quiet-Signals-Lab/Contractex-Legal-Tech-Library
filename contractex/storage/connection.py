@@ -203,9 +203,7 @@ def get_vector_cursor(dict_cursor: bool = False, config: Optional[dict] = None):
     except ImportError as e:
         from contractex.exceptions import ContractExError
 
-        raise ContractExError(
-            "pgvector not installed. Install with: pip install pgvector"
-        ) from e
+        raise ContractExError("pgvector not installed. Install with: pip install pgvector") from e
 
     with get_connection(config) as conn:
         register_vector(conn)

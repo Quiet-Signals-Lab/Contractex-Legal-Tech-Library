@@ -34,8 +34,8 @@ class DocType(str, Enum):
     STATUTE = "statute"
     REGULATION = "regulation"
     CASE_OPINION = "case_opinion"
-    SECONDARY = "secondary"           # encyclopedia, commentary, overview
-    IDENTITY_DOC = "identity_doc"     # passport, national ID, driver's licence
+    SECONDARY = "secondary"  # encyclopedia, commentary, overview
+    IDENTITY_DOC = "identity_doc"  # passport, national ID, driver's licence
     GOVERNMENT_FORM = "government_form"
     CONTRACT = "contract"
     PLEADING = "pleading"
@@ -237,7 +237,7 @@ class LegalDocument(BaseModel):
 
     # --- Metadata ---------------------------------------------------------
     metadata: LegalDocumentMetadata = Field(
-        default_factory=LegalDocumentMetadata,
+        default_factory=lambda: LegalDocumentMetadata(),
     )
 
     # --- Tags -------------------------------------------------------------

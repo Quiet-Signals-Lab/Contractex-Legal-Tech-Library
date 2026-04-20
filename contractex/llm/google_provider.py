@@ -63,15 +63,17 @@ class GoogleProvider(LLMProvider):
         try:
             # Try new package first
             try:
-                from google import genai
-                self.client_type = 'new'
+                from google import genai  # type: ignore[attr-defined]
+
+                self.client_type = "new"
                 client = genai.Client(api_key=self._api_key)
                 self.client = client.models.generate_content
                 self._model_name = model
             except (ImportError, AttributeError):
                 # Fall back to old deprecated package
                 import google.generativeai as genai
-                self.client_type = 'old'
+
+                self.client_type = "old"
                 genai.configure(api_key=self._api_key)
 
                 # Ensure model name has models/ prefix
@@ -173,7 +175,7 @@ Requirements:
                 "max_output_tokens": max_tokens,
             }
 
-            if self.client_type == 'old':
+            if self.client_type == "old":
                 response = self.client.generate_content(
                     enhanced_prompt, generation_config=generation_config
                 )
@@ -183,9 +185,7 @@ Requirements:
             else:
                 # New API
                 response = self.client(
-                    model=self._model_name,
-                    contents=enhanced_prompt,
-                    config=generation_config
+                    model=self._model_name, contents=enhanced_prompt, config=generation_config
                 )
                 if not response or not response.text:
                     raise LLMProviderError("Empty response from Gemini")
@@ -210,7 +210,7 @@ Requirements:
                     "Error: %s\n"
                     "Response (first 500 chars): %s",
                     str(e),
-                    response_text[:500]
+                    response_text[:500],
                 )
                 raise LLMProviderError(
                     f"Invalid JSON from Gemini: {str(e)}\n"
@@ -218,15 +218,13 @@ Requirements:
                 ) from e
             except Exception as e:
                 logger.error(
-                    "Failed to validate response against schema.\n"
-                    "Error: %s\n"
-                    "Data: %s",
+                    "Failed to validate response against schema.\n" "Error: %s\n" "Data: %s",
                     str(e),
-                    str(data)[:500] if 'data' in locals() else 'N/A'
+                    str(data)[:500] if "data" in locals() else "N/A",
                 )
                 raise LLMProviderError(f"Schema validation failed: {str(e)}") from e
 
-        return self._call_with_retry(_call, "Google Gemini structured extraction")
+        return self._call_with_retry(_call, "Google Gemini structured extraction")  # type: ignore[no-any-return]
 
     def complete(
         self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs
@@ -251,13 +249,11 @@ Requirements:
                 "max_output_tokens": max_tokens,
             }
 
-            if self.client_type == 'old':
+            if self.client_type == "old":
                 response = self.client.generate_content(prompt, generation_config=generation_config)
             else:
                 response = self.client(
-                    model=self._model_name,
-                    contents=prompt,
-                    config=generation_config
+                    model=self._model_name, contents=prompt, config=generation_config
                 )
 
             if not response or not response.text:
@@ -265,7 +261,7 @@ Requirements:
 
             return response.text
 
-        return self._call_with_retry(_call, "Google Gemini completion")
+        return self._call_with_retry(_call, "Google Gemini completion")  # type: ignore[no-any-return]
 
     def count_tokens(self, text: str) -> int:
         """

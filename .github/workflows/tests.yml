@@ -44,8 +44,7 @@ jobs:
     
     - name: Type check with mypy
       run: |
-        mypy contractex/ --ignore-missing-imports
-      continue-on-error: true
+        mypy contractex/
     
     - name: Run tests with pytest
       run: |

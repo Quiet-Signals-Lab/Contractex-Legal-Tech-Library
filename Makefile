@@ -106,15 +106,31 @@ check-db: ## Check if PostgreSQL is running
 		exit 1; \
 	fi
 
-lint: ## Run basic linting (requires flake8)
-	@echo '$(BLUE)Running linter...$(NC)'
-	@command -v flake8 >/dev/null 2>&1 || { echo "$(RED)flake8 not installed. Run: pip install flake8$(NC)"; exit 1; }
-	flake8 dbase/ tests/ --max-line-length=100 --exclude=__pycache__
+lint: ## Run ruff linting
+	@echo '$(BLUE)Running ruff...$(NC)'
+	ruff check contractex/ tests/
+	@echo '$(GREEN)Linting passed!$(NC)'
 
-format: ## Format code (requires black)
-	@echo '$(BLUE)Formatting code...$(NC)'
-	@command -v black >/dev/null 2>&1 || { echo "$(RED)black not installed. Run: pip install black$(NC)"; exit 1; }
-	black dbase/ tests/
+format: ## Format code with black
+	@echo '$(BLUE)Formatting with black...$(NC)'
+	black contractex/ tests/
+	@echo '$(GREEN)Formatting done!$(NC)'
+
+format-check: ## Check formatting without modifying files
+	@echo '$(BLUE)Checking black formatting...$(NC)'
+	black --check contractex/ tests/
+	@echo '$(GREEN)Format check passed!$(NC)'
+
+type-check: ## Run mypy type checking
+	@echo '$(BLUE)Running mypy...$(NC)'
+	python3 -m mypy contractex/
+	@echo '$(GREEN)Type check passed!$(NC)'
+
+qa: format-check lint type-check ## Run all quality checks (format + lint + types)
+	@echo '$(GREEN)All QA checks passed!$(NC)'
+
+pre-release: qa test-unit ## Full pre-release gate: QA checks + unit tests
+	@echo '$(GREEN)Pre-release checks complete — safe to release!$(NC)'
 
 stats: ## Show test statistics
 	@echo '$(BLUE)Test Statistics$(NC)'

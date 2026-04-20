@@ -11,103 +11,194 @@ from contractex.taxonomy.cuad import CUADClauseType
 # Each entry maps a CUADClauseType value to a list of indicative keywords.
 _KEYWORD_MAP: dict[str, list[str]] = {
     CUADClauseType.TERMINATION_FOR_CAUSE.value: [
-        "terminate for cause", "material breach", "default", "cure period",
+        "terminate for cause",
+        "material breach",
+        "default",
+        "cure period",
     ],
     CUADClauseType.TERMINATION_FOR_CONVENIENCE.value: [
-        "terminate for convenience", "terminate without cause", "at its sole discretion",
+        "terminate for convenience",
+        "terminate without cause",
+        "at its sole discretion",
     ],
     CUADClauseType.NOTICE_PERIOD_TO_TERMINATE.value: [
-        "days' notice", "days notice", "written notice of termination",
+        "days' notice",
+        "days notice",
+        "written notice of termination",
     ],
     CUADClauseType.PAYMENT_TERMS.value: [
-        "payment", "invoice", "net 30", "net 60", "fee", "remit",
+        "payment",
+        "invoice",
+        "net 30",
+        "net 60",
+        "fee",
+        "remit",
     ],
     CUADClauseType.CAP_ON_LIABILITY.value: [
-        "liability shall not exceed", "aggregate liability", "cap on liability",
+        "liability shall not exceed",
+        "aggregate liability",
+        "cap on liability",
         "maximum liability",
     ],
     CUADClauseType.UNCAPPED_LIABILITY.value: [
-        "unlimited liability", "no limit on liability", "no cap",
+        "unlimited liability",
+        "no limit on liability",
+        "no cap",
     ],
     CUADClauseType.LIQUIDATED_DAMAGES.value: [
-        "liquidated damages", "penalty", "pre-agreed damages",
+        "liquidated damages",
+        "penalty",
+        "pre-agreed damages",
     ],
     CUADClauseType.INDEMNIFICATION.value: [
-        "indemnif", "hold harmless", "defend", "indemnitor",
+        "indemnif",
+        "hold harmless",
+        "defend",
+        "indemnitor",
     ],
     CUADClauseType.CONFIDENTIALITY.value: [
-        "confidential", "non-disclosure", "proprietary information", "trade secret",
+        "confidential",
+        "non-disclosure",
+        "proprietary information",
+        "trade secret",
     ],
     CUADClauseType.GOVERNING_LAW.value: [
-        "governed by", "governing law", "laws of the state", "applicable law",
+        "governed by",
+        "governing law",
+        "laws of the state",
+        "applicable law",
     ],
     CUADClauseType.ARBITRATION.value: [
-        "arbitration", "arbitrator", "aaa rules", "jams", "binding arbitration",
+        "arbitration",
+        "arbitrator",
+        "aaa rules",
+        "jams",
+        "binding arbitration",
     ],
     CUADClauseType.VENUE.value: [
-        "venue", "jurisdiction", "courts of", "exclusive jurisdiction",
+        "venue",
+        "jurisdiction",
+        "courts of",
+        "exclusive jurisdiction",
     ],
     CUADClauseType.IP_OWNERSHIP_ASSIGNMENT.value: [
-        "assigns all", "intellectual property rights", "work made for hire",
-        "assigns to", "vests in",
+        "assigns all",
+        "intellectual property rights",
+        "work made for hire",
+        "assigns to",
+        "vests in",
     ],
     CUADClauseType.LICENSE_GRANT.value: [
-        "license", "non-exclusive", "royalty-free", "sublicense", "right to use",
+        "license",
+        "non-exclusive",
+        "royalty-free",
+        "sublicense",
+        "right to use",
     ],
     CUADClauseType.NON_COMPETE.value: [
-        "non-compete", "not compete", "refrain from competing", "competing business",
+        "non-compete",
+        "not compete",
+        "refrain from competing",
+        "competing business",
     ],
     CUADClauseType.EXCLUSIVITY.value: [
-        "exclusive", "exclusivity", "sole and exclusive",
+        "exclusive",
+        "exclusivity",
+        "sole and exclusive",
     ],
     CUADClauseType.NO_SOLICIT_OF_EMPLOYEES.value: [
-        "no solicit", "non-solicitation", "solicit employees",
+        "no solicit",
+        "non-solicitation",
+        "solicit employees",
     ],
     CUADClauseType.NO_SOLICIT_OF_CUSTOMERS.value: [
-        "solicit customers", "solicit clients", "solicit business",
+        "solicit customers",
+        "solicit clients",
+        "solicit business",
     ],
     CUADClauseType.ANTI_ASSIGNMENT.value: [
-        "shall not assign", "may not assign", "without prior written consent",
+        "shall not assign",
+        "may not assign",
+        "without prior written consent",
         "anti-assignment",
     ],
     CUADClauseType.CHANGE_OF_CONTROL.value: [
-        "change of control", "merger", "acquisition", "change in ownership",
+        "change of control",
+        "merger",
+        "acquisition",
+        "change in ownership",
     ],
     CUADClauseType.WARRANTY_DISCLAIMER.value: [
-        "as is", "disclaimer of warranties", "no warranty", "disclaim",
+        "as is",
+        "disclaimer of warranties",
+        "no warranty",
+        "disclaim",
     ],
     CUADClauseType.INSURANCE_REQUIREMENTS.value: [
-        "insurance", "general liability", "workers compensation", "certificate of insurance",
+        "insurance",
+        "general liability",
+        "workers compensation",
+        "certificate of insurance",
     ],
     CUADClauseType.DATA_SECURITY.value: [
-        "data security", "security measures", "personal data", "gdpr", "data protection",
+        "data security",
+        "security measures",
+        "personal data",
+        "gdpr",
+        "data protection",
     ],
     CUADClauseType.AUDIT_RIGHTS.value: [
-        "audit", "right to audit", "inspect records", "audit rights",
+        "audit",
+        "right to audit",
+        "inspect records",
+        "audit rights",
     ],
     CUADClauseType.RENEWAL_TERM.value: [
-        "automatically renew", "auto-renew", "renewal term", "evergreen",
+        "automatically renew",
+        "auto-renew",
+        "renewal term",
+        "evergreen",
     ],
     CUADClauseType.EFFECTIVE_DATE.value: [
-        "effective date", "effective as of", "commencement date",
+        "effective date",
+        "effective as of",
+        "commencement date",
     ],
     CUADClauseType.EXPIRATION_DATE.value: [
-        "expiration date", "expires on", "term ends", "end date",
+        "expiration date",
+        "expires on",
+        "term ends",
+        "end date",
     ],
     CUADClauseType.CONTRACT_MODIFICATION.value: [
-        "amendment", "modify", "modification", "may be amended", "addendum",
+        "amendment",
+        "modify",
+        "modification",
+        "may be amended",
+        "addendum",
     ],
     CUADClauseType.REVENUE_PROFIT_SHARING.value: [
-        "revenue share", "profit sharing", "royalty", "commission",
+        "revenue share",
+        "profit sharing",
+        "royalty",
+        "commission",
     ],
     CUADClauseType.MINIMUM_COMMITMENT.value: [
-        "minimum purchase", "minimum commitment", "minimum order", "take-or-pay",
+        "minimum purchase",
+        "minimum commitment",
+        "minimum order",
+        "take-or-pay",
     ],
     CUADClauseType.MOST_FAVORED_NATION.value: [
-        "most favored nation", "most-favored-nation", "mfn",
+        "most favored nation",
+        "most-favored-nation",
+        "mfn",
     ],
     CUADClauseType.ROFR_ROFO_ROFN.value: [
-        "right of first refusal", "right of first offer", "rofr", "rofo",
+        "right of first refusal",
+        "right of first offer",
+        "rofr",
+        "rofo",
     ],
 }
 
@@ -145,9 +236,7 @@ class CUADClassifier:
         self.confidence_threshold = confidence_threshold
         self.use_llm = use_llm
         # Filter keyword map to only include requested clause types
-        self._active_keywords = {
-            k: v for k, v in _KEYWORD_MAP.items() if k in self.clause_types
-        }
+        self._active_keywords = {k: v for k, v in _KEYWORD_MAP.items() if k in self.clause_types}
 
     def _get_all_cuad_types(self) -> list[str]:
         """Get all CUAD clause types."""

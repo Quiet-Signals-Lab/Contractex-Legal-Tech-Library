@@ -227,7 +227,8 @@ class ContractMetadata(BaseModel):
 
     # Extraction metadata
     extraction_date: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc), description="When extraction was performed"
+        default_factory=lambda: datetime.now(timezone.utc),
+        description="When extraction was performed",
     )
     llm_provider: Optional[str] = Field(None, description="LLM provider used")
     llm_model: Optional[str] = Field(None, description="Specific model used")
@@ -503,4 +504,3 @@ Clause Differences: {len(self.clause_differences)}
 Financial Differences: {len(self.financial_differences)}
 Date Differences: {len(self.date_differences)}
 """
-

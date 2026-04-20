@@ -103,8 +103,7 @@ class EvalSuite(BaseModel):
             import yaml  # type: ignore[import]
         except ImportError as exc:
             raise ImportError(
-                "PyYAML is required to load YAML eval suites. "
-                "Install with: pip install pyyaml"
+                "PyYAML is required to load YAML eval suites. " "Install with: pip install pyyaml"
             ) from exc
 
         with open(path, encoding="utf-8") as f:
@@ -128,8 +127,7 @@ class EvalSuite(BaseModel):
         if path.suffix == ".json":
             return cls.from_json(path)
         raise ValueError(
-            f"Unsupported eval suite format: {path.suffix!r}. "
-            "Expected .yml, .yaml, or .json"
+            f"Unsupported eval suite format: {path.suffix!r}. " "Expected .yml, .yaml, or .json"
         )
 
     @classmethod
