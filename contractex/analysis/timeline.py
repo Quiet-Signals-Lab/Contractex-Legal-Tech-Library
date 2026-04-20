@@ -234,12 +234,12 @@ class ObligationTimeline:
             for e in self._entries
             if e.resolved_date is not None and ref <= e.resolved_date <= cutoff
         ]
-        return sorted(results, key=lambda e: e.resolved_date)  # type: ignore[return-value]
+        return sorted(results, key=lambda e: e.resolved_date or date.min)
 
     def all_resolved(self) -> list[ObligationEntry]:
         """All entries with successfully resolved absolute dates, sorted by date."""
         results = [e for e in self._entries if e.resolved_date is not None]
-        return sorted(results, key=lambda e: e.resolved_date)  # type: ignore[return-value]
+        return sorted(results, key=lambda e: e.resolved_date or date.min)
 
     def unresolved(self) -> list[ObligationEntry]:
         """Entries where deadline could not be resolved to an absolute date."""

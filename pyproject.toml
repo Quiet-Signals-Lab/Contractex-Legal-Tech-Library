@@ -143,6 +143,10 @@ disallow_untyped_defs = false
 ignore_missing_imports = true
 plugins = ["pydantic.mypy"]
 
+[[tool.mypy.overrides]]
+module = ["mcp", "mcp.*"]
+follow_imports = "skip"
+
 [tool.coverage.run]
 source = ["contractex"]
 omit = [
