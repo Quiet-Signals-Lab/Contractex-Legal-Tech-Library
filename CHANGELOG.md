@@ -7,6 +7,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-04-21
+
+### Added
+
+#### Layer 1 — Deterministic structural parse (`contractex.structure`)
+
+- `ContractStructureParser.parse(text) -> DocumentStructure` — zero LLM calls; handles 8 numbering schemes (numeric, deep-numeric, alpha-numeric, named-numeric, lettered, Article I/II/III, ALL-CAPS blocks, schedules/exhibits)
+- `DefinedTermsRegistry` — two-pass defined-terms extraction and usage-site mapping; no LLM required
+- `CrossReferenceResolver` — resolves section cross-references; exposes `unresolved_refs` as a data-quality signal
+- `DocumentStructure` — root container with `sections`, `defined_terms`, `cross_references`, `signature_blocks`, `schedules`, `recitals`, `governing_law_hint`, `warnings`; `resolve_ref()`, `iter_all_sections()`
+- Emits typed `ParseWarning` (codes: `NO_SECTIONS_FOUND`, `DUPLICATE_SECTION_NUMBER`, `MIXED_NUMBERING_SCHEMES`) instead of silently failing
+- `parse_structure(text)` top-level entry point exported from `contractex.structure`
+
+#### Playbooks (`contractex.playbooks`)
+
+- `Playbook` / `PlaybookRule` / `RiskSeverity` — versioned, composable risk rule sets; YAML serialize/deserialize via `to_yaml_file()` / `from_yaml_file()`
+- `StandardNDAPlaybook` — 7 rules covering indemnification, liability cap, scope, term, return of information, non-compete, governing law
+- `SaaSPlaybook` — 7 rules covering liability cap, breach notification, auto-renewal, change of control, audit rights, SLA, customer data IP
+- `contractex/playbooks/schema.yaml` — YAML schema template for custom playbooks
+
+#### Layer 3 — Analysis (`contractex.analysis`)
+
+- `RiskAnalyzer(playbook)` — deterministic playbook-based risk scoring; `analyze(result) -> list[RiskFlag]`, `missing_clauses(result) -> list[str]`; zero LLM calls
+- `ObligationTimeline` — obligation deadline tracking with `upcoming(days)`, `all_resolved()`, `unresolved()`; `to_ical()` exports standards-compliant `.ics` for Google Calendar / Outlook; handles ISO dates, US dates, and relative phrases ("within 30 days", "sixty (60) days after")
+- `compare_contracts(result_v1, result_v2) -> ContractDiff` — clause-level diff using `difflib.SequenceMatcher`; `ContractDiff.summary()` reports added, removed, and modified clauses
+
+#### Eval (`contractex.eval`)
+
+- `CUADBenchmark(extractor)` — evaluates extraction quality against the CUAD dataset (510 commercial contracts, 41 clause types); `run(n_contracts, split, progress) -> BenchmarkResult`
+- `BenchmarkResult` — per-type `precision`, `recall`, `F1`, `avg_confidence`; `macro_precision()`, `macro_recall()`, `macro_f1()`, `summary()` (formatted table), `calibration_plot(save_path)`
+- `CalibrationAnalyzer` — builds reliability diagrams and computes Expected Calibration Error (ECE) from labeled extraction results
+
+#### Prompt versioning
+
+- Version constants added to all four prompt modules (`CLAUSE_EXTRACTION_PROMPT_VERSION`, `FINANCIAL_EXTRACTION_PROMPT_VERSION`, `PARTY_EXTRACTION_PROMPT_VERSION`, `RISK_ANALYSIS_PROMPT_VERSION`)
+- `PROMPT_VERSIONS: dict[str, str]` exported from `contractex.prompts`
+- `prompt_versions: dict[str, str]` field added to `ContractMetadata`
+- `ContractExtractor.extract()` now populates `result.metadata.prompt_versions` at runtime
+
+#### Documentation
+
+- MkDocs + Material documentation system (`mkdocs.yml`, 15 pages across Getting Started, How-To Guides, API Reference, Explanation)
+- `.readthedocs.yaml` — Read the Docs v2 config; hosted at https://contractex.readthedocs.io
+- GitHub Actions `docs.yml` — `mkdocs build --strict` on every push to `main`
+
+### Changed
+
+- `contractex/__init__.py` — updated public API; new four-layer module docstring; exports `parse_structure`, `DocumentStructure`, `Section`, `DefinedTerm`, `RiskAnalyzer`, `ObligationTimeline`, `compare_contracts`, `Playbook`, `StandardNDAPlaybook`, `SaaSPlaybook`, `CUADBenchmark`, `CalibrationAnalyzer`
+- `pyproject.toml` — `docs` extra updated to `mkdocs-material>=9.0`, `mkdocstrings[python]>=0.24`, `mkdocs-autorefs>=0.5`, `mkdocs-minify-plugin>=0.7`; Documentation URL updated to https://contractex.readthedocs.io
+- `README.md` — trimmed to 56-line front door with prominent docs link
+
+### Removed
+
+- `examples/fastapi_service.py` — ContractEx is a library; users implement their own service layer
+
 ## [0.3.1] - 2026-04-20
 
 ### Fixed

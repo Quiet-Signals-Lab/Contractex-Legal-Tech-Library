@@ -4,13 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "contractex"
-version = "0.3.1"
-description = "Deterministic structural parsing + schema-constrained LLM extraction for contract analysis. Benchmarked against CUAD. Privacy-first."
+version = "0.4.0"
+description = "Modern Python library for LLM-powered contract intelligence and legal document analysis"
 readme = "README.md"
 requires-python = ">=3.9"
 license = {text = "Apache-2.0"}
 authors = [
-    {name = "Quiet Signals Lab", email = "contact@quiet-signals-lab.com"}
+    {name = "Contract-Clause-Extractor Team", email = "contact@example.com"}
 ]
 keywords = ["legal-tech", "contract-analysis", "nlp", "llm", "document-intelligence", "cuad"]
 classifiers = [
@@ -71,18 +71,16 @@ dev = [
     "seaborn>=0.13.0",
 ]
 docs = [
-    "mkdocs-material>=9.0",
-    "mkdocstrings[python]>=0.24",
-    "mkdocs-autorefs>=0.5",
-    "mkdocs-minify-plugin>=0.7",
+    "mkdocs>=1.5.0",
+    "mkdocs-material>=9.5.0",
 ]
 all = ["contractex[ocr,cloud,langchain,spacy,local,storage,datasets,retrieval,chroma,privacy,rag,graph]"]
 
 [project.urls]
-Homepage = "https://github.com/Quiet-Signals-Lab/Contractex-Legal-Tech-Library"
-Documentation = "https://contractex.readthedocs.io"
-Repository = "https://github.com/Quiet-Signals-Lab/Contractex-Legal-Tech-Library"
-Issues = "https://github.com/Quiet-Signals-Lab/Contractex-Legal-Tech-Library/issues"
+Homepage = "https://github.com/aahepburn/Contract-Clause-Extractor"
+Documentation = "https://github.com/aahepburn/Contract-Clause-Extractor/blob/main/README.md"
+Repository = "https://github.com/aahepburn/Contract-Clause-Extractor"
+Issues = "https://github.com/aahepburn/Contract-Clause-Extractor/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]
