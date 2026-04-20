@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-04-20
+
+### Fixed
+
+- Resolved all 41 mypy type-check errors across 11 source files that caused CI failures after the 0.3.0 release
+- `rag/pipeline.py`: added `cast` import; correctly cast `loader.load()` return to `LegalDoc`; cast `query()` return in `query_async`; fixed `chunk.text` → `chunk` (chunker returns `list[str]`, not chunk objects)
+- `storage/graph.py`: widened `_graph` annotation from `Any | None` to `Any` (always initialised in `__init__`)
+- `privacy/detector.py`: widened `_presidio_analyzer` annotation from `Any | None` to `Any`
+- `privacy/profile.py`: used `cast(Literal[...], ...)` for `llm_routing` assignment in `model_post_init`
+- `tasks/ner.py`: corrected `LegalNER` keyword argument `model` → `model_name`
+- `tasks/classification.py`: removed non-existent `model_name` kwarg from `CUADClassifier` constructor
+- `core/extractors.py`: made `_create_provider` a `@staticmethod`, resolving unbound-method `call-arg` errors in `timeline`, `summarization`, `obligations`, and `comparison` task modules
+- Installed `types-requests` stub package to resolve `import-untyped` mypy error in `loaders/source_adapter.py`
+
 ## [0.3.0] - 2026-04-20
 
 ### Added
