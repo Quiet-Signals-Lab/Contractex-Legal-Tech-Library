@@ -7,6 +7,67 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-04-20
+
+### Added
+
+#### Authority taxonomy — `contractex.taxonomy.authority`
+
+- `AuthorityLevel` `IntEnum` covering thirteen levels from `CONSTITUTIONAL` (100) through `BLOG_NEWS` (5) and `UNKNOWN` (1), with `normalised` property mapping to `[0.01, 1.00]`, `label`, and `is_binding()` predicate
+- `AuthorityProfile` Pydantic model with `authority_weight` property (10 % of normalised level when superseded), `is_superseded` / `superseded_by` fields, `for_level()` class method, and optional `JurisdictionTag` attachment
+
+#### Structured jurisdiction model — `contractex.taxonomy.jurisdiction`
+
+- `JurisdictionTag` Pydantic model replacing flat `jurisdiction: str`; ISO 3166-1 alpha-2 country codes, optional region and court system, `applicability` literal (`binding` / `persuasive` / `informational`)
+- `is_broader_than()`, `conflicts_with()` (same country, different region → conflict signal), and `matches()` (hard-filter helper for RAG) methods
+- `from_string()` class method parses `"US-CA"`, `"DE-Federal"`, `"EU"`, etc.; backward-compatible `__str__`
+
+#### RAG conflict detection — `contractex.rag.conflict`
+
+- `ConflictType` enum: `JURISDICTION_CONFLICT`, `AUTHORITY_CONFLICT`, `TEMPORAL_CONFLICT`, `UNSETTLED_QUESTION`
+- `Conflict` Pydantic model with `severity` field (`high` / `medium` / `low`)
+- `ConflictDetector` — exhaustive pairwise comparison across retrieved source docs; `detect(docs, query)` returns all conflicts; `build_conflict_prompt_addendum(conflicts)` appends structured warning to RAG prompts, preventing false-consensus summarisation
+
+#### RAG pipeline enhancements — `contractex.rag.pipeline`
+
+- `LegalRAGPipeline` constructor: `alpha` / `beta` / `gamma` blending weights (defaults `0.60` / `0.30` / `0.10`) and optional `conflict_detector` (created automatically by default)
+- `ingest()` now writes `authority_weight`, `publication_year`, `jurisdiction_country`, `jurisdiction_region`, and `is_superseded` into vector-store metadata; stores `LegalDoc` in an internal registry for conflict detection
+- `query()` new `jurisdiction_filter: JurisdictionTag | None` parameter: hard-filters mismatched jurisdictions and superseded sources; applies `α·semantic + β·authority + γ·recency` weighted rescoring; runs `ConflictDetector` and appends conflict addendum to the LLM prompt; returns `RAGResponse` with `conflicts` and `authority_range` populated
+- `_stream_query()` threads `conflicts`, `authority_range`, and `source_docs` through every yielded partial response
+- `RAGResponse` two new fields: `conflicts: list[Conflict]`, `authority_range: tuple[float, float]`
+- `contractex.rag` exports: `Conflict`, `ConflictType`, `ConflictDetector`
+
+#### LLM streaming — `contractex.llm`
+
+- `BaseLLMProvider.stream_complete()` default implementation (single-chunk fallback) and `stream_complete_async()` async wrapper
+- `OpenAIProvider.stream_complete()` — native streaming via OpenAI `stream=True`
+- `AnthropicProvider.stream_complete()` — native streaming via `client.messages.stream()` context manager
+
+#### Privacy eval harness — `contractex.eval`
+
+- `EvalCase` three new fields: `expected_pii_entities`, `should_be_blocked`, `expected_redaction_count`
+- `PrivacyCaseResult` — per-case PII precision / recall / F1, blocking correctness, redaction count accuracy
+- `PrivacyMetrics` — suite-level aggregate with `report()`, `assert_min_pii_recall()`, `assert_perfect_blocking()`
+- `EvalHarness.run_privacy()` — extractor-agnostic runner accepting `pii_detector_fn`, `redactor_fn`, `router_fn`
+
+#### Storage
+
+- `contractex/storage/schema_v2.sql` — PostgreSQL schema v2: `legal_docs`, `extracted_fields`, `document_chunks` (pgvector), `audit_log`; `clauses` backward-compat VIEW; `gdpr_erase_document()` PL/pgSQL function using HMAC-SHA256 pseudonymisation
+- `contractex/storage/migrations/v1_to_v2.sql` — transactional migration with guard, archive preservation, and full index + trigger recreation
+
+#### Package extras
+
+- `privacy` — `presidio-analyzer`, `presidio-anonymizer`, `cryptography`
+- `rag` — `sentence-transformers`
+- `graph` — `networkx`, `neo4j`
+- `stream` — no extra deps (marker for streaming-capable installs)
+- `all` updated to include all new extras
+
+### Changed
+
+- `LegalDoc` gains `jurisdiction_tag: JurisdictionTag | None` and `authority_profile: AuthorityProfile | None` fields alongside the existing `jurisdiction: str | None` (backward compatible); computed properties `effective_jurisdiction_tag` and `authority_weight`
+- `contractex/taxonomy/__init__.py` now exports `JurisdictionTag`, `AuthorityLevel`, `AuthorityProfile`
+
 ## [0.2.0] - 2026-04-20 — released to PyPI
 
 ### Added
@@ -97,7 +158,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI/CD with GitHub Actions (tests, type checking, linting, PyPI publish workflow)
 - `CONTRIBUTING.md` with dev setup and contribution guidelines
 
-[Unreleased]: https://github.com/aahepburn/Contract-Clause-Extractor/compare/v0.2.0...HEAD
-[0.2.0]: https://github.com/aahepburn/Contract-Clause-Extractor/compare/v0.1.1...v0.2.0
-[0.1.1]: https://github.com/aahepburn/Contract-Clause-Extractor/compare/v0.1.0...v0.1.1
-[0.1.0]: https://github.com/aahepburn/Contract-Clause-Extractor/releases/tag/v0.1.0
+[Unreleased]: https://github.com/Quiet-Signals-Lab/Contractex-Legal-Tech-Library/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/Quiet-Signals-Lab/Contractex-Legal-Tech-Library/compare/v0.2.0...v0.3.0
+[0.2.0]: https://github.com/Quiet-Signals-Lab/Contractex-Legal-Tech-Library/compare/v0.1.1...v0.2.0
+[0.1.1]: https://github.com/Quiet-Signals-Lab/Contractex-Legal-Tech-Library/compare/v0.1.0...v0.1.1
+[0.1.0]: https://github.com/Quiet-Signals-Lab/Contractex-Legal-Tech-Library/releases/tag/v0.1.0
