@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "contractex"
-version = "0.1.0"
+version = "0.2.0"
 description = "Modern Python library for LLM-powered contract intelligence and legal document analysis"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -49,6 +49,8 @@ storage = ["psycopg2-binary>=2.9.9"]
 datasets = ["datasets>=2.0.0", "requests>=2.31.0", "platformdirs>=3.0.0"]
 retrieval = ["pgvector>=0.3.0", "sentence-transformers>=2.0.0", "ollama>=0.1.0"]
 chroma = ["chromadb>=0.4.0"]
+network = ["requests>=2.31.0"]
+eval = ["pyyaml>=6.0.0"]
 dev = [
     "pytest>=8.0.0",
     "pytest-cov>=4.1.0",
