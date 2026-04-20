@@ -11,8 +11,6 @@ from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Any, Optional
 
-logger = logging.getLogger(__name__)
-
 from contractex.chunking.base import ChunkingStrategy
 from contractex.core.extraction_schemas import (
     LLMClauseResult,
@@ -38,6 +36,8 @@ from contractex.loaders.base import DocumentLoader
 from contractex.prompts.clause_extraction import CLAUSE_EXTRACTION_PROMPT, CONTRACT_INFO_PROMPT
 from contractex.prompts.financial_extraction import FINANCIAL_EXTRACTION_PROMPT
 from contractex.utils.normalizers import CurrencyNormalizer, DateNormalizer, EntityNormalizer
+
+logger = logging.getLogger(__name__)
 
 # Similarity threshold above which two clause texts are considered duplicates
 _CLAUSE_DEDUP_RATIO = 0.90

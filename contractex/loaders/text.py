@@ -1,7 +1,7 @@
 """Plain text document loader."""
 
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from contractex.exceptions import DocumentLoadError
 from contractex.loaders.base import DocumentLoader
@@ -10,7 +10,7 @@ from contractex.loaders.base import DocumentLoader
 class TextLoader(DocumentLoader):
     """
     Plain text document loader.
-    
+
     Loads .txt files directly as-is. Useful for testing and
     contracts already extracted from other sources.
     """
@@ -39,16 +39,16 @@ class TextLoader(DocumentLoader):
         """
         try:
             path = Path(source)
-            
+
             if not path.exists():
                 raise DocumentLoadError(f"File not found: {source}")
-            
-            with open(path, 'r', encoding=self.encoding) as f:
+
+            with open(path, encoding=self.encoding) as f:
                 text = f.read()
-            
+
             if not text.strip():
                 raise DocumentLoadError(f"Empty file: {source}")
-            
+
             return text
 
         except UnicodeDecodeError as e:
@@ -71,15 +71,15 @@ class TextLoader(DocumentLoader):
             Dictionary with file metadata
         """
         path = Path(source)
-        
+
         metadata: dict[str, Any] = {
             "file_path": str(path.absolute()),
             "file_name": path.name,
             "file_type": "txt",
             "encoding": self.encoding,
         }
-        
+
         if path.exists():
             metadata["file_size_bytes"] = path.stat().st_size
-        
+
         return metadata

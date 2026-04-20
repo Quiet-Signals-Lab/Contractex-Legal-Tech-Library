@@ -8,6 +8,7 @@ from contractex.__version__ import __version__
 from contractex.core.analyzers import RiskAnalyzer
 from contractex.core.classifiers import CUADClassifier
 from contractex.core.extractors import ContractExtractor
+from contractex.core.legal_document import DocType, LegalDocument, LegalDocumentMetadata, SourceSpan
 from contractex.core.models import (
     Clause,
     Contract,
@@ -16,6 +17,9 @@ from contractex.core.models import (
     Party,
     RiskFlag,
 )
+from contractex.utils.audit import AuditLogger
+from contractex.utils.provenance import ProvenanceTracker
+from contractex.utils.routing import ConfidenceRouter
 
 
 # Simple API for 80% use case
@@ -62,6 +66,7 @@ def extract_contract(
 __all__ = [
     "__version__",
     "extract_contract",
+    # Contract models
     "Contract",
     "Party",
     "Clause",
@@ -71,10 +76,21 @@ __all__ = [
     "ContractExtractor",
     "CUADClassifier",
     "RiskAnalyzer",
+    # General legal document models
+    "LegalDocument",
+    "LegalDocumentMetadata",
+    "DocType",
+    "SourceSpan",
+    # Pipeline utilities
+    "ProvenanceTracker",
+    "ConfidenceRouter",
+    "AuditLogger",
 ]
 
 # Optional modules (require additional dependencies):
-# - contractex.storage: PostgreSQL persistence (install with: pip install contractex[storage])
-# - contractex.data: Dataset loaders for ACORD, CUAD, LePaRD (install with: pip install contractex[datasets])
-# - contractex.core.ner: Named Entity Recognition (install with: pip install contractex[spacy])
-# - contractex.retrieval: Search and ranking capabilities (install with: pip install contractex[retrieval])
+# - contractex.storage:   PostgreSQL persistence     pip install contractex[storage]
+# - contractex.data:      Dataset loaders            pip install contractex[datasets]
+# - contractex.core.ner:  Named Entity Recognition   pip install contractex[spacy]
+# - contractex.retrieval: Search and ranking         pip install contractex[retrieval]
+# - contractex.loaders.source_adapter: URL/API loaders  pip install contractex[network]
+# - contractex.eval:      Eval harness               pip install contractex[eval]

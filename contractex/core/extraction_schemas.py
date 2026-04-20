@@ -17,7 +17,6 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
-
 # ---------------------------------------------------------------------------
 # Contract info + parties  (Phase 1 — preamble extraction)
 # ---------------------------------------------------------------------------

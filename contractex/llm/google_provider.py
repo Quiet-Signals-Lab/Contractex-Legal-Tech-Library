@@ -73,16 +73,16 @@ class GoogleProvider(LLMProvider):
                 import google.generativeai as genai
                 self.client_type = 'old'
                 genai.configure(api_key=self._api_key)
-                
+
                 # Ensure model name has models/ prefix
                 if not model.startswith("models/"):
                     model = f"models/{model}"
-                
+
                 self.client = genai.GenerativeModel(model)
                 self._model_name = model
         except ImportError as e:
             raise LLMProviderError(
-                "Google Generative AI package not installed. " 
+                "Google Generative AI package not installed. "
                 "Install with: pip install google-genai (recommended) or google-generativeai"
             ) from e
         except Exception as e:
@@ -270,7 +270,7 @@ Requirements:
     def count_tokens(self, text: str) -> int:
         """
         Count tokens in text.
-        
+
         Note: Google doesn't provide a simple token counter in the SDK,
         so we use a rough approximation.
         """
