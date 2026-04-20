@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from contractex.core.document import LegalDoc, LegalDocMetadata  # noqa: F401
 from contractex.core.legal_document import (  # noqa: F401
     DocType,
     LegalDocument,
@@ -18,6 +19,9 @@ from contractex.core.models import (  # noqa: F401
 )
 
 _BASE_ALL = [
+    # Unified base model
+    "LegalDoc",
+    "LegalDocMetadata",
     # Contract models
     "Contract",
     "Party",
@@ -25,7 +29,7 @@ _BASE_ALL = [
     "FinancialTerm",
     "RiskFlag",
     "ContractMetadata",
-    # General legal document models
+    # General legal document models (legacy — use LegalDoc going forward)
     "LegalDocument",
     "LegalDocumentMetadata",
     "DocType",

@@ -24,7 +24,13 @@ from __future__ import annotations
 
 from contractex.eval.cases import EvalCase, EvalSuite
 from contractex.eval.harness import EvalHarness
-from contractex.eval.metrics import CaseResult, ExtractionMetrics, FieldResult
+from contractex.eval.metrics import (
+    CaseResult,
+    ExtractionMetrics,
+    FieldResult,
+    PrivacyCaseResult,
+    PrivacyMetrics,
+)
 
 __all__ = [
     "EvalCase",
@@ -33,4 +39,6 @@ __all__ = [
     "FieldResult",
     "CaseResult",
     "ExtractionMetrics",
+    "PrivacyCaseResult",
+    "PrivacyMetrics",
 ]

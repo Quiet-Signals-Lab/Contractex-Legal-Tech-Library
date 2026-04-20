@@ -165,6 +165,25 @@ class AnthropicProvider(LLMProvider):
 
         return self._call_with_retry(_call, "Anthropic structured extraction")  # type: ignore[no-any-return]
 
+    def stream_complete(
+        self, prompt: str, temperature: float = 0.7, max_tokens: int | None = None, **kwargs
+    ):
+        """Stream a text completion from Anthropic token-by-token."""
+        from typing import Iterator
+
+        def _generate() -> Iterator[str]:
+            with self.client.messages.stream(
+                model=self._model,
+                max_tokens=max_tokens or self._max_tokens,
+                temperature=temperature,
+                messages=[{"role": "user", "content": prompt}],
+                **kwargs,
+            ) as stream:
+                for text in stream.text_stream:
+                    yield text
+
+        return _generate()
+
     def complete(
         self, prompt: str, temperature: float = 0.7, max_tokens: int | None = None, **kwargs
     ) -> str:

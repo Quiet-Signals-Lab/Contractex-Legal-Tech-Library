@@ -72,6 +72,30 @@ class EvalCase(BaseModel):
         ),
     )
 
+    # --- Privacy / redaction ground truth ---
+    expected_pii_entities: list[str] | None = Field(
+        None,
+        description=(
+            "Entity types expected to be detected (e.g. ['PERSON', 'EMAIL_ADDRESS']). "
+            "When set, the harness will evaluate PII recall and precision."
+        ),
+    )
+    should_be_blocked: bool = Field(
+        False,
+        description=(
+            "True when the LLM call for this document should be blocked by "
+            "the privacy router (e.g. sensitivity='secret').  The harness "
+            "records a pass when the router raises PrivacyBlockedError."
+        ),
+    )
+    expected_redaction_count: int | None = Field(
+        None,
+        description=(
+            "Expected number of redacted spans after PIIRedactor is applied. "
+            "Useful for regression-testing that all PII is masked."
+        ),
+    )
+
     # --- Metadata ---
     tags: list[str] = Field(default_factory=list, description="Arbitrary tags for filtering")
     metadata: dict[str, Any] = Field(default_factory=dict)

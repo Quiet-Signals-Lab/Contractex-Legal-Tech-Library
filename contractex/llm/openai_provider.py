@@ -159,6 +159,28 @@ class OpenAIProvider(LLMProvider):
 
         return self._call_with_retry(_call, "OpenAI structured extraction")  # type: ignore[no-any-return]
 
+    def stream_complete(
+        self, prompt: str, temperature: float = 0.7, max_tokens: int | None = None, **kwargs
+    ):
+        """Stream a text completion from OpenAI token-by-token."""
+        from typing import Iterator
+
+        def _generate() -> Iterator[str]:
+            stream = self.client.chat.completions.create(
+                model=self._model,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=temperature,
+                max_tokens=max_tokens or self._max_tokens,
+                stream=True,
+                **kwargs,
+            )
+            for chunk in stream:
+                delta = chunk.choices[0].delta
+                if delta.content:
+                    yield delta.content
+
+        return _generate()
+
     def complete(
         self, prompt: str, temperature: float = 0.7, max_tokens: int | None = None, **kwargs
     ) -> str:

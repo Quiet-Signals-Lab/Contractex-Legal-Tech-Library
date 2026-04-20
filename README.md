@@ -5,7 +5,618 @@
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-ContractEx is a production-ready Python library for LLM-powered legal document intelligence. It provides a composable pipeline of loaders, chunkers, extractors, and post-processing utilities that work on both **bilateral contracts** (NDAs, MSAs, SOWs) and **general legal documents** (statutes, regulations, case opinions, identity documents).
+ContractEx is a production-ready Python library for LLM-powered legal document intelligence. Every operation is a composable `LegalTask` that takes a `LegalDoc` and returns a `LegalDoc`, making it trivial to build privacy-respecting extraction pipelines, RAG chatbots, and document-automation workflows over contracts, statutes, regulations, identity documents, and more. Privacy controls are a mandatory first-class stage in every pipeline — not an afterthought.
+
+---
+
+## Contents
+
+- [Privacy model](#privacy-model) ← read this first
+- [Installation](#installation)
+- [Quick start](#quick-start)
+- [Task catalogue](#task-catalogue)
+- [Pipeline composition](#pipeline-composition)
+- [RAG pipeline](#rag-pipeline)
+- [Knowledge graph](#knowledge-graph)
+- [Architecture](#architecture)
+- [Storage layer](#storage-layer)
+- [Eval harness](#eval-harness)
+- [LLM providers](#llm-providers)
+- [Examples](#examples)
+- [Development](#development)
+
+---
+
+## Privacy model
+
+ContractEx treats privacy as a pipeline constraint, not an optional add-on. Every `LegalDoc` carries a `PrivacyProfile` that governs what the library is permitted to do with it.
+
+```python
+from contractex.privacy import PrivacyProfile, PIIDetector, PIIRedactor, RedactionStrategy
+
+# 1. Classify sensitivity
+profile = PrivacyProfile(sensitivity="restricted")
+# restricted → llm_routing = "local_only" (automatically derived)
+# secret     → llm_routing = "blocked"
+
+# 2. Detect PII
+detector = PIIDetector()                         # uses Presidio if installed, else regex fallback
+spans = detector.detect(doc.full_text)
+# → [PIISpan(entity_type="PERSON", text="Jane Doe", ...), ...]
+
+# 3. Redact before any LLM call
+redactor = PIIRedactor(strategy=RedactionStrategy.REPLACE)
+redacted  = redactor.redact(doc.full_text, spans)
+# "Jane Doe signed on ..." → "<PERSON_1> signed on ..."
+
+# 4. Privacy-aware routing enforces policy automatically
+from contractex.privacy import PrivacyAwareLLMRouter
+router = PrivacyAwareLLMRouter(redactor=redactor)
+answer = router.route(doc, prompt, schema, provider=llm, restore_redaction=True)
+# raises PrivacyBlockedError for secret docs
+# auto-redacts + restores for confidential docs
+```
+
+**Sensitivity routing rules:**
+
+| Sensitivity | LLM routing | Auto-redact |
+|---|---|---|
+| `public` | any provider | no |
+| `confidential` | any provider | yes |
+| `restricted` | local-only | yes |
+| `secret` | blocked | — |
+
+Install the privacy extras to enable Presidio-backed PII detection:
+
+```bash
+pip install -e ".[privacy]"
+```
+
+---
+
+## Installation
+
+```bash
+git clone https://github.com/aahepburn/Contract-Clause-Extractor.git
+cd Contract-Clause-Extractor
+
+# Full install (all optional extras)
+pip install -e ".[all]"
+
+# Pick what you need
+pip install -e ".[privacy]"   # Presidio PII detection + AES redaction
+pip install -e ".[rag]"       # sentence-transformers for RAG pipeline
+pip install -e ".[graph]"     # networkx + neo4j for knowledge graph
+pip install -e ".[storage]"   # PostgreSQL persistence
+pip install -e ".[eval]"      # EvalHarness (pyyaml)
+pip install -e ".[local]"     # Local LLM via Ollama
+pip install -e ".[spacy]"     # Named entity recognition
+pip install -e ".[ocr]"       # OCR for scanned PDFs
+pip install -e ".[network]"   # URLLoader / APILoader
+```
+
+Configure API keys:
+
+```bash
+export OPENAI_API_KEY=sk-...
+export ANTHROPIC_API_KEY=sk-ant-...
+export GOOGLE_API_KEY=...
+```
+
+---
+
+## Quick start
+
+```python
+from contractex import LegalDoc, TaskRegistry
+from contractex.core.legal_document import DocType
+
+# Build a document
+doc = LegalDoc(doc_type=DocType.CONTRACT, full_text=open("contract.pdf").read())
+
+# Run a task pipeline
+registry = TaskRegistry.default()
+pipeline = registry.build_pipeline(["pii_detection", "contract_extraction", "risk_analysis"])
+result   = pipeline.run(doc)
+
+print(result.extracted["contract"])          # structured Contract model
+print(result.extracted["risks"])             # list of RiskFlag
+print(result.privacy_profile.pii_entities_found)
+```
+
+Or use the one-liner legacy API:
+
+```python
+from contractex import extract_contract
+contract = extract_contract("contract.pdf")
+print(f"Parties: {[p.name for p in contract.parties]}")
+```
+
+---
+
+## Task catalogue
+
+ContractEx ships the following built-in tasks. All tasks accept a `LegalDoc` and return a `LegalDoc` with results written into `doc.extracted[<key>]`.
+
+| `task_id` | Output key | Doc types | Notes |
+|---|---|---|---|
+| `pii_detection` | `pii_spans` | all | Updates `doc.privacy_profile` |
+| `contract_extraction` | `contract` | CONTRACT | Full `Contract` model |
+| `classification` | `cuad_labels` | CONTRACT | 41 CUAD clause types |
+| `risk_analysis` | `risks` | CONTRACT | `RiskFlag` list |
+| `ner` | `ner_entities` | all | spaCy / Blackstone |
+| `summarization` | `summary` | all | LLM summary |
+| `timeline` | `timeline` | all | Key dates + deadlines |
+| `obligations` | `obligations` | CONTRACT, STATUTE, REGULATION, PLEADING | Party obligations |
+| `comparison` | `comparison` | all | Diff two docs via `doc_b=` kwarg |
+| `citation` | `citations` | all | Regex citation extraction (no LLM) |
+
+### PII detection
+
+```python
+from contractex.tasks import TaskRegistry
+
+pipeline = TaskRegistry.default().build_pipeline(["pii_detection"])
+result   = pipeline.run(doc)
+print(result.extracted["pii_spans"])
+# → [{"entity_type": "PERSON", "text": "Alice Smith", "score": 0.97}, ...]
+```
+
+### Contract extraction
+
+```python
+pipeline = TaskRegistry.default().build_pipeline(
+    ["pii_detection", "contract_extraction"],
+    task_kwargs={"contract_extraction": {"analyze_risks": True}},
+)
+result = pipeline.run(doc)
+contract = result.extracted["contract"]
+print(contract.parties, contract.clauses)
+```
+
+### Citation extraction (no LLM required)
+
+```python
+pipeline = TaskRegistry.default().build_pipeline(["citation"])
+result   = pipeline.run(doc)
+print(result.extracted["citations"])
+# → ["17 U.S.C. § 107", "Regulation (EU) 2016/679 Art. 17", ...]
+```
+
+### Document comparison
+
+```python
+from contractex.tasks import TaskRegistry
+
+pipeline = TaskRegistry.default().build_pipeline(["comparison"])
+result   = pipeline.run(doc_a, doc_b=doc_b)
+diff     = result.extracted["comparison"]
+print(diff.summary)
+```
+
+---
+
+## Pipeline composition
+
+```python
+from contractex import LegalDoc, TaskRegistry
+from contractex.tasks import TaskPipeline
+
+registry = TaskRegistry.default()
+
+# Ad-hoc pipeline
+pipeline = TaskPipeline([
+    registry.get("pii_detection"),
+    registry.get("contract_extraction"),
+    registry.get("risk_analysis"),
+    registry.get("timeline"),
+])
+
+result = pipeline.run(doc)
+print(result.extracted["_task_timings"])   # per-task elapsed seconds
+
+# Async
+import asyncio
+result = asyncio.run(pipeline.run_async(doc))
+```
+
+Register a custom task:
+
+```python
+from contractex.tasks import LegalTask
+from contractex import LegalDoc
+from contractex.core.legal_document import DocType
+
+class MyTask(LegalTask):
+    task_id   = "my_custom_task"
+    doc_types = [DocType.CONTRACT]
+    requires_llm = False
+
+    def run(self, doc: LegalDoc, **kwargs) -> LegalDoc:
+        doc.extracted["my_result"] = {"hello": "world"}
+        return doc
+
+TaskRegistry.default().register(MyTask)
+```
+
+---
+
+## RAG pipeline
+
+`LegalRAGPipeline` ingests legal documents into a vector store and answers natural-language questions with cited source passages.
+
+```python
+from contractex.rag import LegalRAGPipeline
+from contractex.llm import OpenAIProvider
+
+rag = LegalRAGPipeline(
+    llm_provider=OpenAIProvider(model="gpt-4o"),
+    embedding_model="all-MiniLM-L6-v2",   # sentence-transformers
+    citation_format="bluebook",
+)
+
+# Ingest documents (URLs, file paths, or LegalDoc objects)
+result = rag.ingest([
+    "https://www.law.cornell.edu/uscode/text/17/107",
+    "contracts/msa.pdf",
+])
+print(f"Ingested {result.ingested} docs, skipped {result.skipped}")
+
+# Query
+response = rag.query("What are the fair use factors under 17 USC 107?")
+print(response.answer)
+print(response.citations)   # list of Citation with source + page
+print(response.disclaimer)  # always present: "This is legal information, not advice."
+
+# Streaming
+for chunk in rag.query("Summarise the termination clause.", stream=True):
+    print(chunk.answer, end="", flush=True)
+
+# Async
+import asyncio
+response = asyncio.run(rag.query_async("What is the governing law?"))
+```
+
+Privacy is enforced automatically: documents with `sensitivity="secret"` are indexed but never included in LLM context windows.
+
+Install RAG dependencies:
+
+```bash
+pip install -e ".[rag]"
+```
+
+---
+
+## Knowledge graph
+
+`LegalKnowledgeGraph` builds a semantic graph over parties, documents, clauses, jurisdictions, and citations — enabling cross-document reasoning.
+
+```python
+from contractex.storage.graph import LegalKnowledgeGraph
+
+graph = LegalKnowledgeGraph(backend="networkx")   # or "neo4j"
+
+# Add documents
+graph.add_document(doc_a)
+graph.add_document(doc_b)
+
+# Entity resolution: same company mentioned under different names
+graph.resolve_entity("Acme Corp.", "Party")       # deduplicates via string similarity
+
+# Find related documents
+related = graph.find_related(doc_a.doc_id, depth=2)
+print(related.nodes, related.edges)
+
+# Add a citation link
+graph.add_citation(
+    source_doc_id=doc_a.doc_id,
+    target_citation="17 U.S.C. § 107",
+)
+
+# Export to Turtle RDF (requires rdflib)
+graph.export_rdf("knowledge_graph.ttl")
+```
+
+Install graph dependencies:
+
+```bash
+pip install -e ".[graph]"      # networkx (+ neo4j if using Neo4j backend)
+```
+
+---
+
+## Architecture
+
+ContractEx is structured as a layered pipeline. Each layer can be used independently or composed into a full pipeline.
+
+```mermaid
+graph TB
+    subgraph Sources["Source Layer"]
+        F[File — PDF · DOCX · TXT]
+        U[URL — HTML · PDF]
+        A[API — JSON REST]
+    end
+
+    subgraph Privacy["Privacy  contractex.privacy"]
+        PD[PIIDetector]
+        PR[PIIRedactor]
+        PP[PrivacyProfile]
+        RR[PrivacyAwareLLMRouter]
+    end
+
+    subgraph Tasks["Tasks  contractex.tasks"]
+        TR[TaskRegistry]
+        TP[TaskPipeline]
+        T1[PIIDetectionTask]
+        T2[ContractExtractionTask]
+        T3[RiskAnalysisTask]
+        T4[...]
+    end
+
+    subgraph LLM["LLM Providers  contractex.llm"]
+        OA[OpenAIProvider]
+        AN[AnthropicProvider]
+        GG[GoogleProvider]
+        LC[LocalProvider]
+    end
+
+    subgraph RAG["RAG  contractex.rag"]
+        RP[LegalRAGPipeline]
+        CF[CitationFormatter]
+    end
+
+    subgraph Graph["Graph  contractex.storage.graph"]
+        KG[LegalKnowledgeGraph]
+    end
+
+    subgraph Storage["Storage  contractex.storage"]
+        PG[(PostgreSQL + pgvector)]
+    end
+
+    subgraph Eval["Eval  contractex.eval"]
+        EH[EvalHarness]
+        PM[PrivacyMetrics]
+    end
+
+    F & U & A --> Privacy --> Tasks --> LLM
+    Tasks --> RAG
+    Tasks --> Graph
+    Tasks --> Storage
+    Tasks --> Eval
+```
+
+### Module map
+
+```text
+contractex/
+├── core/
+│   ├── document.py          # LegalDoc — unified base model (NEW)
+│   ├── legal_document.py    # DocType · SourceSpan · LegalDocumentMetadata
+│   ├── models.py            # Contract · Clause · Party · FinancialTerm · RiskFlag
+│   ├── extractors.py        # ContractExtractor (multi-phase orchestrator)
+│   ├── analyzers.py         # RiskAnalyzer
+│   ├── classifiers.py       # CUADClassifier (41 clause types)
+│   └── ner.py               # LegalNER (spaCy / Blackstone)
+│
+├── privacy/                 # NEW — mandatory pipeline stage
+│   ├── profile.py           # PrivacyProfile · RedactionStrategy
+│   ├── detector.py          # PIIDetector · PIISpan (Presidio + regex fallback)
+│   ├── redactor.py          # PIIRedactor · RedactedText · RedactionMap
+│   └── router.py            # PrivacyAwareLLMRouter
+│
+├── tasks/                   # NEW — task registry pattern
+│   ├── base.py              # LegalTask ABC · TaskPipeline
+│   ├── registry.py          # TaskRegistry singleton
+│   ├── pii_detection.py     # PIIDetectionTask
+│   ├── extraction.py        # ContractExtractionTask
+│   ├── classification.py    # ClassificationTask
+│   ├── risk_analysis.py     # RiskAnalysisTask
+│   ├── ner.py               # NERTask
+│   ├── summarization.py     # SummarizationTask
+│   ├── timeline.py          # TimelineTask
+│   ├── obligations.py       # ObligationsTask
+│   ├── comparison.py        # ComparisonTask
+│   └── citation.py          # CitationTask (regex only)
+│
+├── rag/                     # NEW — RAG pipeline
+│   ├── pipeline.py          # LegalRAGPipeline · RAGResponse · IngestResult
+│   └── citation.py          # Citation · CitationFormatter
+│
+├── llm/
+│   ├── base.py              # LLMProvider ABC (+ stream_complete)
+│   ├── openai_provider.py   # GPT-4o (native streaming)
+│   ├── anthropic_provider.py# Claude (native streaming)
+│   ├── google_provider.py   # Gemini
+│   └── local_provider.py    # Ollama
+│
+├── storage/
+│   ├── schema_v2.sql        # Generic schema (NEW) — legal_docs + extracted_fields
+│   ├── schema.sql           # v1 schema (kept for reference)
+│   ├── graph.py             # LegalKnowledgeGraph (NEW)
+│   ├── repository.py        # DocumentRepository · ClauseRepository
+│   └── migrations/
+│       ├── v1_to_v2.sql     # Migration from v1 schema (NEW)
+│       └── add_embeddings.sql
+│
+├── eval/
+│   ├── cases.py             # EvalCase (+ privacy fields) · EvalSuite
+│   ├── metrics.py           # ExtractionMetrics · PrivacyMetrics (NEW)
+│   └── harness.py           # EvalHarness (+ run_privacy method) (NEW)
+│
+├── loaders/                 # DocumentLoader ABC + PDF · DOCX · Text · URL · API
+├── chunking/                # ClauseAwareChunker · SemanticChunker
+├── taxonomy/                # CUAD 41-type taxonomy
+├── prompts/                 # Prompt templates
+└── utils/                   # Audit · Provenance · ConfidenceRouter · Exporters
+```
+
+---
+
+## Storage layer
+
+Schema v2 (`contractex/storage/schema_v2.sql`) replaces the contract-specific v1 schema with a generic model supporting all document types.
+
+```mermaid
+erDiagram
+    legal_docs {
+        uuid  doc_id PK
+        varchar doc_type
+        varchar jurisdiction
+        text  full_text
+        jsonb privacy_profile
+        jsonb metadata
+        varchar content_hash
+        timestamptz created_at
+    }
+    extracted_fields {
+        serial id PK
+        uuid   doc_id FK
+        varchar field_name
+        jsonb  field_value
+        float  confidence
+        jsonb  source_span
+        boolean redacted
+    }
+    document_chunks {
+        serial id PK
+        uuid   doc_id FK
+        int    chunk_index
+        text   chunk_text
+        vector embedding
+    }
+    audit_log {
+        bigserial id PK
+        varchar doc_id
+        varchar event_type
+        jsonb   event_data
+        timestamptz created_at
+    }
+
+    legal_docs ||--o{ extracted_fields : "has"
+    legal_docs ||--o{ document_chunks  : "chunked into"
+```
+
+A backward-compatible `clauses` VIEW over `extracted_fields` preserves v1 consumer compatibility.
+
+GDPR right-to-erasure is handled by `gdpr_erase_document(doc_id, hmac_key)` which cascades the delete and replaces the doc_id in `audit_log` with an HMAC-SHA256 hash.
+
+To migrate an existing v1 database:
+
+```bash
+psql your_database < contractex/storage/migrations/v1_to_v2.sql
+```
+
+---
+
+## Eval harness
+
+`EvalHarness` runs labeled test suites against any extraction callable and produces quality metrics with pytest-compatible assertion helpers. v2 adds first-class privacy evaluation.
+
+```python
+from contractex.eval import EvalHarness, EvalSuite, PrivacyMetrics
+
+suite = EvalSuite.load("tests/eval/contracts.yaml")
+
+# Extraction quality
+harness = EvalHarness(extractor_fn=lambda case: pipeline.run(case))
+metrics = harness.run(suite)
+print(metrics.report())
+metrics.assert_min_field_accuracy(0.90)   # CI gate
+
+# Privacy evaluation
+privacy_metrics = harness.run_privacy(
+    suite,
+    pii_detector_fn=lambda case: detector.detect_entity_types(case.input_text or ""),
+    redactor_fn=lambda case: len(redactor.redact(case.input_text or "", spans).span_count),
+    router_fn=lambda case: router.would_block(doc),
+)
+print(privacy_metrics.report())
+privacy_metrics.assert_min_pii_recall(0.95)
+privacy_metrics.assert_perfect_blocking()
+```
+
+Privacy fields on `EvalCase`:
+
+```yaml
+- id: restricted_nda
+  sensitivity: restricted
+  should_be_blocked: false
+  expected_pii_entities: [PERSON, EMAIL_ADDRESS]
+  expected_redaction_count: 4
+  input_text: "Alice Smith (alice@acme.com) agrees..."
+```
+
+---
+
+## LLM providers
+
+All providers implement the same `LLMProvider` ABC — including the new `stream_complete()` method added in v2.
+
+```python
+from contractex.llm import OpenAIProvider, AnthropicProvider, GoogleProvider, LocalProvider
+
+llm = OpenAIProvider(model="gpt-4o")           # native streaming
+llm = AnthropicProvider(model="claude-opus-4-6") # native streaming
+llm = GoogleProvider(model="gemini-2.5-pro")
+llm = LocalProvider(model="llama3.1:8b")        # requires Ollama
+
+# Streaming (OpenAI and Anthropic yield tokens natively; others yield full response)
+for token in llm.stream_complete("Summarise this NDA in three bullet points."):
+    print(token, end="", flush=True)
+
+# Async streaming
+async for token in llm.stream_complete_async(prompt):
+    print(token, end="", flush=True)
+```
+
+| Provider | Recommended model | Cost/contract | Best for |
+| --- | --- | --- | --- |
+| OpenAI | `gpt-4o` | ~$0.025 | Highest accuracy |
+| Anthropic | `claude-opus-4-6` | ~$0.030 | Long documents |
+| Google | `gemini-2.5-pro` | ~$0.002 | Speed + cost |
+| Local | any Ollama model | $0 | Privacy / offline |
+
+---
+
+## Examples
+
+| File | What it shows |
+|---|---|
+| [examples/basic_extraction.py](examples/basic_extraction.py) | One-line contract extraction |
+| [examples/advanced_extraction.py](examples/advanced_extraction.py) | Custom LLM + chunker config |
+| [examples/batch_processing.py](examples/batch_processing.py) | Parallel extraction over many documents |
+| [examples/fastapi_service.py](examples/fastapi_service.py) | REST API wrapper |
+| [examples/storage_example.py](examples/storage_example.py) | PostgreSQL persistence |
+| [examples/ner_example.py](examples/ner_example.py) | Named entity recognition |
+| [examples/local_llm_example.py](examples/local_llm_example.py) | Offline extraction with Ollama |
+| [examples/langchain_integration.py](examples/langchain_integration.py) | LangChain compatibility |
+| [examples/dataset_loading.py](examples/dataset_loading.py) | CUAD / ACORD / LePaRD datasets |
+
+---
+
+## Development
+
+```bash
+# Run all unit tests (no database required)
+python -m pytest tests/ -m "not integration" --no-cov -v
+
+# Run with coverage
+python -m pytest --cov=contractex --cov-report=html
+
+# Code quality
+black contractex/
+ruff check contractex/ --fix
+mypy contractex/
+```
+
+See [ARCHITECTURE.md](ARCHITECTURE.md) for a deeper design walkthrough and [docs/RELEASE_WORKFLOW.md](docs/RELEASE_WORKFLOW.md) for the release process.
+
+---
+
+## License
+
+Apache 2.0 — see [LICENSE](LICENSE) for details.
+
 
 The library is designed to be the shared foundation for two distinct product categories:
 

@@ -9,6 +9,7 @@ from __future__ import annotations
 from contractex.__version__ import __version__
 from contractex.core.analyzers import RiskAnalyzer
 from contractex.core.classifiers import CUADClassifier
+from contractex.core.document import LegalDoc, LegalDocMetadata
 from contractex.core.extractors import ContractExtractor
 from contractex.core.legal_document import DocType, LegalDocument, LegalDocumentMetadata, SourceSpan
 from contractex.core.models import (
@@ -22,6 +23,27 @@ from contractex.core.models import (
 from contractex.utils.audit import AuditLogger
 from contractex.utils.provenance import ProvenanceTracker
 from contractex.utils.routing import ConfidenceRouter
+
+# New architectural components (lazy-imported to avoid hard deps)
+def _lazy(module: str, attr: str):
+    """Return a lazy accessor to avoid importing optional deps at package load time."""
+    import importlib
+    return getattr(importlib.import_module(module), attr)
+
+try:
+    from contractex.privacy.profile import PrivacyProfile
+except ImportError:  # presidio not installed
+    PrivacyProfile = None  # type: ignore[assignment,misc]
+
+try:
+    from contractex.tasks.registry import TaskRegistry
+except ImportError:
+    TaskRegistry = None  # type: ignore[assignment,misc]
+
+try:
+    from contractex.rag.pipeline import LegalRAGPipeline
+except ImportError:
+    LegalRAGPipeline = None  # type: ignore[assignment,misc]
 
 
 # Simple API for 80% use case

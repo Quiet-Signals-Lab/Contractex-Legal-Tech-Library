@@ -39,6 +39,8 @@ from contractex.eval.metrics import (
     CaseResult,
     ExtractionMetrics,
     FieldResult,
+    PrivacyCaseResult,
+    PrivacyMetrics,
     _values_match,
 )
 
@@ -119,6 +121,91 @@ class EvalHarness:
     def run_case(self, case: EvalCase) -> CaseResult:
         """Run a single eval case (useful for debugging a specific failure)."""
         return self._run_case(case)
+
+    # ------------------------------------------------------------------
+    # Privacy evaluation
+    # ------------------------------------------------------------------
+
+    def run_privacy(
+        self,
+        suite: EvalSuite,
+        *,
+        pii_detector_fn: Callable[[EvalCase], list[str]] | None = None,
+        redactor_fn: Callable[[EvalCase], int] | None = None,
+        router_fn: Callable[[EvalCase], bool] | None = None,
+    ) -> PrivacyMetrics:
+        """
+        Run privacy / redaction evaluation across *suite*.
+
+        Args:
+            suite:           The ``EvalSuite`` to evaluate.
+            pii_detector_fn: Callable ``(EvalCase) → list[str]`` — returns the
+                             entity types detected (e.g. ``["PERSON", "EMAIL_ADDRESS"]``).
+                             Required for cases with ``expected_pii_entities``.
+            redactor_fn:     Callable ``(EvalCase) → int`` — returns the number
+                             of redaction spans applied.  Required for cases with
+                             ``expected_redaction_count``.
+            router_fn:       Callable ``(EvalCase) → bool`` — returns ``True``
+                             when the privacy router blocks the LLM call.  Required
+                             for cases with ``should_be_blocked``.
+
+        Returns:
+            ``PrivacyMetrics`` with precision/recall/F1 for PII detection and
+            blocking accuracy.
+        """
+        logger.info(
+            "EvalHarness.run_privacy starting: suite=%r, cases=%d",
+            suite.name,
+            len(suite),
+        )
+        case_results: list[PrivacyCaseResult] = []
+
+        for case in suite.cases:
+            start = time.monotonic()
+            error: str | None = None
+            detected_pii: list[str] | None = None
+            actual_redaction_count: int | None = None
+            was_blocked = False
+
+            try:
+                # PII detection
+                if case.expected_pii_entities is not None and pii_detector_fn is not None:
+                    detected_pii = pii_detector_fn(case)
+
+                # Redaction count
+                if case.expected_redaction_count is not None and redactor_fn is not None:
+                    actual_redaction_count = redactor_fn(case)
+
+                # Blocking
+                if router_fn is not None:
+                    was_blocked = router_fn(case)
+
+            except Exception as exc:
+                error = f"{type(exc).__name__}: {exc}"
+                logger.warning("Privacy eval case %r raised %s: %s", case.id, type(exc).__name__, exc)
+
+            elapsed = time.monotonic() - start
+            case_results.append(
+                PrivacyCaseResult.compute(
+                    case_id=case.id,
+                    expected_pii=case.expected_pii_entities,
+                    detected_pii=detected_pii,
+                    expected_redaction_count=case.expected_redaction_count,
+                    actual_redaction_count=actual_redaction_count,
+                    should_be_blocked=case.should_be_blocked,
+                    was_blocked=was_blocked,
+                    error=error,
+                    elapsed=round(elapsed, 3),
+                )
+            )
+
+        metrics = PrivacyMetrics.from_case_results(case_results)
+        logger.info(
+            "EvalHarness.run_privacy complete: pii_f1=%s, blocking_acc=%s",
+            f"{metrics.pii_f1:.1%}" if metrics.pii_f1 is not None else "n/a",
+            f"{metrics.blocking_accuracy:.1%}" if metrics.blocking_accuracy is not None else "n/a",
+        )
+        return metrics
 
     # ------------------------------------------------------------------
     # Internal

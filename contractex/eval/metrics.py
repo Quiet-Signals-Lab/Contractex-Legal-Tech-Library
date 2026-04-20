@@ -202,3 +202,185 @@ class ExtractionMetrics(BaseModel):
                 f"Case accuracy {self.case_accuracy:.1%} < required {threshold:.1%}\n"
                 + self.report()
             )
+
+
+# ---------------------------------------------------------------------------
+# Privacy-specific result and metrics
+# ---------------------------------------------------------------------------
+
+
+class PrivacyCaseResult(BaseModel):
+    """Privacy / redaction evaluation result for a single eval case."""
+
+    case_id: str
+
+    # PII detection quality
+    expected_pii_entities: list[str] = Field(default_factory=list)
+    detected_pii_entities: list[str] = Field(default_factory=list)
+    pii_precision: float | None = None
+    pii_recall: float | None = None
+    pii_f1: float | None = None
+
+    # Redaction span count check
+    expected_redaction_count: int | None = None
+    actual_redaction_count: int | None = None
+    redaction_count_match: bool | None = None
+
+    # Blocking behaviour
+    should_be_blocked: bool = False
+    was_blocked: bool = False
+    blocking_correct: bool | None = None
+
+    error: str | None = None
+    elapsed_seconds: float | None = None
+
+    @classmethod
+    def compute(
+        cls,
+        case_id: str,
+        expected_pii: list[str] | None,
+        detected_pii: list[str] | None,
+        expected_redaction_count: int | None,
+        actual_redaction_count: int | None,
+        should_be_blocked: bool,
+        was_blocked: bool,
+        error: str | None = None,
+        elapsed: float | None = None,
+    ) -> "PrivacyCaseResult":
+        """Compute PII precision/recall/F1 and blocking accuracy."""
+        result = cls(
+            case_id=case_id,
+            expected_pii_entities=expected_pii or [],
+            detected_pii_entities=detected_pii or [],
+            expected_redaction_count=expected_redaction_count,
+            actual_redaction_count=actual_redaction_count,
+            should_be_blocked=should_be_blocked,
+            was_blocked=was_blocked,
+            error=error,
+            elapsed_seconds=elapsed,
+        )
+
+        # PII detection precision / recall
+        if expected_pii is not None and detected_pii is not None:
+            exp_set = set(e.upper() for e in expected_pii)
+            det_set = set(e.upper() for e in detected_pii)
+            tp = len(exp_set & det_set)
+            result.pii_precision = tp / len(det_set) if det_set else 0.0
+            result.pii_recall = tp / len(exp_set) if exp_set else 1.0
+            denom = result.pii_precision + result.pii_recall
+            result.pii_f1 = (
+                2 * result.pii_precision * result.pii_recall / denom if denom else 0.0
+            )
+
+        # Redaction count
+        if expected_redaction_count is not None and actual_redaction_count is not None:
+            result.redaction_count_match = actual_redaction_count >= expected_redaction_count
+
+        # Blocking accuracy
+        result.blocking_correct = was_blocked == should_be_blocked
+
+        return result
+
+
+class PrivacyMetrics(BaseModel):
+    """Aggregate privacy / redaction metrics across an EvalSuite run."""
+
+    total_cases: int = 0
+    pii_cases: int = 0           # cases with expected_pii_entities set
+    blocking_cases: int = 0      # cases with should_be_blocked set
+
+    # Micro-averaged PII precision / recall / F1 (across all pii_cases)
+    pii_precision: float | None = None
+    pii_recall: float | None = None
+    pii_f1: float | None = None
+
+    # Fraction of blocking decisions that were correct
+    blocking_accuracy: float | None = None
+
+    # Fraction of redaction-count cases where actual >= expected
+    redaction_accuracy: float | None = None
+
+    case_results: list[PrivacyCaseResult] = Field(default_factory=list)
+
+    @classmethod
+    def from_case_results(cls, results: list[PrivacyCaseResult]) -> "PrivacyMetrics":
+        """Aggregate a list of PrivacyCaseResult into summary metrics."""
+        m = cls(total_cases=len(results))
+
+        pii_prec_sum = pii_rec_sum = 0.0
+        pii_n = blocking_correct = blocking_n = redaction_correct = redaction_n = 0
+
+        for r in results:
+            if r.pii_precision is not None:
+                pii_prec_sum += r.pii_precision
+                pii_rec_sum += r.pii_recall or 0.0
+                pii_n += 1
+            if r.blocking_correct is not None:
+                blocking_n += 1
+                if r.blocking_correct:
+                    blocking_correct += 1
+            if r.redaction_count_match is not None:
+                redaction_n += 1
+                if r.redaction_count_match:
+                    redaction_correct += 1
+
+        m.pii_cases = pii_n
+        m.blocking_cases = blocking_n
+
+        if pii_n:
+            prec = pii_prec_sum / pii_n
+            rec = pii_rec_sum / pii_n
+            m.pii_precision = prec
+            m.pii_recall = rec
+            m.pii_f1 = 2 * prec * rec / (prec + rec) if (prec + rec) else 0.0
+
+        if blocking_n:
+            m.blocking_accuracy = blocking_correct / blocking_n
+
+        if redaction_n:
+            m.redaction_accuracy = redaction_correct / redaction_n
+
+        m.case_results = results
+        return m
+
+    def report(self) -> str:
+        """Return a human-readable privacy metrics summary."""
+        sep = "=" * 62
+        lines = [
+            sep,
+            "  ContractEx Privacy Eval Report",
+            sep,
+            f"  Total cases:        {self.total_cases}",
+            f"  PII detection cases:{self.pii_cases}",
+            f"  Blocking cases:     {self.blocking_cases}",
+        ]
+        if self.pii_precision is not None:
+            lines += [
+                f"  PII precision:      {self.pii_precision:.1%}",
+                f"  PII recall:         {self.pii_recall:.1%}",
+                f"  PII F1:             {self.pii_f1:.1%}",
+            ]
+        if self.blocking_accuracy is not None:
+            lines.append(f"  Blocking accuracy:  {self.blocking_accuracy:.1%}")
+        if self.redaction_accuracy is not None:
+            lines.append(f"  Redaction accuracy: {self.redaction_accuracy:.1%}")
+        lines.append(sep)
+        return "\n".join(lines)
+
+    def assert_min_pii_recall(self, threshold: float) -> None:
+        """Assert that PII recall is at or above *threshold*."""
+        if self.pii_recall is None:
+            raise AssertionError("No PII recall data available — no cases with expected_pii_entities")
+        if self.pii_recall < threshold:
+            raise AssertionError(
+                f"PII recall {self.pii_recall:.1%} < required {threshold:.1%}\n" + self.report()
+            )
+
+    def assert_perfect_blocking(self) -> None:
+        """Assert that all blocking decisions were correct."""
+        if self.blocking_accuracy is None:
+            raise AssertionError("No blocking data available — no cases with should_be_blocked")
+        if self.blocking_accuracy < 1.0:
+            raise AssertionError(
+                f"Blocking accuracy {self.blocking_accuracy:.1%} != 100%\n" + self.report()
+            )
