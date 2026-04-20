@@ -37,6 +37,13 @@ ruff check --fix contractex/ tests/
 # Manually fix anything ruff could not auto-fix (B904, F841, etc.)
 ruff check contractex/ tests/   # re-run to see remaining manual fixes
 
+# Run mypy — all errors must be resolved before proceeding
+mypy contractex/
+# Common fixes:
+#   Missing stubs  → pip install types-<package>  (e.g. types-PyYAML)
+#   Optional[X] in sort key → use `value or X.min` to guarantee a non-None return
+#   Third-party package syntax errors → add [[tool.mypy.overrides]] with follow_imports = "skip"
+
 # Then re-run the full gate — it must be completely clean
 make pre-release
 ```
