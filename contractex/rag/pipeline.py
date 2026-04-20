@@ -64,7 +64,7 @@ import logging
 import time
 from collections.abc import Iterator
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 from pydantic import BaseModel, Field
 
@@ -330,16 +330,16 @@ class LegalRAGPipeline:
         for source in sources:
             source_str = str(source)
             try:
-                doc = loader.load(source_str)
+                doc = cast(LegalDoc, loader.load(source_str))
                 chunks = chunker.chunk(doc.full_text or "")
 
                 for i, chunk in enumerate(chunks):
                     chunk_id = f"{doc.doc_id or source_str}:chunk:{i}"
-                    embedding = embedder.encode(chunk.text)
+                    embedding = embedder.encode(chunk)
                     self._vector_store.add(
                         doc_id=doc.doc_id or source_str,
                         chunk_id=chunk_id,
-                        text=chunk.text,
+                        text=chunk,
                         embedding=(
                             embedding.tolist() if hasattr(embedding, "tolist") else list(embedding)
                         ),
@@ -568,10 +568,16 @@ class LegalRAGPipeline:
         import asyncio
 
         loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(
-            None,
-            lambda: self.query(
-                question, filters=filters, top_k=top_k, jurisdiction_filter=jurisdiction_filter
+        return cast(
+            RAGResponse,
+            await loop.run_in_executor(
+                None,
+                lambda: self.query(
+                    question,
+                    filters=filters,
+                    top_k=top_k,
+                    jurisdiction_filter=jurisdiction_filter,
+                ),
             ),
         )
 

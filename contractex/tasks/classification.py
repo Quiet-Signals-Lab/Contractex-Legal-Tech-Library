@@ -41,7 +41,6 @@ class ClassificationTask(LegalTask):
             from contractex.core.classifiers import CUADClassifier
 
             self._classifier = CUADClassifier(
-                model_name=self._model_name,
                 confidence_threshold=self._confidence_threshold,
             )
         return self._classifier

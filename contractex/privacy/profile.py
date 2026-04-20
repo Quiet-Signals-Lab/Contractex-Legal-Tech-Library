@@ -30,7 +30,7 @@ GDPR fields
 from __future__ import annotations
 
 from enum import Enum
-from typing import Literal
+from typing import Literal, cast
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -107,12 +107,15 @@ class PrivacyProfile(BaseModel):
         * secret        → blocked
         """
         if self.llm_routing is None:
-            self.llm_routing = {
-                "public": "any",
-                "confidential": "any",
-                "restricted": "local_only",
-                "secret": "blocked",
-            }[self.sensitivity]
+            self.llm_routing = cast(
+                Literal["any", "local_only", "blocked"],
+                {
+                    "public": "any",
+                    "confidential": "any",
+                    "restricted": "local_only",
+                    "secret": "blocked",
+                }[self.sensitivity],
+            )
         return self
 
     @property

@@ -171,7 +171,8 @@ class ContractExtractor:
             },
         }
 
-    def _create_provider(self, name: str) -> LLMProvider:
+    @staticmethod
+    def _create_provider(name: str) -> LLMProvider:
         """Create an LLM provider by name."""
         name_lower = name.lower()
 

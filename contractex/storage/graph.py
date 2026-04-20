@@ -134,7 +134,7 @@ class LegalKnowledgeGraph:
     ) -> None:
         self._backend_name = backend
         self._similarity_threshold = similarity_threshold
-        self._graph: Any | None = None
+        self._graph: Any = None
         self._neo4j_driver: Any | None = None
 
         if backend == "neo4j":

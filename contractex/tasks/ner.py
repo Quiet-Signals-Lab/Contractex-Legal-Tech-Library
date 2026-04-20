@@ -30,7 +30,7 @@ class NERTask(LegalTask):
         if self._ner is None:
             from contractex.core.ner import LegalNER
 
-            self._ner = LegalNER(model=self._model)
+            self._ner = LegalNER(model_name=self._model)
         return self._ner
 
     def run(self, doc: LegalDoc, **kwargs: Any) -> LegalDoc:

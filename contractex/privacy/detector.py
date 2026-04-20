@@ -207,7 +207,7 @@ class PIIDetector:
         else:
             self._presidio_available = self._check_presidio()
 
-        self._presidio_analyzer: Any | None = None
+        self._presidio_analyzer: Any = None
         if self._presidio_available:
             self._presidio_analyzer = self._build_presidio_analyzer()
 
