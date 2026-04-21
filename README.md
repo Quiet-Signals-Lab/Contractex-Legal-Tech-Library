@@ -1,4 +1,4 @@
-# ContractEx — Contract Analysis and Extraction for Python
+# ContractEx — Open-Source Python Library for Legal Tech
 
 [![PyPI version](https://badge.fury.io/py/contractex.svg)](https://badge.fury.io/py/contractex)
 [![PyPI Downloads](https://img.shields.io/pypi/dm/contractex)](https://pypistats.org/packages/contractex)
