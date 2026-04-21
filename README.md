@@ -5,15 +5,17 @@
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-ContractEx is a Python library for legal document intelligence. It provides the processing layer — chunking, extraction, retrieval, privacy enforcement, and quality measurement — that legal AI products are built on top of. It is not a product itself.
+ContractEx is a Python library for legal document intelligence. It provides the processing layer—chunking, extraction, retrieval, privacy enforcement, and quality measurement—that legal AI products are built on top of. 
 
-The intended consumer is a developer building a backend service, Word add-in, document automation tool, or RAG system over contracts. ContractEx handles the parts of that problem where getting it wrong produces hallucinated citations, PII leakage, or extraction that silently accepts low-confidence results. The product layer handles UX and workflow.
+This project aims to democratise legal tech by building a transparent open-source library that changes who within the legal field gets to benefit from the latest developments in machine learning and AI. At the heart of this project is a commitment to auditability, robust engineering, and privacy by design.
+
+The intended consumer is a developer building a backend service, Word plug-in, document automation tool, or RAG system over contracts. ContractEx handles the parts of that problem where getting it wrong produces hallucinated citations, PII leakage, or extraction that silently accepts low-confidence results. The product layer handles UX and workflow.
 
 ---
 
 ## Design principles
 
-The hardest constraint in legal AI is that LLMs are probabilistic and legal conclusions need to be accountable. ContractEx does not pretend the first problem does not exist — it structures the second problem around it.
+The hardest constraint in legal AI is that LLMs are probabilistic and legal conclusions need to be accountable.
 
 **The deterministic/probabilistic boundary is explicit.** Risk flagging for known patterns (unlimited liability, auto-renewal, unilateral amendment) runs on a deterministic keyword-rule engine. Citation extraction runs on regex — no LLM involved. Clause classification against CUAD's 41 types runs on an LLM with a constrained output schema. The library does not blur this line: every task documents whether it uses an LLM and what the failure mode is when the model underperforms.
 
@@ -27,7 +29,7 @@ The hardest constraint in legal AI is that LLMs are probabilistic and legal conc
 
 ## Privacy guarantees
 
-The `PrivacyAwareLLMRouter` is the most consequential component in the library for production legal deployments. It enforces sensitivity-level routing in code, at the call site, before any prompt is constructed.
+The `PrivacyAwareLLMRouter` enforces sensitivity-level routing in code, at the call site, before any prompt is constructed.
 
 ```python
 from contractex.privacy import PrivacyProfile, PIIDetector, PIIRedactor, RedactionStrategy
