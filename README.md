@@ -5,104 +5,205 @@
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-ContractEx is a production-ready Python library for LLM-powered legal document intelligence. It provides composable primitives for extraction, retrieval, classification, and analysis of contracts and legal documents — with privacy enforcement, source provenance, and quality measurement built in at the foundation, not bolted on at the edges.
+ContractEx is a Python library for legal document intelligence. It provides the processing layer — chunking, extraction, retrieval, privacy enforcement, and quality measurement — that legal AI products are built on top of. It is not a product itself.
 
-The library is designed for developers building legal AI products and pipelines: backend services, Word add-ins, document automation tools, compliance workflows, or RAG systems over contract repositories. It is not a product itself — it is the intelligence layer that products are built on top of.
-
----
-
-## Philosophy
-
-Most legal AI tooling makes one of two mistakes: it either ignores the unique constraints of legal work entirely, or it locks those constraints inside a closed product that developers cannot inspect, extend, or trust. ContractEx is built around four principles that address both failure modes directly.
-
-**Privacy is a code constraint, not a policy.** Legal documents routinely contain the most sensitive information an organisation handles — deal terms, personal data, litigation strategy. ContractEx enforces data sensitivity rules in code, at the library level, before any LLM call is constructed. A document classified as `restricted` cannot reach a cloud provider regardless of how the surrounding application is written. This is not a ZDR agreement or an ops configuration; it is a hard guarantee enforced by the `PrivacyAwareLLMRouter`.
-
-**Provenance is non-negotiable.** Every extracted value carries a `SourceSpan` that resolves back to its exact location in the source text — character offsets, page number, chunk identifier. In legal work, an answer without a citation is not an answer. ContractEx makes citation-linked output the default, not an optional extra.
-
-**Confidence is a first-class citizen.** LLMs produce wrong answers with high fluency. ContractEx attaches per-field confidence scores to every extraction result and routes them through a `ConfidenceRouter` that surfaces low-confidence fields for human review rather than silently accepting them. The threshold at which a field requires review versus is auto-accepted is configurable per field — because `governing_law` and `party_name` do not warrant the same tolerance.
-
-**Composable over monolithic.** Every layer exposes an abstract base class. Chunking strategies, LLM providers, storage backends, and audit loggers are all swappable implementations behind stable interfaces. A pipeline that runs against OpenAI today can route to a local Ollama model tomorrow for a restricted document, with no changes to the surrounding code.
+The intended consumer is a developer building a backend service, Word add-in, document automation tool, or RAG system over contracts. ContractEx handles the parts of that problem where getting it wrong produces hallucinated citations, PII leakage, or extraction that silently accepts low-confidence results. The product layer handles UX and workflow.
 
 ---
 
-## Key differentiators
+## Design principles
 
-### Code-enforced privacy routing
+The hardest constraint in legal AI is that LLMs are probabilistic and legal conclusions need to be accountable. ContractEx does not pretend the first problem does not exist — it structures the second problem around it.
 
-Commercial legal AI products handle data sensitivity through contractual agreements and infrastructure controls. ContractEx handles it in Python, at the call site. The four sensitivity levels map to automatic routing behaviour:
+**The deterministic/probabilistic boundary is explicit.** Risk flagging for known patterns (unlimited liability, auto-renewal, unilateral amendment) runs on a deterministic keyword-rule engine. Citation extraction runs on regex — no LLM involved. Clause classification against CUAD's 41 types runs on an LLM with a constrained output schema. The library does not blur this line: every task documents whether it uses an LLM and what the failure mode is when the model underperforms.
 
-| Sensitivity | LLM routing | Auto-redact |
+**Every extracted value is traceable.** Each field in the extraction output carries a `SourceSpan` — character offsets, page number, chunk identifier — back to its exact location in the source text. A `ProvenanceTracker` runs a two-pass match (exact substring, then Jaccard token overlap) to annotate the full extraction output after each task. In legal work, an answer without a citation is not an answer.
+
+**Privacy is enforced in code, not in contracts.** The `PrivacyAwareLLMRouter` sits between every pipeline stage and every LLM call. It does not trust the calling code to make the right decision — it reads the document's `PrivacyProfile` and enforces routing before the prompt is constructed. A document classified `restricted` cannot reach a cloud provider regardless of what the application layer does.
+
+**Quality is measurable, not assumed.** The `EvalHarness` runs labeled test suites against any extraction callable and produces field-level accuracy metrics with CI-ready assertion helpers. The standard objection to LLMs in legal work is that they hallucinate. The correct answer is not to argue against it — it is to measure it and gate on it.
+
+---
+
+## Privacy guarantees
+
+The `PrivacyAwareLLMRouter` is the most consequential component in the library for production legal deployments. It enforces sensitivity-level routing in code, at the call site, before any prompt is constructed.
+
+```python
+from contractex.privacy import PrivacyProfile, PIIDetector, PIIRedactor, RedactionStrategy
+from contractex.privacy import PrivacyAwareLLMRouter
+from contractex.llm import OpenAIProvider, LocalProvider
+
+# Assign a sensitivity level to the document
+doc.privacy_profile = PrivacyProfile(sensitivity="restricted")
+# "restricted" → llm_routing = "local_only" (derived automatically)
+# "secret"     → llm_routing = "blocked"
+
+provider = OpenAIProvider(model="gpt-4o")
+router   = PrivacyAwareLLMRouter()
+
+# This raises PrivacyRoutingError — the cloud call never happens
+result = router.route(doc, prompt, MySchema, provider=provider)
+
+# Swap in a local provider and it succeeds
+local_provider = LocalProvider(model="llama3.1:8b")
+result = router.route(doc, prompt, MySchema, provider=local_provider)
+```
+
+What each level enforces at runtime:
+
+| Sensitivity | Routing enforcement | PII handling |
 |---|---|---|
-| `public` | any provider | no |
-| `confidential` | any provider | yes — PII redacted before prompt construction |
-| `restricted` | local provider only | yes |
-| `secret` | blocked — `PrivacyBlockedError` raised | — |
+| `public` | Any provider permitted | No action |
+| `confidential` | Any provider permitted | PII detected and redacted before prompt construction; optionally de-anonymized on response |
+| `restricted` | Raises `PrivacyRoutingError` if provider is not a `LocalProvider` | Auto-redact |
+| `secret` | Raises `PrivacyBlockedError` before the prompt is constructed | — |
 
-This means a `restricted` document routed to an `OpenAIProvider` raises an exception before the API call is made, regardless of the caller's intent. No configuration mistake can accidentally send sensitive material to a cloud provider.
+This is not a configuration setting that a misconfigured deployment can override. The enforcement runs inside `router.route()` — the call site of every LLM interaction in the pipeline. A law firm's IT policy that prohibits sending M&A documents to a cloud API is enforced by the library, not by trusting the application to check an environment variable.
 
-### Clause-aware chunking for legal structure
+The router also handles auto-redaction for `confidential` documents — running `PIIDetector` (Presidio if installed, regex fallback otherwise) on the prompt text, replacing PII spans with stable tokens (`<PERSON_1>`, `<ORG_2>`), and optionally restoring the original values in the response:
 
-Generic text splitters split legal documents at token boundaries, which breaks clause context and degrades extraction quality and citation accuracy. ContractEx's `ClauseAwareChunker` splits on legal structural markers — numbered sections, article headings, `WHEREAS` and `NOW THEREFORE` clauses, lettered subsections — so each chunk corresponds to a coherent legal unit. When a citation resolves to a chunk, it resolves to something a lawyer can read and verify.
+```python
+redactor = PIIRedactor(strategy=RedactionStrategy.REPLACE)
+router   = PrivacyAwareLLMRouter(redactor=redactor, auto_redact=True)
 
-### Three-phase extraction with deduplication
-
-`ContractExtractor` runs in three sequential phases rather than a single monolithic prompt:
-
-1. **Preamble pass** — contract metadata and parties from the first 12,000 characters, where this information reliably appears
-2. **Clause pass** — parallel chunk-level extraction via `ThreadPoolExecutor`, keeping individual prompts within context-window limits
-3. **Deduplication** — containment check followed by `SequenceMatcher` similarity at ≥ 0.90 to collapse near-duplicate findings from overlapping chunks
-
-This produces cleaner output than single-shot extraction on long documents and is faster than sequential chunk processing.
-
-### Measurable quality via the eval harness
-
-`EvalHarness` runs labeled test suites against any extraction callable and produces field-level accuracy metrics with weighted scoring and pytest-compatible CI assertions. You can ship a release knowing that citation accuracy is above 90% and PII blocking is perfect — not because you believe it, but because the harness proved it on a held-out suite.
-
-Privacy evaluation is a first-class harness mode: `run_privacy()` measures PII recall, redaction coverage, and routing correctness against labeled cases with known sensitivity classifications.
-
-### Hybrid risk analysis
-
-`RiskAnalyzer` combines a deterministic keyword-rule engine for known high-risk patterns (unlimited liability, auto-renewal without notice, unilateral amendment rights, uncapped indemnification) with LLM-based analysis for contextual and nuanced risks. The rule engine catches patterns reliably and cheaply; the LLM catches what the rules miss. Results are merged and deduplicated.
-
-### LangChain-compatible without LangChain dependency
-
-ContractEx ships a `langchain_compat` loader and a `LangChainProvider` wrapper. Projects using LangChain can drop ContractEx in without friction. Projects not using LangChain have no transitive dependency on it.
+doc.privacy_profile = PrivacyProfile(sensitivity="confidential")
+result = router.route(doc, prompt, MySchema, provider=provider, restore_redaction=True)
+# Prompt sent to LLM: "... <PERSON_1> signed on behalf of <ORG_1> ..."
+# Response returned:  "... Jane Doe signed on behalf of Acme Corp ..."
+```
 
 ---
 
-## Use cases
+## Quality measurement
 
-**Legal AI product backends.** ContractEx is designed to serve as the intelligence layer behind Word add-ins, web applications, and API services that lawyers interact with. It handles the hard parts — chunking that preserves legal structure, provider routing that enforces privacy, extraction that produces confidence scores and citations — so the product layer can focus on UX and workflow.
+The standard objection to LLMs in legal work is that they hallucinate. ContractEx does not argue against this — it provides a harness for measuring it.
 
-**Enterprise contract review pipelines.** Process batches of inbound contracts through a configurable pipeline: load → detect PII → redact if needed → extract parties, dates, clauses, financial terms, and risks → store results with provenance → surface low-confidence fields for human review. The audit logger produces a compliance-grade JSONL or Postgres record of every material operation.
+`EvalHarness` accepts any extraction callable with the signature `(EvalCase) -> dict[str, Any]` and runs it against a labeled suite. It produces per-field accuracy metrics, weighted by the importance of each field, with pytest-compatible assertion helpers that act as CI gates.
 
-**Privacy-constrained extraction.** Regulated industries — healthcare, financial services, government — handle documents that cannot legally leave on-premises infrastructure. ContractEx's `local_only` routing and Ollama integration make it possible to run the full extraction pipeline on local hardware, with the same code and interfaces as cloud deployments.
+```python
+from contractex.eval import EvalHarness, EvalSuite
 
-**RAG over contract repositories.** `LegalRAGPipeline` ingests a corpus of contracts or legal documents into a vector store and answers natural-language questions with cited source passages. Clause-aware chunking ensures that retrieved chunks map to coherent legal units. The pipeline refuses to include `secret` documents in LLM context windows regardless of retrieval score.
+# Load a labeled suite (YAML or inline)
+suite = EvalSuite.load("tests/eval/msa_contracts.yaml")
 
-**Contract intelligence for legal teams building internal tooling.** Law firms and in-house teams with engineering resources can use ContractEx to build bespoke review tools, precedent search systems, obligation trackers, and timeline extractors without starting from scratch or depending on a closed API that may change or sunset.
+# Wire up the pipeline under test
+def my_extractor(case):
+    doc = pipeline.run(LegalDoc(full_text=case.input_text))
+    return doc.extracted["contract"].__dict__
 
-**Eval-driven LLM selection.** The `EvalHarness` is provider-agnostic. Teams can run the same labeled suite against GPT-4o, Claude Opus, Gemini, and a local model and compare field-level accuracy and cost per extraction to make a data-driven provider choice.
+harness = EvalHarness(extractor_fn=my_extractor)
+metrics = harness.run(suite)
+
+print(metrics.report())
+# field_accuracy: 0.923
+# case_accuracy:  0.87
+# per_field: {"governing_law": 0.98, "expiration_date": 0.91, "liability_cap": 0.84, ...}
+
+# CI gate — fails the test run if accuracy drops below threshold
+metrics.assert_min_field_accuracy(0.90)
+```
+
+Field weights let suite authors declare that `liability_cap` accuracy matters more than `title`:
+
+```yaml
+# tests/eval/msa_contracts.yaml
+- id: acme_msa_2024
+  input_path: fixtures/acme_msa.pdf
+  expected_fields:
+    governing_law: "Delaware"
+    liability_cap: "$2,000,000"
+    auto_renewal: true
+  field_weights:
+    liability_cap: 3.0
+    governing_law: 2.0
+    title: 0.5
+```
+
+Privacy evaluation is a first-class harness mode. `run_privacy()` measures PII recall, redaction coverage, and routing correctness — including asserting that no `secret` document ever reaches a cloud provider:
+
+```python
+privacy_metrics = harness.run_privacy(suite, pii_detector_fn=..., router_fn=...)
+privacy_metrics.assert_min_pii_recall(0.95)
+privacy_metrics.assert_perfect_blocking()   # zero tolerance: secret docs never routed to cloud
+```
+
+The harness is provider-agnostic. Running the same suite against GPT-4o, Claude Opus, and a local Llama model and comparing `field_accuracy` and estimated cost per document is the correct way to make a model selection decision for a legal product.
 
 ---
+
+## Legal-structure-aware chunking
+
+Generic text splitters — whether token-count-based or sentence-boundary-based — produce incorrect results on legal documents. The failure mode is specific: a clause that runs across a chunk boundary gets split, the extraction prompt for each chunk sees an incomplete provision, and the resulting finding either misses the clause or misattributes it. When that finding is cited back to the user, the citation resolves to an incoherent fragment.
+
+`ClauseAwareChunker` splits on legal structural markers instead of token counts:
+
+- Numbered sections (`1.`, `2.1`, `Article 3`)
+- Headed provisions (`WHEREAS`, `NOW THEREFORE`, `IN WITNESS WHEREOF`)
+- Lettered subsections (`(a)`, `(i)`)
+- Named clause blocks (`TERMINATION`, `INDEMNIFICATION`, `GOVERNING LAW`)
+
+Each chunk corresponds to a complete clause or section. When extraction runs on a chunk and produces a citation, that citation resolves to a unit a lawyer can read and verify — not to a fragment whose meaning depends on the preceding or following chunk.
+
+```python
+from contractex.chunking import ClauseAwareChunker
+
+chunker = ClauseAwareChunker(max_chunk_size=4000, overlap=200)
+chunks  = chunker.chunk(doc.full_text)
+# Each chunk begins and ends at a clause boundary
+```
+
+The alternative `SemanticChunker` is available for documents without clear structural markers — it splits where cosine similarity between adjacent sentences drops below a threshold. For well-structured commercial contracts, `ClauseAwareChunker` is the correct choice.
+
+---
+
+## Where ContractEx fits in a stack
+
+ContractEx is a processing layer dependency, not a standalone service. The integration pattern for a legal AI product looks like this:
+
+```
+User interface (Word add-in / web app)
+        ↓
+API layer (FastAPI / Django)
+        ↓
+ContractEx pipeline
+    └── Document load (PDF, DOCX, URL)
+    └── Privacy gate (PrivacyAwareLLMRouter — enforced before any LLM call)
+    └── Clause-aware chunking
+    └── Extraction / retrieval / risk analysis
+    └── Provenance annotation (SourceSpan per field)
+    └── Confidence routing (auto-accept / human-review / reject)
+        ↓
+Storage (PostgreSQL + pgvector, or local)
+        ↓
+Findings / answers / suggestions — with citations
+```
+
+ContractEx is installed as a Python dependency (`pip install contractex`) and called from application code. It does not run as a service, does not require a dedicated infrastructure component, and does not impose a framework. The LLM provider, chunking strategy, storage backend, and audit logger are all swappable at construction time.
+
+**Playbook schemas** are strongly typed Python objects, not flat YAML. The NDA and SaaS playbooks ship as `PlaybookSchema` instances with typed clause definitions and expected field sets. A product that wants to add a playbook for a new document type extends `PlaybookSchema` — the type system catches missing fields at import time, not at runtime when a lawyer is reviewing a document.
+
+**LangChain compatibility** is provided via a `langchain_compat` loader and `LangChainProvider` wrapper for teams already using that framework. Teams that are not using LangChain have no transitive dependency on it.
 
 ---
 
 ## Contents
 
-- [Philosophy](#philosophy)
-- [Key differentiators](#key-differentiators)
-- [Use cases](#use-cases)
+- [Design principles](#design-principles)
+- [Privacy guarantees](#privacy-guarantees)
+- [Quality measurement](#quality-measurement)
+- [Legal-structure-aware chunking](#legal-structure-aware-chunking)
+- [Where ContractEx fits in a stack](#where-contractex-fits-in-a-stack)
 - [Installation](#installation)
 - [Quick start](#quick-start)
-- [Privacy model](#privacy-model)
+- [Privacy model (detailed)](#privacy-model)
 - [Task catalogue](#task-catalogue)
 - [Pipeline composition](#pipeline-composition)
 - [RAG pipeline](#rag-pipeline)
 - [Knowledge graph](#knowledge-graph)
 - [Architecture](#architecture)
 - [Storage layer](#storage-layer)
-- [Eval harness](#eval-harness)
+- [Eval harness (detailed)](#eval-harness)
 - [LLM providers](#llm-providers)
 - [Examples](#examples)
 - [Development](#development)
@@ -139,7 +240,7 @@ answer = router.route(doc, prompt, schema, provider=llm, restore_redaction=True)
 # auto-redacts + restores for confidential docs
 ```
 
-See [Key differentiators — Privacy routing](#code-enforced-privacy-routing) above for the full sensitivity routing table.
+See [Privacy guarantees](#privacy-guarantees) above for the router code example and the full enforcement table.
 
 Install the privacy extras to enable Presidio-backed PII detection:
 
