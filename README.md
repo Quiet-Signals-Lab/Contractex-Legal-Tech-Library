@@ -5,6 +5,8 @@
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
+Available via PyPi: `pip install contractex`
+
 ContractEx is a Python library for legal document intelligence. It provides the processing layer—chunking, extraction, retrieval, privacy enforcement, and quality measurement—that legal AI products are built on top of. 
 
 This project aims to democratise legal tech by building a transparent open-source library that changes who within the legal field gets to benefit from the latest developments in machine learning and AI. At the heart of this project is a commitment to auditability, robust engineering, and privacy by design.
