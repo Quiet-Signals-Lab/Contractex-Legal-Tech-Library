@@ -12,15 +12,19 @@ from contractex.tasks.registry import TaskRegistry
 
 class ClassificationTask(LegalTask):
     """
-    Classify clauses using the CUAD taxonomy and write results to
-    ``doc.extracted["cuad_labels"]``.
+    Label the CUAD clause types a document mentions, by keyword matching
+    (no LLM, no model download), and write them to ``doc.extracted["cuad_labels"]``.
+
+    Keyword matching is crude: a label means an indicative phrase occurs in
+    the text (e.g. "fee" suggests ``payment_terms``), not that a clause of
+    that type is present or enforceable.
 
     Parameters
     ----------
     model_name:
-        HuggingFace model identifier for CUAD classification.
+        Unused; kept for backward compatibility.
     confidence_threshold:
-        Minimum score to report a label.
+        Confidence assigned to matched labels.
     """
 
     task_id = "classification"
@@ -50,7 +54,7 @@ class ClassificationTask(LegalTask):
             return doc
 
         classifier = self._get_classifier()
-        labels = classifier.classify(doc.full_text)
+        labels = classifier.classify_text(doc.full_text)
 
         doc = doc.model_copy(
             update={

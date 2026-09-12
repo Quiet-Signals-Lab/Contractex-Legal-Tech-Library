@@ -234,3 +234,9 @@ class TestNoDefaultProvider:
         from contractex import extract_contract
 
         assert inspect.signature(extract_contract).parameters["llm"].default is inspect._empty
+
+
+def test_classification_task_labels_text_without_llm():
+    doc = make_doc("secret", "Either party may terminate for convenience on 30 days notice.")
+    out = TaskRegistry.default().build_pipeline(["classification"]).run(doc)
+    assert "termination_for_convenience" in out.extracted["cuad_labels"]
