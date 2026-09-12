@@ -32,7 +32,8 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from contractex.eval.cases import EvalCase, EvalSuite
 from contractex.eval.metrics import (

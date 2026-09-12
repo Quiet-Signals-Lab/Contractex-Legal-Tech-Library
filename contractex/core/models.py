@@ -7,7 +7,7 @@ providing type-safe interfaces with validation and convenience methods.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from enum import Enum
 from typing import TYPE_CHECKING, Any
@@ -229,7 +229,7 @@ class ContractMetadata(BaseModel):
 
     # Extraction metadata
     extraction_date: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
+        default_factory=lambda: datetime.now(UTC),
         description="When extraction was performed",
     )
     llm_provider: str | None = Field(None, description="LLM provider used")

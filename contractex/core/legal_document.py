@@ -17,7 +17,7 @@ fidelity and GDPR-grade audit trails.
 from __future__ import annotations
 
 import hashlib
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
@@ -95,7 +95,7 @@ class LegalDocumentMetadata(BaseModel):
     # Fetch provenance
     source_url: str | None = Field(None, description="Canonical URL of the source")
     retrieval_timestamp: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
+        default_factory=lambda: datetime.now(UTC),
         description="When the document was fetched",
     )
     content_hash: str | None = Field(

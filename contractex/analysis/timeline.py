@@ -26,7 +26,7 @@ from __future__ import annotations
 import re
 import uuid
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 
 # ---------------------------------------------------------------------------
 # Date parsing helpers
@@ -266,7 +266,7 @@ class ObligationTimeline:
             "METHOD:PUBLISH",
         ]
 
-        now_str = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        now_str = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
 
         for entry in self.all_resolved():
             assert entry.resolved_date is not None

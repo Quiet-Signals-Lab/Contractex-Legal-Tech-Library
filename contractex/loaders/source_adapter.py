@@ -20,7 +20,7 @@ import logging
 import time
 from abc import abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import urlparse
 
@@ -55,7 +55,7 @@ class FetchResult:
     etag: str | None = None
     last_modified: str | None = None
     content_hash: str = ""
-    fetched_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    fetched_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     # False when server returned 304 Not Modified (content is empty string)
     changed: bool = True
 
