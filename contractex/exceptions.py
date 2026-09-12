@@ -1,10 +1,10 @@
-"""Custom exceptions for ContractEx."""
+"""Custom exceptions for Contractex."""
 
 from __future__ import annotations
 
 
 class ContractExError(Exception):
-    """Base exception for all ContractEx errors."""
+    """Base exception for all Contractex errors."""
 
     pass
 

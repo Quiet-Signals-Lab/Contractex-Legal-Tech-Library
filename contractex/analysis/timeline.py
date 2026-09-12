@@ -260,7 +260,7 @@ class ObligationTimeline:
         lines: list[str] = [
             "BEGIN:VCALENDAR",
             "VERSION:2.0",
-            "PRODID:-//ContractEx//ContractEx 1.0//EN",
+            "PRODID:-//Contractex//Contractex 1.0//EN",
             f"X-WR-CALNAME:{calendar_name}",
             "CALSCALE:GREGORIAN",
             "METHOD:PUBLISH",

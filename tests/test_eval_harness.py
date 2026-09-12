@@ -389,3 +389,10 @@ class TestExtractionMetrics:
     def test_no_cases_case_accuracy_zero(self):
         m = ExtractionMetrics()
         assert m.case_accuracy == 0.0
+
+
+def test_cuad_benchmark_is_deprecated():
+    from contractex.eval.benchmark import CUADBenchmark
+
+    with pytest.warns(DeprecationWarning, match="deprecated"):
+        CUADBenchmark(extractor=lambda text: [])

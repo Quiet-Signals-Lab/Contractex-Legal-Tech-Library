@@ -1,5 +1,5 @@
 """
-TaskRegistry — central registry of all ContractEx legal NLP tasks.
+TaskRegistry — central registry of all Contractex legal NLP tasks.
 
 Tasks register themselves (or are registered explicitly).  The registry
 is a singleton accessed via ``TaskRegistry.default()``.

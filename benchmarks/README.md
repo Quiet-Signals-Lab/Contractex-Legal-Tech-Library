@@ -9,16 +9,16 @@ python -m benchmarks           # regenerate results/results.json and results/sum
 python -m benchmarks --check   # fail if the committed results differ from a fresh run
 ```
 
-**Results: [results/summary.md](results/summary.md).**  Every number there is
+**Results: [results/summary.md](https://github.com/Quiet-Signals-Lab/Contractex-Legal-Tech-Library/blob/main/benchmarks/results/summary.md).**  Every number there is
 produced by the command above; CI runs `--check` so the committed results
 cannot drift from the code.  This page describes method and limits only and
 deliberately repeats no results.
 
 | Suite | Claim under test | Data |
 |---|---|---|
-| [chunking.py](chunking.py) | Clause-aware chunking keeps clauses in one chunk more often than structure-blind splitting | CUAD test split |
-| [provenance.py](provenance.py) | `ProvenanceTracker` resolves an extracted value to where it came from | CUAD test split |
-| [privacy.py](privacy.py) | The regex PII fallback catches the formats it claims; `secret` documents never reach a provider; `restricted` documents reach only a `LocalProvider` | Synthetic fixture |
+| [chunking.py](https://github.com/Quiet-Signals-Lab/Contractex-Legal-Tech-Library/blob/main/benchmarks/chunking.py) | Clause-aware chunking keeps clauses in one chunk more often than structure-blind splitting | CUAD test split |
+| [provenance.py](https://github.com/Quiet-Signals-Lab/Contractex-Legal-Tech-Library/blob/main/benchmarks/provenance.py) | `ProvenanceTracker` resolves an extracted value to where it came from | CUAD test split |
+| [privacy.py](https://github.com/Quiet-Signals-Lab/Contractex-Legal-Tech-Library/blob/main/benchmarks/privacy.py) | The regex PII fallback catches the formats it claims; `secret` documents never reach a provider; `restricted` documents reach only a `LocalProvider` | Synthetic fixture |
 
 Not measured yet: extraction accuracy downstream of chunking, and accuracy
 per LLM provider (cloud versus local).  Both need model calls and are
@@ -27,14 +27,14 @@ suite runs the regex fallback only.
 
 ## Data
 
-**CUAD v1 test split** — [fixtures/cuad_test.json.gz](fixtures/cuad_test.json.gz):
+**CUAD v1 test split** — [fixtures/cuad_test.json.gz](https://github.com/Quiet-Signals-Lab/Contractex-Legal-Tech-Library/blob/main/benchmarks/fixtures/cuad_test.json.gz):
 all 102 contracts of the official test split and their 2,643 gold answer spans,
 reduced to contract text plus `(category, start, end)` per span.  Rebuild it
 from the official release with
 `python -m benchmarks.build_cuad_fixture path/to/data.zip`; the builder checks
 the zip's SHA-256 and the output is byte-for-byte reproducible.
 
-**Synthetic PII fixture** — [fixtures/privacy_cases.jsonl](fixtures/privacy_cases.jsonl):
+**Synthetic PII fixture** — [fixtures/privacy_cases.jsonl](https://github.com/Quiet-Signals-Lab/Contractex-Legal-Tech-Library/blob/main/benchmarks/fixtures/privacy_cases.jsonl):
 128 contract-style sentences, each with one planted value and several non-PII
 distractors.  Values are fictitious (`.test` domains, 555-01xx phone numbers,
 published test card and IBAN numbers).  Rebuild with

@@ -332,7 +332,7 @@ class Contract(BaseModel):
         return None
 
     # Export methods
-    def to_json(self, file_path: str | None = None, **kwargs) -> str:
+    def to_json(self, file_path: str | None = None, **kwargs: Any) -> str:
         """
         Export to JSON format.
 

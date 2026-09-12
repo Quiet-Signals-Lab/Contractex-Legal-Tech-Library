@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from pydantic import BaseModel
 
 from contractex.exceptions import LLMProviderError
@@ -10,12 +12,12 @@ from contractex.llm.base import LLMProvider
 
 class LangChainProvider(LLMProvider):
     """
-    Adapter to use LangChain LLMs with ContractEx.
+    Adapter to use LangChain LLMs with Contractex.
 
-    This allows using any LangChain-compatible LLM with ContractEx.
+    This allows using any LangChain-compatible LLM with Contractex.
     """
 
-    def __init__(self, langchain_llm, default_max_tokens: int = 4000):
+    def __init__(self, langchain_llm: Any, default_max_tokens: int = 4000):
         """
         Initialize LangChain provider adapter.
 

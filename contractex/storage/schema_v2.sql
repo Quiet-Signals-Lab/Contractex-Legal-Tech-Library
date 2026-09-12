@@ -1,5 +1,5 @@
 -- =============================================================================
--- ContractEx Storage Schema v2
+-- Contractex Storage Schema v2
 -- Generic extraction storage model supporting all document types.
 --
 -- Replaces schema_v1 (schema.sql).

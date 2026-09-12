@@ -1,8 +1,8 @@
 """
-LegalDoc — unified base model for all legal documents in ContractEx.
+LegalDoc — unified base model for all legal documents in Contractex.
 
 This module introduces ``LegalDoc`` as the single authoritative base class
-for every document type handled by ContractEx pipelines.  It unifies the
+for every document type handled by Contractex pipelines.  It unifies the
 previous ``Contract`` and ``LegalDocument`` hierarchies under one coherent
 abstraction.
 
@@ -40,9 +40,9 @@ LegalDocMetadata = LegalDocumentMetadata
 
 class LegalDoc(BaseModel):
     """
-    Unified base model for all legal documents processed by ContractEx.
+    Unified base model for all legal documents processed by Contractex.
 
-    Every document that passes through a ContractEx pipeline is represented
+    Every document that passes through a Contractex pipeline is represented
     as a ``LegalDoc`` (or a typed subclass).  The ``doc_type`` field acts as
     the discriminator for routing and rendering logic.
 

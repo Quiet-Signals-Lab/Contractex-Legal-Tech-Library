@@ -1,5 +1,5 @@
 """
-Unit tests for the ContractEx extraction pipeline.
+Unit tests for the Contractex extraction pipeline.
 
 All tests in this file are marked `unit` and run without any external
 services (no LLM API keys, no PostgreSQL, no Ollama).  The LLM is

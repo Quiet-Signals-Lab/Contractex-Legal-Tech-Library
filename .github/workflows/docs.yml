@@ -1,23 +1,62 @@
-name: Build docs
+name: Docs
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
+  pull_request:
+  release:
+    types: [published]
+  workflow_dispatch:
 
 jobs:
-  build-docs:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e ".[docs]"
+      - run: mkdocs build --strict
+      - uses: actions/upload-artifact@v4
+        with:
+          name: site
+          path: site/
 
-      - name: Install package and docs dependencies
-        run: pip install -e ".[docs]"
-
-      - name: Build docs (strict)
-        run: mkdocs build --strict
+  # Publishes the built site to quietsignalslab.com/contractex/docs/ by
+  # committing it to the website repository.  Runs for releases and manual
+  # runs only, so the live docs match what is on PyPI.  One-time setup: add a
+  # deploy key with write access to aahepburn/aahepburn.github.io, and store
+  # its private half in this repository as the DOCS_DEPLOY_KEY secret.
+  deploy:
+    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      DEPLOY_KEY: ${{ secrets.DOCS_DEPLOY_KEY }}
+    steps:
+      - if: env.DEPLOY_KEY == ''
+        run: echo "::warning::DOCS_DEPLOY_KEY is not set; docs were built but not deployed."
+      - if: env.DEPLOY_KEY != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: site
+          path: site/
+      - if: env.DEPLOY_KEY != ''
+        uses: actions/checkout@v4
+        with:
+          repository: aahepburn/aahepburn.github.io
+          ssh-key: ${{ secrets.DOCS_DEPLOY_KEY }}
+          path: website
+      - if: env.DEPLOY_KEY != ''
+        run: |
+          mkdir -p website/contractex/docs
+          rsync -a --delete site/ website/contractex/docs/
+          cd website
+          git config user.name "contractex-docs"
+          git config user.email "hello@quietsignalslab.com"
+          git add contractex/docs
+          git diff --cached --quiet && { echo "docs unchanged"; exit 0; }
+          git commit -m "contractex docs: ${GITHUB_REF_NAME} (${GITHUB_SHA::7})"
+          git push

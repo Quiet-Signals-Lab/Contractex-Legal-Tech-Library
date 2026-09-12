@@ -1,5 +1,6 @@
 # ContractExtractor
 
-The main extraction orchestrator. Accepts a document path, runs Layer 0 (ingest) and Layer 2 (LLM extraction), and returns a structured `Contract` result.
+Loads a document (or takes text), chunks it and makes schema-constrained model
+calls, returning a `Contract`.  See [Contract analysis](../guides/analysis.md).
 
 ::: contractex.core.extractors.ContractExtractor

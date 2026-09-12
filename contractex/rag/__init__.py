@@ -1,5 +1,5 @@
 """
-RAG pipeline for ContractEx.
+RAG pipeline for Contractex.
 
 End-to-end retrieval-augmented generation over legal document corpora.
 

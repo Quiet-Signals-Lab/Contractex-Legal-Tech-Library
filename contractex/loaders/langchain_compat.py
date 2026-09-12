@@ -28,10 +28,10 @@ except ImportError:
 
 class LangChainDocumentAdapter(DocumentLoader):
     """
-    Adapter to use LangChain document loaders with ContractEx.
+    Adapter to use LangChain document loaders with Contractex.
 
     This allows using any LangChain document loader (PDF, HTML, web scrapers, etc.)
-    with the ContractEx extraction pipeline.
+    with the Contractex extraction pipeline.
 
     Requires: pip install langchain or pip install langchain-core
     """

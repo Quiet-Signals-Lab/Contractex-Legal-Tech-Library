@@ -257,7 +257,7 @@ class PrivacyAwareLLMRouter:
             return prompt, None
 
         redacted = self._redactor.redact(prompt, spans)
-        entity_types = list(redacted.entity_types_redacted)
+        entity_types = sorted(redacted.entity_types_redacted)
         profile.contains_pii = True
         profile.pii_entities_found = list(dict.fromkeys(profile.pii_entities_found + entity_types))
 

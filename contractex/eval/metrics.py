@@ -156,7 +156,7 @@ class ExtractionMetrics(BaseModel):
         sep = "=" * 62
         lines = [
             sep,
-            "  ContractEx Eval Report",
+            "  Contractex Eval Report",
             sep,
             f"  Suite size:     {self.total_cases} cases",
             f"  Passed:         {self.passed_cases} " f"({self.case_accuracy:.1%} case accuracy)",
@@ -354,7 +354,7 @@ class PrivacyMetrics(BaseModel):
         sep = "=" * 62
         lines = [
             sep,
-            "  ContractEx Privacy Eval Report",
+            "  Contractex Privacy Eval Report",
             sep,
             f"  Total cases:        {self.total_cases}",
             f"  PII detection cases:{self.pii_cases}",

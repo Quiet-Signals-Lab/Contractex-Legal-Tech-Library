@@ -1,13 +1,14 @@
 """
 Abstract base class for LLM providers.
 
-All LLM providers must implement this interface to be compatible with ContractEx.
+All LLM providers must implement this interface to be compatible with Contractex.
 """
 
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator, Iterator
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -42,7 +43,7 @@ class LLMProvider(ABC):
 
     @abstractmethod
     def complete(
-        self, prompt: str, temperature: float = 0.7, max_tokens: int | None = None, **kwargs
+        self, prompt: str, temperature: float = 0.7, max_tokens: int | None = None, **kwargs: Any
     ) -> str:
         """
         Get a text completion from the LLM.
@@ -119,7 +120,7 @@ class LLMProvider(ABC):
         return True
 
     def stream_complete(
-        self, prompt: str, temperature: float = 0.7, max_tokens: int | None = None, **kwargs
+        self, prompt: str, temperature: float = 0.7, max_tokens: int | None = None, **kwargs: Any
     ) -> Iterator[str]:
         """
         Stream a text completion token-by-token.
@@ -141,7 +142,7 @@ class LLMProvider(ABC):
         yield self.complete(prompt, temperature=temperature, max_tokens=max_tokens, **kwargs)
 
     async def stream_complete_async(
-        self, prompt: str, temperature: float = 0.7, max_tokens: int | None = None, **kwargs
+        self, prompt: str, temperature: float = 0.7, max_tokens: int | None = None, **kwargs: Any
     ) -> AsyncIterator[str]:
         """
         Async version of ``stream_complete``.

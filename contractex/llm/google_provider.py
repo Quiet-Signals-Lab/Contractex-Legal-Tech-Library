@@ -6,6 +6,7 @@ import json
 import logging
 import os
 import time
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -228,7 +229,7 @@ Requirements:
         return self._call_with_retry(_call, "Google Gemini structured extraction")  # type: ignore[no-any-return]
 
     def complete(
-        self, prompt: str, temperature: float = 0.7, max_tokens: int | None = None, **kwargs
+        self, prompt: str, temperature: float = 0.7, max_tokens: int | None = None, **kwargs: Any
     ) -> str:
         """
         Get text completion from Google Gemini.

@@ -3,7 +3,7 @@ LegalDocument — general-purpose model for legal document intelligence.
 
 While ``Contract`` (models.py) models bilateral agreements,
 ``LegalDocument`` covers the full breadth of document types processed by
-ContractEx pipelines:
+Contractex pipelines:
 
   * Statutes and regulations (Job 1 — legal RAG)
   * Case opinions and secondary sources (Job 1)
@@ -129,7 +129,7 @@ class LegalDocumentMetadata(BaseModel):
 
 class LegalDocument(BaseModel):
     """
-    General-purpose model for any legal document processed by ContractEx.
+    General-purpose model for any legal document processed by Contractex.
 
     Design principles
     -----------------

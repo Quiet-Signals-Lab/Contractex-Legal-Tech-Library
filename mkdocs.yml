@@ -1,30 +1,29 @@
-site_name: ContractEx
-hooks:
-  - docs/hooks.py
-site_description: Deterministic structural parsing + schema-constrained LLM extraction for contract analysis.
-site_url: https://contractex.readthedocs.io
+site_name: Contractex
+site_description: Open processing layer for legal document AI, with privacy enforced in code and quality measured.
+site_url: https://quietsignalslab.com/contractex/docs/
 repo_url: https://github.com/Quiet-Signals-Lab/Contractex-Legal-Tech-Library
 repo_name: Quiet-Signals-Lab/Contractex-Legal-Tech-Library
 edit_uri: edit/main/docs/
+copyright: Apache License 2.0 · Quiet Signals Lab
 
 theme:
   name: material
   features:
-    - navigation.tabs
     - navigation.sections
-    - navigation.expand
+    - navigation.top
     - content.code.copy
-    - content.code.annotate
     - search.suggest
   palette:
-    - scheme: default
-      primary: indigo
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: blue grey
       accent: indigo
       toggle:
         icon: material/brightness-7
         name: Switch to dark mode
-    - scheme: slate
-      primary: indigo
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: blue grey
       accent: indigo
       toggle:
         icon: material/brightness-4
@@ -39,44 +38,52 @@ plugins:
       handlers:
         python:
           options:
-            docstring_style: google
-            show_source: true
+            show_source: false
             show_signature_annotations: true
             show_root_heading: true
             show_root_full_path: false
+            members_order: source
 
 markdown_extensions:
   - admonition
-  - pymdownx.details
-  - pymdownx.superfences
-  - pymdownx.highlight:
-      anchor_linenums: true
-  - pymdownx.inlinehilite
-  - pymdownx.snippets
-  - pymdownx.tabbed:
-      alternate_style: true
   - attr_list
   - md_in_html
+  - tables
   - toc:
       permalink: true
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.superfences
+  - pymdownx.snippets:
+      base_path: ["."]
+      check_paths: true
 
 nav:
   - Home: index.md
-  - Getting Started:
+  - Getting started:
       - Installation: getting-started/installation.md
-      - Quick Start: getting-started/quickstart.md
-  - How-To Guides:
-      - Run extraction locally with Ollama: guides/local-llm.md
-      - Write a custom playbook: guides/playbooks.md
-      - Benchmark against CUAD: guides/benchmarking.md
-      - Export results: guides/export.md
-  - API Reference:
+      - Quick start: getting-started/quickstart.md
+  - Guides:
+      - Privacy model: guides/privacy.md
+      - Tasks and pipelines: guides/tasks.md
+      - Contract analysis: guides/analysis.md
+      - Chunking and provenance: guides/chunking.md
+      - Evaluation: guides/evaluation.md
+      - LLM providers: guides/providers.md
+  - Benchmarks: benchmarks.md
+  - Limitations: limitations.md
+  - Reference:
+      - Privacy: api/privacy.md
+      - Tasks: api/tasks.md
+      - Documents: api/documents.md
       - ContractExtractor: api/extractor.md
-      - Document Structure: api/structure.md
-      - Extraction Schemas: api/schemas.md
+      - Extraction schemas: api/schemas.md
+      - Document structure: api/structure.md
       - Analysis: api/analysis.md
+      - Chunking and provenance: api/chunking.md
       - Evaluation: api/eval.md
-  - Explanation:
-      - Architecture: explanation/architecture.md
-      - Design Decisions: explanation/design.md
-      - Why Local-First: explanation/privacy.md
+      - LLM providers: api/llm.md
+  - Project:
+      - Changelog: project/changelog.md
+      - Contributing: project/contributing.md
+      - Security: project/security.md

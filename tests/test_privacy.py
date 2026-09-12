@@ -608,3 +608,10 @@ class TestDetectorPresidioPath:
     def test_use_presidio_false_forces_regex(self, monkeypatch):
         monkeypatch.setattr(PIIDetector, "_check_presidio", staticmethod(lambda: True))
         assert PIIDetector(use_presidio=False).using_presidio is False
+
+
+def test_placeholders_numbered_in_document_order():
+    text = "Mail a@x.test then b@x.test"
+    spans = [span(text, "a@x.test", "EMAIL_ADDRESS"), span(text, "b@x.test", "EMAIL_ADDRESS")]
+    r = PIIRedactor().redact(text, spans)
+    assert r.text == "Mail <EMAIL_ADDRESS_1> then <EMAIL_ADDRESS_2>"

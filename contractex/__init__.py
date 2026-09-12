@@ -1,5 +1,5 @@
 """
-ContractEx: A Python library for building contract analysis pipelines.
+Contractex: A Python library for building contract analysis pipelines.
 
 Architecture (four layers):
 

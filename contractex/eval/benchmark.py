@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import logging
 import time
+import warnings
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -229,6 +230,13 @@ class CUADBenchmark:
         extractor: Any,
         clause_types: list[str] | None = None,
     ) -> None:
+        warnings.warn(
+            "CUADBenchmark is deprecated and will be removed: it loads a dataset id that "
+            "no longer resolves and cannot read CUAD's answer format. The maintained CUAD "
+            "measurements are in the repository's benchmarks/ directory.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         self._extractor = extractor
         self._clause_types = clause_types or _EXTRACTABLE_TYPES
 

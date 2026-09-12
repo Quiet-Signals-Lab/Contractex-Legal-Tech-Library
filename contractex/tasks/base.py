@@ -1,5 +1,5 @@
 """
-LegalTask — abstract base class for all ContractEx task types.
+LegalTask — abstract base class for all Contractex task types.
 
 Every legal NLP operation (extraction, classification, summarization, PII
 detection, …) is implemented as a ``LegalTask`` subclass.  Tasks are designed
@@ -55,7 +55,7 @@ logger = logging.getLogger(__name__)
 
 class LegalTask(ABC):
     """
-    Abstract base for all ContractEx legal NLP tasks.
+    Abstract base for all Contractex legal NLP tasks.
 
     Subclasses must set class-level attributes and implement ``run()``.
 

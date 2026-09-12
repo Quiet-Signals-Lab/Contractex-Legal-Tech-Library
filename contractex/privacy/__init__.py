@@ -1,5 +1,5 @@
 """
-Privacy layer for ContractEx.
+Privacy layer for Contractex.
 
 This module sits between the document loader and every LLM API call.
 It provides PII detection, redaction, privacy profiling, and LLM routing

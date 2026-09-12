@@ -4,15 +4,15 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "contractex"
-version = "0.4.0"
-description = "Modern Python library for LLM-powered contract intelligence and legal document analysis"
+dynamic = ["version"]
+description = "Processing layer for legal document AI: chunking, extraction, provenance, privacy enforcement and evaluation"
 readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "Apache-2.0"}
 authors = [
     {name = "Alexander Hepburn", email = "hello@quietsignalslab.com"}
 ]
-keywords = ["legal-tech", "contract-analysis", "nlp", "llm", "document-intelligence", "cuad"]
+keywords = ["legal-tech", "contract-analysis", "llm", "privacy", "pii-redaction", "provenance", "evaluation", "cuad"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -74,7 +74,8 @@ dev = [
     "requests>=2.31.0",
 ]
 docs = [
-    "mkdocs>=1.5.0",
+    # MkDocs 2.0 removes the plugin system this site depends on
+    "mkdocs>=1.5.0,<2",
     "mkdocs-material>=9.5.0",
     "mkdocstrings[python]>=0.24",
     "mkdocs-autorefs>=0.5",
@@ -82,6 +83,7 @@ docs = [
 ]
 
 [project.urls]
+Documentation = "https://quietsignalslab.com/contractex/docs/"
 Homepage = "https://github.com/Quiet-Signals-Lab/Contractex-Legal-Tech-Library"
 Repository = "https://github.com/Quiet-Signals-Lab/Contractex-Legal-Tech-Library"
 Issues = "https://github.com/Quiet-Signals-Lab/Contractex-Legal-Tech-Library/issues"
@@ -91,6 +93,9 @@ Changelog = "https://github.com/Quiet-Signals-Lab/Contractex-Legal-Tech-Library/
 where = ["."]
 include = ["contractex*"]
 exclude = ["tests*", "examples*", "benchmarks*", "docs*"]
+
+[tool.setuptools.dynamic]
+version = {attr = "contractex.__version__.__version__"}
 
 [tool.setuptools.package-data]
 contractex = ["storage/*.sql", "storage/migrations/*.sql", "playbooks/*.yaml"]
