@@ -15,7 +15,6 @@ drop-in replacements anywhere the existing loaders are accepted.
 from __future__ import annotations
 
 import hashlib
-import io
 import logging
 import time
 from abc import abstractmethod
@@ -202,7 +201,7 @@ class URLLoader(SourceAdapter):
     Supports:
     * HTML pages — stripped to readable plain text via stdlib html.parser
     * Plain text / JSON responses — returned as-is
-    * PDF URLs — downloaded and parsed via PyMuPDF (requires pymupdf)
+    * PDF URLs — downloaded and parsed via pypdfium2
     * Conditional GET using ETag / Last-Modified headers
 
     Args:
@@ -338,16 +337,15 @@ class URLLoader(SourceAdapter):
     @staticmethod
     def _load_pdf_bytes(data: bytes, source_url: str) -> str:
         try:
-            import fitz  # PyMuPDF
+            import pypdfium2
         except ImportError as exc:
             raise DocumentLoadError(
-                "PyMuPDF is required to load PDF URLs. " "Install with: pip install pymupdf"
+                "pypdfium2 is required to load PDF URLs. Install with: pip install 'contractex[pdf]'"
             ) from exc
 
-        doc = fitz.open(stream=io.BytesIO(data), filetype="pdf")
-        pages = [page.get_text("text") for page in doc]
-        doc.close()
-        return "\n\n".join(pages)
+        from contractex.loaders.pdf import pdf_text
+
+        return pdf_text(pypdfium2.PdfDocument(data))
 
 
 # ---------------------------------------------------------------------------
