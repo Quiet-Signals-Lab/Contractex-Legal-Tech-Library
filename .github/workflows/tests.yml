@@ -14,7 +14,8 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-      - run: pip install -e ".[dev]"
+      # provider extras so mypy checks provider code against the real SDK types
+      - run: pip install -e ".[dev,openai,anthropic,google,ollama]"
       - run: ruff check contractex tests
       - run: black --check contractex tests
       - run: mypy contractex

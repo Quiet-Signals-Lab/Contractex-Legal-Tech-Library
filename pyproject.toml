@@ -39,7 +39,8 @@ dependencies = [
 [project.optional-dependencies]
 # LLM providers (install the one you use)
 openai = ["openai>=1.50.0"]
-anthropic = ["anthropic>=0.39.0"]
+# anthropic 1.0 removed the temperature parameter this provider passes
+anthropic = ["anthropic>=0.39.0,<1.0"]
 google = ["google-genai>=1.0.0"]
 ollama = ["ollama>=0.1.0"]
 langchain = ["langchain>=0.3.0", "langchain-community>=0.3.0"]
@@ -157,8 +158,17 @@ python_version = "3.11"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = false
+# Also check the bodies of unannotated functions (provider calls live in
+# nested helpers; unchecked, an SDK signature change went unnoticed).
+check_untyped_defs = true
 ignore_missing_imports = true
 plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+# self.client holds a different SDK object per branch (google-genai vs the
+# deprecated google-generativeai), which mypy cannot follow.
+module = "contractex.llm.google_provider"
+check_untyped_defs = false
 
 [tool.coverage.run]
 source = ["contractex"]

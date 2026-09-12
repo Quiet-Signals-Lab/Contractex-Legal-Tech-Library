@@ -225,7 +225,7 @@ class AnthropicProvider(LLMProvider):
             response = self.client.messages.count_tokens(
                 model=self._model, messages=[{"role": "user", "content": text}]
             )
-            return response.input_tokens
+            return int(response.input_tokens)
         except Exception:
             # Fallback: Claude uses similar tokenization to GPT
             # Rough estimate: 1 token ≈ 4 characters
