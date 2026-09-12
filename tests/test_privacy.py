@@ -563,3 +563,48 @@ class TestGuard:
     def test_guarded_provider_delegates_metadata(self, router):
         llm = router.guard(SpyProvider(), Doc(PrivacyProfile()))
         assert (llm.model, llm.context_window, llm.count_tokens("abcd")) == ("spy", 100_000, 1)
+
+
+class _FakeResult:
+    def __init__(self, entity_type: str, start: int, end: int, score: float) -> None:
+        self.entity_type, self.start, self.end, self.score = entity_type, start, end, score
+
+
+class _FakeAnalyzer:
+    """Stands in for presidio_analyzer.AnalyzerEngine: finds 'Jane Doe'."""
+
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, list[str], str]] = []
+
+    def analyze(self, text: str, entities: list[str], language: str) -> list[_FakeResult]:
+        self.calls.append((text, entities, language))
+        i = text.find("Jane Doe")
+        results = [_FakeResult("PERSON", i, i + 8, 0.85)] if i >= 0 else []
+        return results + [_FakeResult("LOCATION", 0, 4, 0.30)]
+
+
+class TestDetectorPresidioPath:
+    @pytest.fixture
+    def presidio(self, monkeypatch) -> tuple[PIIDetector, _FakeAnalyzer]:
+        fake = _FakeAnalyzer()
+        monkeypatch.setattr(PIIDetector, "_check_presidio", staticmethod(lambda: True))
+        monkeypatch.setattr(PIIDetector, "_build_presidio_analyzer", lambda self: fake)
+        return PIIDetector(), fake
+
+    def test_uses_presidio_and_filters_by_threshold(self, presidio):
+        detector, fake = presidio
+        spans = detector.detect("Call Jane Doe today", language="en")
+        assert detector.using_presidio
+        assert [(s.entity_type, s.text) for s in spans] == [("PERSON", "Jane Doe")]
+        assert fake.calls[0][2] == "en"
+
+    def test_format_characters_removed_before_presidio_and_mapped_back(self, presidio):
+        detector, fake = presidio
+        text = "Call Ja\u200bne Doe today"
+        (s,) = detector.detect(text)
+        assert fake.calls[0][0] == "Call Jane Doe today"
+        assert text[s.start : s.end] == "Ja\u200bne Doe"
+
+    def test_use_presidio_false_forces_regex(self, monkeypatch):
+        monkeypatch.setattr(PIIDetector, "_check_presidio", staticmethod(lambda: True))
+        assert PIIDetector(use_presidio=False).using_presidio is False
