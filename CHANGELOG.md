@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-09-12
+
 The first release since 0.3.1.  It includes the unpublished 0.4.0 work
 below, fixes privacy defects that affect every earlier version, and adds
 reproducible benchmarks.

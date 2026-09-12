@@ -19,7 +19,7 @@ jobs:
           python-version: "3.12"
       - name: Tag must match the package version
         run: |
-          version=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          version=$(python -c "import re; print(re.search(r'__version__ = \"(.+?)\"', open('contractex/__version__.py').read())[1])")
           test "${GITHUB_REF_NAME}" = "v${version}" || { echo "tag ${GITHUB_REF_NAME} != v${version}"; exit 1; }
       - run: pip install build twine
       - run: python -m build
