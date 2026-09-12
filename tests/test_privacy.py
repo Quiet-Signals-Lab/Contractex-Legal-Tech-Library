@@ -112,7 +112,6 @@ class TestDetectorRegexFallback:
         assert [(s.entity_type, s.text) for s in spans] == [(entity, value)]
         assert text[spans[0].start : spans[0].end] == value
 
-    @defect("regex fallback scores 0.80 but EMAIL/SSN/CREDIT_CARD/IBAN thresholds are 0.85")
     @pytest.mark.parametrize(
         ("entity", "text", "value"),
         [
@@ -166,30 +165,37 @@ class TestDetectorRegexFallback:
 class TestDetectorAdversarial:
     """PII that is disguised so a naive pattern misses it must still be redacted."""
 
-    @defect("zero-width characters split the match")
     def test_zero_width_space_inside_phone(self, detector):
         text = "Call 415-555\u200b-0132 now"
         assert "0132" not in redact_all(detector, text)
 
-    @defect("unicode dashes are not accepted as separators")
     @pytest.mark.parametrize("dash", ["\u2010", "\u2011", "\u2013", "\u2212"])
     def test_unicode_dash_in_phone(self, detector, dash):
         text = f"Call 415{dash}555{dash}0132 now"
         assert "0132" not in redact_all(detector, text)
+
+    def test_unicode_dash_in_ssn(self, detector):
+        assert "6789" not in redact_all(detector, "SSN 123\u201345\u20136789 on file")
+
+    def test_zero_width_joiner_inside_email(self, detector):
+        assert "acme" not in redact_all(detector, "Mail jane\u200d.doe@acme.com now")
+
+    def test_offsets_index_original_text_when_format_chars_present(self, detector):
+        text = "\ufeffCall 415-555\u200b-0132 now"
+        (s,) = detector.detect(text)
+        assert text[s.start : s.end] == s.text == "415-555\u200b-0132"
 
     def test_fullwidth_digits_in_phone(self, detector):
         # Python's \d matches any Unicode decimal digit, so this already works.
         text = "Call \uff14\uff11\uff15-\uff15\uff15\uff15-\uff10\uff11\uff13\uff12 now"
         assert "\uff10\uff11\uff13\uff12" not in redact_all(detector, text)
 
-    @defect("regex fallback drops emails (threshold) and the local part is ASCII-only")
     def test_cyrillic_homoglyph_in_email_local_part(self, detector):
         text = "Mail j\u0430ne.doe@acme.com now"  # U+0430 CYRILLIC SMALL LETTER A
         redacted = redact_all(detector, text)
         assert "@acme.com" not in redacted
         assert "j\u0430ne" not in redacted
 
-    @defect("overlapping spans: the lower-scored span is dropped whole, leaking its tail")
     def test_overlapping_detections_redact_union(self, detector):
         detector.add_recognizer(RegexPIIRecognizer(entity_type="ACCT", pattern=r"ACCT-\d{4}"))
         detector.add_recognizer(RegexPIIRecognizer(entity_type="SORT", pattern=r"\d{4}-\d{4}"))
