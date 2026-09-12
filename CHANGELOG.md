@@ -1,13 +1,107 @@
 # Changelog
 
-All notable changes to ContractEx will be documented in this file.
+All notable changes to Contractex are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-## [0.4.0] - 2026-04-21
+The first release since 0.3.1.  It includes the unpublished 0.4.0 work
+below, fixes privacy defects that affect every earlier version, and adds
+reproducible benchmarks.
+
+### Breaking changes
+
+- `pip install contractex` no longer installs any LLM vendor SDK, pandas or
+  openpyxl.  Install the extra for your provider: `openai`, `anthropic`,
+  `google` (now `google-genai`), `ollama` (renamed from `local`).  `export`
+  provides pandas/openpyxl.
+- No default provider.  `ContractExtractor()`, every model-calling task and
+  `extract_contract()` previously fell back to OpenAI `gpt-4o`; they now
+  raise `ValueError` unless given a provider.  Bare vendor names
+  (`"openai"`, `"anthropic"`) are rejected; pass a full model name.
+- PDF loading uses pypdfium2 (BSD-3-Clause / Apache-2.0) instead of PyMuPDF
+  (AGPL-3.0).  `PDFLoader.get_metadata()` no longer reports `is_encrypted`.
+- Python 3.11 or newer is required (was 3.9).
+- The Anthropic extra is pinned to `anthropic<1.0`: SDK 1.0 removed a
+  parameter `AnthropicProvider` passes on every call.
+- Removed extras that installed nothing used: `cloud`, `chroma`, `stream`,
+  `datasets`, `retrieval`, `eval` (PyYAML is now a core dependency).
+
+### Security
+
+Privacy defects present in every published version:
+
+- Without Presidio, email addresses, US Social Security numbers, card
+  numbers and IBANs were never redacted (regex scores fell below the
+  thresholds).  Zero-width characters, Unicode dashes, fullwidth digits,
+  homoglyphs and overlapping matches also let personal data through.
+- Nothing called the privacy router.  Tasks, pipelines and RAG sent text
+  straight to the provider, so a `secret` document reached the model.  Every
+  built-in model call now goes through the router, and the comparison task
+  enforces its second document's profile.
+- The router redacted only the first call per document, treated any class
+  named `*Local*` as local, and read a profile that was a dict (for example
+  a `LegalDoc` reloaded from JSON) as `public`.
+- ENCRYPT redaction stored plaintext originals in the serialisable map.
+- `PrivacyMetrics` gates could pass with no router supplied, and scored
+  crashing detectors and routers as successes.
+
+### Added
+
+- `benchmarks/`: one command (`python -m benchmarks`) measures chunk
+  integrity and provenance on the CUAD v1 test split (102 contracts, CC BY
+  4.0) and PII detection and privacy routing on a synthetic fixture.
+  Results are committed, embedded in the README and docs, and CI fails if
+  they differ from a fresh run.
+- `PrivacyAwareLLMRouter.guard(provider, *docs)` and
+  `LegalTask.llm_for(*docs)`: a provider wrapper that enforces the strictest
+  profile of the given documents on every call, streaming included.
+- `ProvenanceTracker.register_chunks(..., source_text=...)` locates chunks in
+  the source, so `SourceSpan` offsets are correct.
+- `ContractExtractor.extract_from_text()` and
+  `estimate_extraction_cost_from_text()`.
+- `LegalRAGPipeline.ingest()` accepts `LegalDoc` objects with privacy
+  profiles.
+- Documentation site rewritten; every code example is executed by the test
+  suite.  `SECURITY.md`, issue and pull request templates.
+
+### Changed
+
+- `ClauseAwareChunker` returns exact substrings of the source, enforces
+  `max_chunk_size`, starts overlap at a sentence or word boundary, and keeps
+  headings with their text.  A numbered heading must be followed by a
+  capital letter, `(` or a quote.
+- Redaction placeholders are numbered in document order.
+- Package metadata names the author and the current repository.
+- `pyproject.toml` is the only packaging configuration; the wheel now ships
+  the storage SQL files and the playbook schema.
+
+### Fixed
+
+- The `contract_extraction`, `risk_analysis` and `classification` tasks
+  failed on every input; `LegalRAGPipeline.ingest()` failed on every source.
+- `ProvenanceTracker` offsets did not index the source document.
+- The storage configuration defaulted to the maintainer's database user.
+
+### Deprecated
+
+- `CUADBenchmark`: it cannot load the current CUAD release.  Use
+  `benchmarks/`.
+
+### Removed
+
+- `setup.py`, `requirements.txt`, `pytest.ini`, `install.sh`,
+  `.readthedocs.yaml`, `demo.ipynb`, `ARCHITECTURE.md`,
+  `CLAUSE_RETRIEVAL_GUIDE.md`, and example scripts that did not run.
+- Unsourced accuracy and cost figures from the documentation.
+
+## [0.4.0] - never published
+
+Dated 2026-04-21 in this changelog but never uploaded to PyPI; these
+changes ship in the next release.  The ReadTheDocs site mentioned below was
+never live.
 
 ### Added
 
