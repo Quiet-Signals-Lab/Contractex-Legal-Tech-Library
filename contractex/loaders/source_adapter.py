@@ -15,12 +15,11 @@ drop-in replacements anywhere the existing loaders are accepted.
 from __future__ import annotations
 
 import hashlib
-import io
 import logging
 import time
 from abc import abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import urlparse
 
@@ -55,7 +54,7 @@ class FetchResult:
     etag: str | None = None
     last_modified: str | None = None
     content_hash: str = ""
-    fetched_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    fetched_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     # False when server returned 304 Not Modified (content is empty string)
     changed: bool = True
 
@@ -202,7 +201,7 @@ class URLLoader(SourceAdapter):
     Supports:
     * HTML pages — stripped to readable plain text via stdlib html.parser
     * Plain text / JSON responses — returned as-is
-    * PDF URLs — downloaded and parsed via PyMuPDF (requires pymupdf)
+    * PDF URLs — downloaded and parsed via pypdfium2
     * Conditional GET using ETag / Last-Modified headers
 
     Args:
@@ -235,7 +234,8 @@ class URLLoader(SourceAdapter):
             import requests
         except ImportError as exc:
             raise DocumentLoadError(
-                "requests is required for URLLoader. " "Install with: pip install requests"
+                "requests is required for URLLoader. "
+                "Install with: pip install 'contractex[network]'"
             ) from exc
 
         req_headers: dict[str, str] = {
@@ -338,16 +338,15 @@ class URLLoader(SourceAdapter):
     @staticmethod
     def _load_pdf_bytes(data: bytes, source_url: str) -> str:
         try:
-            import fitz  # PyMuPDF
+            import pypdfium2
         except ImportError as exc:
             raise DocumentLoadError(
-                "PyMuPDF is required to load PDF URLs. " "Install with: pip install pymupdf"
+                "pypdfium2 is required to load PDF URLs. Install with: pip install pypdfium2"
             ) from exc
 
-        doc = fitz.open(stream=io.BytesIO(data), filetype="pdf")
-        pages = [page.get_text("text") for page in doc]
-        doc.close()
-        return "\n\n".join(pages)
+        from contractex.loaders.pdf import pdf_text
+
+        return pdf_text(pypdfium2.PdfDocument(data))
 
 
 # ---------------------------------------------------------------------------
@@ -404,7 +403,8 @@ class APILoader(SourceAdapter):
             import requests
         except ImportError as exc:
             raise DocumentLoadError(
-                "requests is required for APILoader. " "Install with: pip install requests"
+                "requests is required for APILoader. "
+                "Install with: pip install 'contractex[network]'"
             ) from exc
 
         req_headers: dict[str, str] = {

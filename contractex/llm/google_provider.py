@@ -72,21 +72,21 @@ class GoogleProvider(LLMProvider):
                 self._model_name = model
             except (ImportError, AttributeError):
                 # Fall back to old deprecated package
-                import google.generativeai as genai
+                import google.generativeai as legacy_genai
 
                 self.client_type = "old"
-                genai.configure(api_key=self._api_key)
+                legacy_genai.configure(api_key=self._api_key)
 
                 # Ensure model name has models/ prefix
                 if not model.startswith("models/"):
                     model = f"models/{model}"
 
-                self.client = genai.GenerativeModel(model)
+                self.client = legacy_genai.GenerativeModel(model)
                 self._model_name = model
         except ImportError as e:
             raise LLMProviderError(
-                "Google Generative AI package not installed. "
-                "Install with: pip install google-genai (recommended) or google-generativeai"
+                "Google Gen AI package not installed. "
+                "Install with: pip install 'contractex[google]'"
             ) from e
         except Exception as e:
             raise LLMProviderError(f"Failed to initialize Google client: {str(e)}") from e

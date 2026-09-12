@@ -58,7 +58,7 @@ class TestFetchCache:
         result = FetchResult(
             content="text",
             content_type="text/plain",
-            source_url="https://example.com",
+            source_url="https://docs.test",
             etag='"abc123"',
             content_hash="deadbeef",
         )
@@ -77,16 +77,16 @@ class TestURLLoaderFetch:
     def test_plain_text_fetch(self, mock_get):
         mock_get.return_value = _mock_response(text="plain text content")
         loader = URLLoader()
-        result = loader.fetch("https://example.com/doc.txt")
+        result = loader.fetch("https://docs.test/doc.txt")
         assert result.content == "plain text content"
-        assert result.source_url == "https://example.com/doc.txt"
+        assert result.source_url == "https://docs.test/doc.txt"
         assert result.changed is True
 
     @patch("requests.get")
     def test_load_interface(self, mock_get):
         mock_get.return_value = _mock_response(text="hello")
         loader = URLLoader()
-        text = loader.load("https://example.com/")
+        text = loader.load("https://docs.test/")
         assert text == "hello"
 
     @patch("requests.get")
@@ -96,17 +96,17 @@ class TestURLLoaderFetch:
             headers={"ETag": '"etag1"'},
         )
         loader = URLLoader()
-        result = loader.load_with_metadata("https://example.com/")
+        result = loader.load_with_metadata("https://docs.test/")
         assert result["text"] == "content"
         assert result["metadata"]["etag"] == '"etag1"'
-        assert result["metadata"]["source_url"] == "https://example.com/"
+        assert result["metadata"]["source_url"] == "https://docs.test/"
 
     @patch("requests.get")
     def test_etag_sent_when_cache_provided(self, mock_get):
         mock_get.return_value = _mock_response(text="fresh content")
         cache = FetchCache(etag='"old-etag"')
         loader = URLLoader()
-        loader.fetch("https://example.com/", cache=cache)
+        loader.fetch("https://docs.test/", cache=cache)
         call_kwargs = mock_get.call_args.kwargs
         assert call_kwargs["headers"]["If-None-Match"] == '"old-etag"'
 
@@ -115,7 +115,7 @@ class TestURLLoaderFetch:
         mock_get.return_value = _mock_response(text="fresh")
         cache = FetchCache(last_modified="Tue, 01 Jan 2024 00:00:00 GMT")
         loader = URLLoader()
-        loader.fetch("https://example.com/", cache=cache)
+        loader.fetch("https://docs.test/", cache=cache)
         call_kwargs = mock_get.call_args.kwargs
         assert "If-Modified-Since" in call_kwargs["headers"]
 
@@ -125,7 +125,7 @@ class TestURLLoaderFetch:
         mock_get.return_value.ok = False  # 304 is not in 2xx
         cache = FetchCache(etag='"abc"', content_hash="old-hash")
         loader = URLLoader()
-        result = loader.fetch("https://example.com/", cache=cache)
+        result = loader.fetch("https://docs.test/", cache=cache)
         assert result.changed is False
         assert result.content == ""
         assert result.etag == '"abc"'
@@ -139,7 +139,7 @@ class TestURLLoaderFetch:
         mock_get.return_value = _mock_response(text=text)
         cache = FetchCache(content_hash=content_hash)
         loader = URLLoader()
-        result = loader.fetch("https://example.com/", cache=cache)
+        result = loader.fetch("https://docs.test/", cache=cache)
         assert result.changed is False
 
     @patch("requests.get")
@@ -147,13 +147,13 @@ class TestURLLoaderFetch:
         mock_get.return_value = _mock_response(status_code=404)
         loader = URLLoader(max_retries=1)
         with pytest.raises(DocumentLoadError, match="HTTP 404"):
-            loader.fetch("https://example.com/missing")
+            loader.fetch("https://docs.test/missing")
 
     @patch("requests.get")
     def test_extra_headers_sent(self, mock_get):
         mock_get.return_value = _mock_response(text="ok")
         loader = URLLoader(headers={"X-Custom": "value"})
-        loader.fetch("https://example.com/")
+        loader.fetch("https://docs.test/")
         call_headers = mock_get.call_args.kwargs["headers"]
         assert call_headers["X-Custom"] == "value"
 
@@ -164,7 +164,7 @@ class TestURLLoaderFetch:
             _mock_response(text="ok after retry"),
         ]
         loader = URLLoader(max_retries=3, backoff_factor=0.01)
-        result = loader.fetch("https://example.com/")
+        result = loader.fetch("https://docs.test/")
         assert result.content == "ok after retry"
 
     @patch("requests.get")
@@ -172,12 +172,12 @@ class TestURLLoaderFetch:
         mock_get.side_effect = ConnectionError("persistent failure")
         loader = URLLoader(max_retries=2, backoff_factor=0.01)
         with pytest.raises(DocumentLoadError, match="retry"):
-            loader.fetch("https://example.com/")
+            loader.fetch("https://docs.test/")
 
     def test_supports_http_https(self):
         loader = URLLoader()
-        assert loader.supports("https://example.com/doc.pdf") is True
-        assert loader.supports("http://example.com/") is True
+        assert loader.supports("https://docs.test/doc.pdf") is True
+        assert loader.supports("http://docs.test/") is True
         assert loader.supports("/local/file.pdf") is False
 
 
@@ -195,7 +195,7 @@ class TestURLLoaderHTMLStrip:
             content_type="text/html",
         )
         loader = URLLoader(strip_html=True)
-        result = loader.fetch("https://example.com/page.html")
+        result = loader.fetch("https://docs.test/page.html")
         assert "Hello world" in result.content
         assert "<p>" not in result.content
         assert "<html>" not in result.content
@@ -205,7 +205,7 @@ class TestURLLoaderHTMLStrip:
         html = "<html><body><script>alert('xss')</script><p>Real content</p></body></html>"
         mock_get.return_value = _mock_response(text=html, content_type="text/html")
         loader = URLLoader(strip_html=True)
-        result = loader.fetch("https://example.com/")
+        result = loader.fetch("https://docs.test/")
         assert "alert" not in result.content
         assert "Real content" in result.content
 
@@ -214,7 +214,7 @@ class TestURLLoaderHTMLStrip:
         html = "<p>Hello</p>"
         mock_get.return_value = _mock_response(text=html, content_type="text/html")
         loader = URLLoader(strip_html=False)
-        result = loader.fetch("https://example.com/")
+        result = loader.fetch("https://docs.test/")
         assert "<p>" in result.content
 
 
@@ -231,7 +231,7 @@ class TestAPILoaderFetch:
             json_data={"text": "the opinion text"},
         )
         loader = APILoader(text_field="text")
-        result = loader.fetch("https://api.example.com/opinions/1")
+        result = loader.fetch("https://api.docs.test/opinions/1")
         assert result.content == "the opinion text"
 
     @patch("requests.get")
@@ -241,7 +241,7 @@ class TestAPILoaderFetch:
             json_data={"data": {"opinion": {"text": "nested content"}}},
         )
         loader = APILoader(text_field="data.opinion.text")
-        result = loader.fetch("https://api.example.com/")
+        result = loader.fetch("https://api.docs.test/")
         assert result.content == "nested content"
 
     @patch("requests.get")
@@ -251,7 +251,7 @@ class TestAPILoaderFetch:
             json_data={"other_key": "value"},
         )
         loader = APILoader(text_field="text")
-        result = loader.fetch("https://api.example.com/")
+        result = loader.fetch("https://api.docs.test/")
         assert result.content == ""
 
     @patch("requests.get")
@@ -261,7 +261,7 @@ class TestAPILoaderFetch:
             json_data={"text": "ok"},
         )
         loader = APILoader(auth_header="Token secret-key")
-        loader.fetch("https://api.example.com/")
+        loader.fetch("https://api.docs.test/")
         call_headers = mock_get.call_args.kwargs["headers"]
         assert call_headers["Authorization"] == "Token secret-key"
 
@@ -272,7 +272,7 @@ class TestAPILoaderFetch:
             json_data={"text": "ok"},
         )
         loader = APILoader(params={"format": "json", "jurisdiction": "us"})
-        loader.fetch("https://api.example.com/")
+        loader.fetch("https://api.docs.test/")
         call_params = mock_get.call_args.kwargs["params"]
         assert call_params["jurisdiction"] == "us"
 
@@ -282,7 +282,7 @@ class TestAPILoaderFetch:
         mock_get.return_value.ok = False
         cache = FetchCache(etag='"abc"', content_hash="hash")
         loader = APILoader()
-        result = loader.fetch("https://api.example.com/", cache=cache)
+        result = loader.fetch("https://api.docs.test/", cache=cache)
         assert result.changed is False
 
     @patch("requests.get")
@@ -290,11 +290,11 @@ class TestAPILoaderFetch:
         mock_get.return_value = _mock_response(status_code=401)
         loader = APILoader(max_retries=1)
         with pytest.raises(DocumentLoadError, match="HTTP 401"):
-            loader.fetch("https://api.example.com/")
+            loader.fetch("https://api.docs.test/")
 
     def test_supports_http_https(self):
         loader = APILoader()
-        assert loader.supports("https://api.example.com/") is True
+        assert loader.supports("https://api.docs.test/") is True
         assert loader.supports("/local/path") is False
 
 
@@ -309,7 +309,7 @@ class TestAPILoaderPagination:
         page1 = _mock_response(
             content_type="application/json",
             json_data={"text": "page 1 content"},
-            headers={"Link": '<https://api.example.com/page2>; rel="next"'},
+            headers={"Link": '<https://api.docs.test/page2>; rel="next"'},
         )
         page2 = _mock_response(
             content_type="application/json",
@@ -318,7 +318,7 @@ class TestAPILoaderPagination:
         mock_get.side_effect = [page1, page2]
 
         loader = APILoader(text_field="text", paginate=True, max_pages=5)
-        result = loader.fetch("https://api.example.com/page1")
+        result = loader.fetch("https://api.docs.test/page1")
         assert "page 1 content" in result.content
         assert "page 2 content" in result.content
 
@@ -326,7 +326,7 @@ class TestAPILoaderPagination:
     def test_json_next_key_pagination(self, mock_get):
         page1 = _mock_response(
             content_type="application/json",
-            json_data={"text": "first", "next": "https://api.example.com/page2"},
+            json_data={"text": "first", "next": "https://api.docs.test/page2"},
         )
         page2 = _mock_response(
             content_type="application/json",
@@ -335,7 +335,7 @@ class TestAPILoaderPagination:
         mock_get.side_effect = [page1, page2]
 
         loader = APILoader(text_field="text", paginate=True, max_pages=5)
-        result = loader.fetch("https://api.example.com/page1")
+        result = loader.fetch("https://api.docs.test/page1")
         assert "first" in result.content
         assert "second" in result.content
 
@@ -345,13 +345,13 @@ class TestAPILoaderPagination:
         def _page(i):
             return _mock_response(
                 content_type="application/json",
-                json_data={"text": f"content {i}", "next": f"https://api.example.com/page{i+1}"},
+                json_data={"text": f"content {i}", "next": f"https://api.docs.test/page{i+1}"},
             )
 
         mock_get.side_effect = [_page(i) for i in range(10)]
         loader = APILoader(text_field="text", paginate=True, max_pages=3)
         # Start at page0 so the first "next" (page1) is a different URL
-        result = loader.fetch("https://api.example.com/page0")
+        result = loader.fetch("https://api.docs.test/page0")
         # Should have fetched exactly max_pages pages
         assert mock_get.call_count == 3
         assert "content 0" in result.content
@@ -360,11 +360,11 @@ class TestAPILoaderPagination:
     def test_no_pagination_when_disabled(self, mock_get):
         page1 = _mock_response(
             content_type="application/json",
-            json_data={"text": "page 1", "next": "https://api.example.com/page2"},
+            json_data={"text": "page 1", "next": "https://api.docs.test/page2"},
         )
         mock_get.return_value = page1
         loader = APILoader(text_field="text", paginate=False)
-        loader.fetch("https://api.example.com/page1")
+        loader.fetch("https://api.docs.test/page1")
         assert mock_get.call_count == 1
 
 
@@ -381,7 +381,7 @@ class TestChangedSince:
 
         cache = FetchCache(content_hash=SourceAdapter._hash("old content"))
         loader = URLLoader()
-        assert loader.changed_since("https://example.com/", cache=cache) is True
+        assert loader.changed_since("https://docs.test/", cache=cache) is True
 
     @patch("requests.get")
     def test_changed_since_false_when_same(self, mock_get):
@@ -391,4 +391,4 @@ class TestChangedSince:
         mock_get.return_value = _mock_response(text=text)
         cache = FetchCache(content_hash=SourceAdapter._hash(text))
         loader = URLLoader()
-        assert loader.changed_since("https://example.com/", cache=cache) is False
+        assert loader.changed_since("https://docs.test/", cache=cache) is False

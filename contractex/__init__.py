@@ -67,6 +67,7 @@ from contractex.core.models import (
 
 # Eval
 from contractex.eval import CalibrationAnalyzer, CUADBenchmark
+from contractex.llm.base import LLMProvider
 
 # Playbooks
 from contractex.playbooks import (
@@ -114,7 +115,7 @@ except ImportError:
 # Simple API for 80% use case
 def extract_contract(
     document_path: str,
-    llm: str = "gpt-4o",
+    llm: str | LLMProvider,
     confidence_threshold: float = 0.7,
     analyze_risks: bool = True,
     extract_financial: bool = True,
@@ -124,7 +125,9 @@ def extract_contract(
 
     Args:
         document_path: Path to the contract document (PDF, DOCX, etc.)
-        llm: LLM provider to use ("gpt-4o", "claude-3.5-sonnet", "llama-3.1-70b")
+        llm: An LLMProvider instance, or a full model name (``gpt-...``,
+            ``claude-...``, or an Ollama model such as ``llama3.1:8b``).
+            Required: the library has no default provider.
         confidence_threshold: Minimum confidence score for extractions (0.0-1.0)
         analyze_risks: Whether to perform risk analysis
         extract_financial: Whether to extract financial terms
@@ -133,13 +136,14 @@ def extract_contract(
         Contract: Extracted contract data with parties, clauses, risks, etc.
 
     Example:
-        >>> contract = extract_contract("contract.pdf")
+        >>> contract = extract_contract("contract.pdf", llm="llama3.1:8b")
         >>> print(contract.parties)
         >>> print(contract.clauses)
         >>> print(contract.risks)
     """
     extractor = ContractExtractor(
-        llm_provider_name=llm,
+        llm_provider=llm if not isinstance(llm, str) else None,
+        llm_provider_name=llm if isinstance(llm, str) else None,
         confidence_threshold=confidence_threshold,
     )
 
@@ -195,7 +199,6 @@ __all__ = [
 
 # Optional modules (require additional dependencies):
 # - contractex.storage:   PostgreSQL persistence     pip install contractex[storage]
-# - contractex.data:      Dataset loaders            pip install contractex[datasets]
 # - contractex.core.ner:  Named Entity Recognition   pip install contractex[spacy]
-# - contractex.retrieval: Search and ranking         pip install contractex[retrieval]
-# - contractex.eval:      Eval harness               pip install contractex[eval]
+# - contractex.rag:       RAG pipeline               pip install contractex[rag]
+# - LLM providers:        openai / anthropic / google / ollama extras

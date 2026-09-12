@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 from pydantic import BaseModel, Field
 
@@ -61,21 +61,6 @@ class ObligationsTask(LegalTask):
 
     def __init__(self, llm_provider: Any | None = None) -> None:
         self._llm_provider = llm_provider
-        self._provider: Any | None = None
-
-    def _get_provider(self) -> Any:
-        if self._provider is None:
-            if isinstance(self._llm_provider, str):
-                from contractex.core.extractors import ContractExtractor
-
-                self._provider = ContractExtractor._create_provider(self._llm_provider)  # type: ignore[arg-type]
-            elif self._llm_provider is not None:
-                self._provider = self._llm_provider
-            else:
-                from contractex.core.extractors import ContractExtractor
-
-                self._provider = ContractExtractor._create_provider("gpt-4o")  # type: ignore[arg-type]
-        return self._provider
 
     def run(self, doc: LegalDoc, **kwargs: Any) -> LegalDoc:
         if not doc.full_text:
@@ -86,8 +71,8 @@ class ObligationsTask(LegalTask):
         schema_str = json.dumps(ObligationsResult.model_json_schema(), indent=2)
         prompt = _OBLIGATIONS_PROMPT.format(schema=schema_str, text=doc.full_text[:12_000])
 
-        provider = self._get_provider()
-        result = provider.extract_structured(prompt, ObligationsResult)
+        provider = self.llm_for(doc)
+        result = cast(ObligationsResult, provider.extract_structured(prompt, ObligationsResult))
 
         doc = doc.model_copy(
             update={

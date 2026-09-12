@@ -126,7 +126,7 @@ To use NER with the main contract extraction pipeline:
     from contractex.core import LegalNER
 
     # Extract contract
-    contract = extract_contract("contract.pdf")
+    contract = extract_contract("contract.pdf", llm="llama3.1:8b")
 
     # Apply NER to extract parties and entities
     ner = LegalNER()

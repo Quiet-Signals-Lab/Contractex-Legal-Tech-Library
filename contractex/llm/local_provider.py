@@ -63,7 +63,7 @@ class LocalProvider(LLMProvider):
             self.client = ollama.Client(host=self._host)
         except ImportError as e:
             raise LLMProviderError(
-                "Ollama package not installed. Install with: pip install ollama"
+                "Ollama package not installed. Install with: pip install 'contractex[ollama]'"
             ) from e
 
         # Check if model is available

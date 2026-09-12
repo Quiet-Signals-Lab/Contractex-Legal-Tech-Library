@@ -18,7 +18,7 @@ class ContractExtractionTask(LegalTask):
     Parameters
     ----------
     llm_provider:
-        LLM provider instance or name string (e.g. ``"gpt-4o"``).
+        LLM provider instance or full model name.  Required.
     confidence_threshold:
         Minimum confidence for accepted extractions.
     analyze_risks:
@@ -42,29 +42,19 @@ class ContractExtractionTask(LegalTask):
         self._confidence_threshold = confidence_threshold
         self._analyze_risks = analyze_risks
         self._extract_financial = extract_financial
-        self._extractor: Any | None = None
 
-    def _get_extractor(self) -> Any:
-        if self._extractor is None:
-            from contractex.core.extractors import ContractExtractor
+    def _extractor(self, provider: Any) -> Any:
+        from contractex.core.extractors import ContractExtractor
 
-            kwargs: dict[str, Any] = {
-                "confidence_threshold": self._confidence_threshold,
-            }
-            if isinstance(self._llm_provider, str):
-                kwargs["llm_provider_name"] = self._llm_provider
-            elif self._llm_provider is not None:
-                kwargs["llm_provider"] = self._llm_provider
-
-            self._extractor = ContractExtractor(**kwargs)
-        return self._extractor
+        return ContractExtractor(
+            llm_provider=provider, confidence_threshold=self._confidence_threshold
+        )
 
     def run(self, doc: LegalDoc, **kwargs: Any) -> LegalDoc:
         if not doc.full_text:
             return doc
 
-        extractor = self._get_extractor()
-        contract = extractor.extract_from_text(
+        contract = self._extractor(self.llm_for(doc)).extract_from_text(
             doc.full_text,
             analyze_risks=self._analyze_risks,
             extract_financial=self._extract_financial,
@@ -83,7 +73,7 @@ class ContractExtractionTask(LegalTask):
         if not doc.full_text:
             return 0.0
         try:
-            extractor = self._get_extractor()
+            extractor = self._extractor(self._resolve_provider())
             est = extractor.estimate_extraction_cost_from_text(doc.full_text)
             return float(est.get("estimated_cost", 0.0))
         except Exception:

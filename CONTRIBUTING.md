@@ -9,8 +9,8 @@ Thank you for your interest in contributing! ContractEx is a community-driven pr
 ### 1. Fork and Clone
 
 ```bash
-git clone https://github.com/aahepburn/Contract-Clause-Extractor.git
-cd Contract-Clause-Extractor
+git clone https://github.com/Quiet-Signals-Lab/Contractex-Legal-Tech-Library.git
+cd Contractex-Legal-Tech-Library
 ```
 
 ### 2. Set Up Your Development Environment
@@ -67,7 +67,7 @@ black contractex/ tests/ && ruff check contractex/ tests/ && mypy contractex/
 
 ### Bugs
 
-- Search [existing issues](https://github.com/aahepburn/Contract-Clause-Extractor/issues) before filing a new one.
+- Search [existing issues](https://github.com/Quiet-Signals-Lab/Contractex-Legal-Tech-Library/issues) before filing a new one.
 - Include a minimal reproducible example and the full traceback.
 
 ### Features

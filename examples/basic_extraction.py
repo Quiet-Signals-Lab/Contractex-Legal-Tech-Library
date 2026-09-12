@@ -8,7 +8,7 @@ extract a contract with a single line of code.
 from contractex import extract_contract
 
 # Extract contract with default settings
-contract = extract_contract("path/to/contract.pdf")
+contract = extract_contract("path/to/contract.pdf", llm="llama3.1:8b")
 
 # Access the results
 print(f"Contract Type: {contract.contract_type}")

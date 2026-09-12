@@ -69,7 +69,10 @@ class ContractExtractor:
 
         Args:
             llm_provider: Custom LLM provider instance
-            llm_provider_name: Name of provider to use ("gpt-4o", "claude-3.5-sonnet")
+            llm_provider_name: Full model name: ``gpt-...`` (OpenAI), ``claude-...``
+                (Anthropic), anything else is an Ollama model for LocalProvider.
+                One of ``llm_provider`` / ``llm_provider_name`` is required; there
+                is no default provider.
             document_loader: Custom document loader
             chunking_strategy: Custom chunking strategy
             confidence_threshold: Minimum confidence score for extractions
@@ -84,8 +87,10 @@ class ContractExtractor:
         elif llm_provider_name:
             self.llm_provider = self._create_provider(llm_provider_name)
         else:
-            # Default to GPT-4o
-            self.llm_provider = self._create_provider("gpt-4o")
+            raise ValueError(
+                "No LLM provider configured.  Pass an LLMProvider instance (for example "
+                "LocalProvider(model=...)) or a full model name."
+            )
 
         # Initialize document loader
         if document_loader:
@@ -125,11 +130,14 @@ class ContractExtractor:
 
         Example::
 
-            extractor = ContractExtractor(llm_provider_name="gpt-4o")
+            extractor = ContractExtractor(llm_provider=LocalProvider(model="llama3.1:8b"))
             estimate = extractor.estimate_extraction_cost("contract.pdf")
             print(f"Estimated cost: ${estimate['estimated_cost']:.4f}")
         """
-        text = self.document_loader.load(document_path)
+        return self.estimate_extraction_cost_from_text(self.document_loader.load(document_path))
+
+    def estimate_extraction_cost_from_text(self, text: str) -> dict[str, Any]:
+        """Like ``estimate_extraction_cost`` but for already-loaded text."""
         chunks = self.chunking_strategy.chunk(text)
 
         # Phase 1: contract info — first 2 chunks capped at _INFO_EXTRACTION_CHARS
@@ -173,20 +181,31 @@ class ContractExtractor:
 
     @staticmethod
     def _create_provider(name: str) -> LLMProvider:
-        """Create an LLM provider by name."""
+        """
+        Create an LLM provider from a full model name.
+
+        ``gpt-...`` → OpenAIProvider, ``claude-...`` → AnthropicProvider, any
+        other name → LocalProvider (Ollama).  A vendor name without a model
+        (``"openai"``, ``"anthropic"``) is rejected rather than silently
+        mapped to a model the library picks.
+        """
         name_lower = name.lower()
 
-        if "gpt" in name_lower or "openai" in name_lower:
+        if name_lower.startswith("gpt-"):
             from contractex.llm import OpenAIProvider
 
-            model = name if name.startswith("gpt-") else "gpt-4o"
-            return OpenAIProvider(model=model)
+            return OpenAIProvider(model=name)
 
-        elif "claude" in name_lower or "anthropic" in name_lower:
+        elif name_lower.startswith("claude-"):
             from contractex.llm import AnthropicProvider
 
-            model = name if name.startswith("claude-") else "claude-3-5-sonnet-20241022"
-            return AnthropicProvider(model=model)
+            return AnthropicProvider(model=name)
+
+        elif any(v in name_lower for v in ("gpt", "openai", "claude", "anthropic")):
+            raise ValueError(
+                f"{name!r} does not name a model.  Pass a full model name such as "
+                f"'gpt-...' or 'claude-...', or an LLMProvider instance."
+            )
 
         else:
             # Treat as a local Ollama model name (llama, mistral, phi, qwen, etc.)
@@ -219,27 +238,61 @@ class ContractExtractor:
             ExtractionError: If extraction fails
         """
         start_time = time.monotonic()
-
         try:
-            # Load document
             text = self.document_loader.load(document_path)
+        except Exception as e:
+            raise ExtractionError(f"Failed to extract contract: {str(e)}") from e
 
-            # Gather file metadata
-            doc_path = Path(document_path)
-            file_metadata: dict[str, Any] = {
-                "filename": doc_path.name,
-                "file_type": doc_path.suffix.lstrip("."),
+        doc_path = Path(document_path)
+        return self._extract_text(
+            text,
+            start_time,
+            {"filename": doc_path.name, "file_type": doc_path.suffix.lstrip(".")},
+            contract_type=contract_type,
+            analyze_risks=analyze_risks,
+            extract_financial=extract_financial,
+            known_parties=known_parties,
+        )
+
+    def extract_from_text(
+        self,
+        text: str,
+        contract_type: ContractType | None = None,
+        analyze_risks: bool = True,
+        extract_financial: bool = True,
+        known_parties: list[str] | None = None,
+    ) -> Contract:
+        """Like ``extract`` but for already-loaded text (no file metadata)."""
+        return self._extract_text(
+            text,
+            time.monotonic(),
+            {},
+            contract_type=contract_type,
+            analyze_risks=analyze_risks,
+            extract_financial=extract_financial,
+            known_parties=known_parties,
+        )
+
+    def _extract_text(
+        self,
+        text: str,
+        start_time: float,
+        file_metadata: dict[str, Any],
+        contract_type: ContractType | None,
+        analyze_risks: bool,
+        extract_financial: bool,
+        known_parties: list[str] | None,
+    ) -> Contract:
+        try:
+            file_metadata = {
+                **file_metadata,
                 "llm_provider": self.llm_provider.__class__.__name__,
                 "llm_model": getattr(self.llm_provider, "model", None),
             }
 
             # Chunk document
             chunks = self.chunking_strategy.chunk(text)
-            logger.info(
-                "Chunked '%s' into %d chunk(s) for extraction",
-                doc_path.name,
-                len(chunks),
-            )
+            logger.info("Chunked document into %d chunk(s) for extraction", len(chunks))
 
             # Extract structured data using LLM
             contract_data = self._extract_from_chunks(

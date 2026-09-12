@@ -327,7 +327,7 @@ class LegalKnowledgeGraph:
         """
         Export the graph to RDF/Turtle format.
 
-        Requires ``rdflib`` (``pip install rdflib``).
+        Requires ``rdflib`` (``pip install contractex[graph]``).
 
         Parameters
         ----------
@@ -361,7 +361,8 @@ class LegalKnowledgeGraph:
 
         except ImportError:
             raise ImportError(
-                "rdflib is required for RDF export.\n" "Install with: pip install rdflib"
+                "rdflib is required for RDF export.\n"
+                "Install with: pip install 'contractex[graph]'"
             ) from None
 
     # ------------------------------------------------------------------

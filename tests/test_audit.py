@@ -182,10 +182,10 @@ class TestAuditLogger:
     def test_from_jsonl_factory(self, tmp_path):
         path = tmp_path / "audit.jsonl"
         with AuditLogger.from_jsonl(path) as audit:
-            audit.log_ingestion("doc-1", source_url="https://example.com")
+            audit.log_ingestion("doc-1", source_url="https://docs.test")
         events = JSONLAuditBackend.read_all(path)
         assert len(events) == 1
-        assert events[0].source_url == "https://example.com"
+        assert events[0].source_url == "https://docs.test"
 
     def test_log_ingestion(self, tmp_path):
         path = tmp_path / "a.jsonl"

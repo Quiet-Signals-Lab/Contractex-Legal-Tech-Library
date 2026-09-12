@@ -43,7 +43,7 @@ def main():
         contract_path = "sample.pdf"  # Use your own contract
 
     print(f"\nExtracting contract from {contract_path}...")
-    contract = extract_contract(contract_path)
+    contract = extract_contract(contract_path, llm="llama3.1:8b")
 
     print(f"✓ Extracted: {contract.title}")
     print(f"  Parties: {len(contract.parties)}")

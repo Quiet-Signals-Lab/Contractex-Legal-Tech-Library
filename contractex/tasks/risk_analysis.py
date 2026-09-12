@@ -35,27 +35,20 @@ class RiskAnalysisTask(LegalTask):
     ) -> None:
         self._llm_provider = llm_provider
         self._severity_threshold = severity_threshold
-        self._analyzer: Any | None = None
-
-    def _get_analyzer(self) -> Any:
-        if self._analyzer is None:
-            from contractex.core.analyzers import RiskAnalyzer
-
-            kwargs: dict[str, Any] = {}
-            if isinstance(self._llm_provider, str):
-                kwargs["llm_provider_name"] = self._llm_provider
-            elif self._llm_provider is not None:
-                kwargs["llm_provider"] = self._llm_provider
-
-            self._analyzer = RiskAnalyzer(**kwargs)
-        return self._analyzer
 
     def run(self, doc: LegalDoc, **kwargs: Any) -> LegalDoc:
         if not doc.full_text:
             return doc
 
-        analyzer = self._get_analyzer()
-        risks = analyzer.analyze(doc.full_text)
+        from contractex.core.analyzers import RiskAnalyzer
+        from contractex.core.models import Contract
+
+        # Reuse clauses from a preceding contract_extraction task when present,
+        # so the keyword rules have clauses to run over.
+        contract = Contract.model_validate(
+            doc.extracted.get("contract") or {"full_text": doc.full_text}
+        )
+        risks = RiskAnalyzer(llm_provider=self.llm_for(doc)).analyze(contract)
 
         doc = doc.model_copy(
             update={

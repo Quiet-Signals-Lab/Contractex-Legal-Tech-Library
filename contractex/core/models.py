@@ -7,7 +7,7 @@ providing type-safe interfaces with validation and convenience methods.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from enum import Enum
 from typing import TYPE_CHECKING, Any
@@ -229,7 +229,7 @@ class ContractMetadata(BaseModel):
 
     # Extraction metadata
     extraction_date: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
+        default_factory=lambda: datetime.now(UTC),
         description="When extraction was performed",
     )
     llm_provider: str | None = Field(None, description="LLM provider used")
@@ -366,7 +366,7 @@ class Contract(BaseModel):
             import pandas as pd
         except ImportError as e:
             raise ImportError(
-                "pandas is required for to_dataframe(). Install with: pip install pandas"
+                "pandas is required for to_dataframe(). Install with: pip install 'contractex[export]'"
             ) from e
 
         if not self.clauses:
@@ -397,7 +397,7 @@ class Contract(BaseModel):
             import pandas as pd
         except ImportError as e:
             raise ImportError(
-                "pandas and openpyxl are required. Install with: pip install pandas openpyxl"
+                "pandas and openpyxl are required. Install with: pip install 'contractex[export]'"
             ) from e
 
         with pd.ExcelWriter(file_path, engine="openpyxl") as writer:

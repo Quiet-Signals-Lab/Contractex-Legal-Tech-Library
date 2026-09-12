@@ -8,6 +8,17 @@ The regex fallback is intentionally conservative — it catches the most
 common PII patterns without dependencies, so the privacy layer always
 functions even in minimal installs.
 
+Regex fallback limitations
+--------------------------
+* No PERSON, LOCATION, ORGANIZATION or NATIONAL_ID detection.  Names are the
+  most common PII in contracts; install Presidio if names must be redacted.
+* Phone, SSN and driver's licence patterns are US formats.  Credit cards are
+  matched on shape only (no Luhn check); IBANs only without internal spaces.
+* Dates of birth are matched only after "born", "DOB" or "date of birth".
+* Zero-width/format characters, Unicode dashes, non-ASCII digits and
+  non-Latin letters in email addresses are handled; other obfuscation
+  (spelled-out digits, spacing out every character) is not.
+
 Supported entity types (default detection set)
 -----------------------------------------------
 * PERSON, EMAIL_ADDRESS, PHONE_NUMBER, LOCATION
@@ -41,6 +52,7 @@ personal identification numbers, CUII codes, etc.)::
 from __future__ import annotations
 
 import re
+import unicodedata
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -144,15 +156,21 @@ _DEFAULT_THRESHOLDS: dict[str, float] = {
 # Regex patterns for the fallback detector
 # ---------------------------------------------------------------------------
 
+# Hyphen-minus plus the Unicode dashes that render the same (U+2010-2015,
+# U+2212 minus, small/fullwidth hyphen-minus).  \d already matches any
+# Unicode decimal digit, so fullwidth and other-script digits are covered.
+_DASH = r"[-\u2010-\u2015\u2212\ufe58\ufe63\uff0d]"
+_SEP = rf"(?:{_DASH}|[.\s])"
+
 _REGEX_PATTERNS: list[tuple[str, str]] = [
-    # Email
-    ("EMAIL_ADDRESS", r"\b[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}\b"),
+    # Email (\w is Unicode-aware, so homoglyphs from other scripts are covered)
+    ("EMAIL_ADDRESS", r"\b[\w.%+\-]+@[\w.\-]+\.[^\W\d_]{2,}\b"),
     # US phone (various formats)
-    ("PHONE_NUMBER", r"\b(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b"),
+    ("PHONE_NUMBER", rf"\b(?:\+?1{_SEP}?)?\(?\d{{3}}\)?{_SEP}?\d{{3}}{_SEP}?\d{{4}}\b"),
     # US SSN
-    ("US_SSN", r"\b\d{3}-\d{2}-\d{4}\b"),
+    ("US_SSN", rf"\b\d{{3}}{_DASH}\d{{2}}{_DASH}\d{{4}}\b"),
     # Credit card (Luhn-valid patterns — pattern only, no Luhn check)
-    ("CREDIT_CARD", r"\b(?:\d{4}[-\s]?){3}\d{4}\b"),
+    ("CREDIT_CARD", rf"\b(?:\d{{4}}(?:{_DASH}|\s)?){{3}}\d{{4}}\b"),
     # IBAN (2-letter country + 2 check digits + up to 30 alphanumeric)
     ("IBAN_CODE", r"\b[A-Z]{2}\d{2}[A-Z0-9]{4,30}\b"),
     # Passport (generic: letter(s) + digits, 6–9 chars)
@@ -162,6 +180,37 @@ _REGEX_PATTERNS: list[tuple[str, str]] = [
     # US driver's licence (most states: letter + 7 digits)
     ("DRIVERS_LICENSE", r"\b[A-Z]\d{7}\b"),
 ]
+
+# Regex matches carry no real confidence.  Score them at the highest default
+# threshold so every built-in pattern survives default filtering; raising an
+# entity's threshold above this value suppresses that pattern.
+_REGEX_SCORE = max(_DEFAULT_THRESHOLDS.values())
+
+
+def merge_overlapping(spans: list[PIISpan], text: str) -> list[PIISpan]:
+    """
+    Sort *spans* and merge any that overlap into their union.
+
+    The merged span keeps the entity type of its highest-scoring member, so
+    no character of any input span is left out of the result.
+    """
+    merged: list[PIISpan] = []
+    for s in sorted(spans, key=lambda s: (s.start, -s.end)):
+        prev = merged[-1] if merged else None
+        if prev is not None and s.start < prev.end:
+            end = max(prev.end, s.end)
+            best = s if s.score > prev.score else prev
+            merged[-1] = PIISpan(
+                entity_type=best.entity_type,
+                start=prev.start,
+                end=end,
+                score=best.score,
+                text=text[prev.start : end],
+                language=best.language,
+            )
+        else:
+            merged.append(s)
+    return merged
 
 
 # ---------------------------------------------------------------------------
@@ -230,25 +279,38 @@ class PIIDetector:
         Returns
         -------
         list[PIISpan]
-            Detected spans, sorted by ``start`` offset.
+            Non-overlapping spans, sorted by ``start`` offset, with offsets
+            into *text*.
         """
         if not text:
             return []
 
+        # Zero-width and other invisible format characters (Unicode category
+        # Cf) can split a match.  Detect on a copy without them, then map the
+        # offsets back so the returned spans cover the original characters.
+        keep = [i for i, ch in enumerate(text) if unicodedata.category(ch) != "Cf"]
+        view = "".join(text[i] for i in keep) if len(keep) < len(text) else text
+
         if self._presidio_available and self._presidio_analyzer:
-            spans = self._detect_presidio(text, language)
+            spans = self._detect_presidio(view, language)
         else:
-            spans = self._detect_regex(text)
+            spans = self._detect_regex(view)
 
         # Apply custom recognizers on top
         for recognizer in self._custom_recognizers:
             if language in recognizer.languages:
-                spans.extend(self._apply_regex_recognizer(text, recognizer, language))
+                spans.extend(self._apply_regex_recognizer(view, recognizer, language))
 
-        # Filter by threshold and sort
-        spans = [s for s in spans if s.score >= self._thresholds.get(s.entity_type, 0.75)]
-        spans.sort(key=lambda s: s.start)
-        return self._deduplicate(spans)
+        spans = [
+            s
+            for s in spans
+            if s.end > s.start and s.score >= self._thresholds.get(s.entity_type, 0.75)
+        ]
+        if view is not text:
+            for s in spans:
+                s.start, s.end = keep[s.start], keep[s.end - 1] + 1
+                s.text = text[s.start : s.end]
+        return merge_overlapping(spans, text)
 
     def add_recognizer(self, recognizer: RegexPIIRecognizer) -> None:
         """Register a custom regex-based entity recognizer."""
@@ -320,7 +382,7 @@ class PIIDetector:
                         entity_type=entity_type,
                         start=start,
                         end=end,
-                        score=0.80,
+                        score=_REGEX_SCORE,
                         text=text[start:end],
                     )
                 )
@@ -345,23 +407,3 @@ class PIIDetector:
                 )
             )
         return spans
-
-    # ------------------------------------------------------------------
-    # Internal — deduplication
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def _deduplicate(spans: list[PIISpan]) -> list[PIISpan]:
-        """
-        Remove overlapping spans, keeping the one with the higher score.
-        Spans must be sorted by start offset on entry.
-        """
-        result: list[PIISpan] = []
-        for span in spans:
-            if result and span.start < result[-1].end:
-                # Overlap — keep the higher-confidence span
-                if span.score > result[-1].score:
-                    result[-1] = span
-            else:
-                result.append(span)
-        return result

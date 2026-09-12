@@ -40,7 +40,7 @@ from __future__ import annotations
 import logging
 import threading
 from abc import ABC, abstractmethod
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -83,7 +83,7 @@ class AuditEvent(BaseModel):
         description="Unique event identifier (UUID v4)",
     )
     timestamp: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
+        default_factory=lambda: datetime.now(UTC),
         description="UTC timestamp when the event occurred",
     )
     event_type: AuditEventType = Field(..., description="Type of event")
@@ -328,7 +328,7 @@ class AuditLogger:
     Example::
 
         with AuditLogger.from_jsonl("audit/pipeline.jsonl") as al:
-            al.log_ingestion("doc-1", source_url="https://example.com/doc.pdf")
+            al.log_ingestion("doc-1", source_url="https://docs.test/doc.pdf")
             al.log_extraction("doc-1", ["name", "dob"], overall_confidence=0.91)
     """
 

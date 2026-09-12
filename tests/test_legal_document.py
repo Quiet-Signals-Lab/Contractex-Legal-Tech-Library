@@ -39,7 +39,7 @@ class TestSourceSpan:
     def test_basic_creation(self):
         span = SourceSpan(
             chunk_id="chunk-0001-ab12",
-            source_url="https://example.com/doc.pdf",
+            source_url="https://docs.test/doc.pdf",
             page=3,
             char_start=100,
             char_end=200,
@@ -148,7 +148,7 @@ class TestLegalDocumentProperties:
 
 class TestLegalDocumentMutations:
     def test_add_provenance(self):
-        doc = LegalDocument(metadata=LegalDocumentMetadata(source_url="https://example.com"))
+        doc = LegalDocument(metadata=LegalDocumentMetadata(source_url="https://docs.test"))
         doc.add_provenance(
             "citation",
             chunk_id="chunk-0001-ab12",
@@ -161,7 +161,7 @@ class TestLegalDocumentMutations:
         assert span.page == 2
         assert span.snippet == "§ 107"
         # source_url falls back to metadata.source_url
-        assert span.source_url == "https://example.com"
+        assert span.source_url == "https://docs.test"
 
     def test_add_provenance_explicit_url(self):
         doc = LegalDocument()

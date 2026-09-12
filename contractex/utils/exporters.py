@@ -56,7 +56,7 @@ class CSVExporter:
             import pandas as pd  # noqa: F401
         except ImportError as e:
             raise ImportError(
-                "pandas required for CSV export. Install with: pip install pandas"
+                "pandas required for CSV export. Install with: pip install 'contractex[export]'"
             ) from e
 
         df = contract.to_dataframe()
@@ -75,7 +75,7 @@ class CSVExporter:
             import pandas as pd
         except ImportError as e:
             raise ImportError(
-                "pandas required for CSV export. Install with: pip install pandas"
+                "pandas required for CSV export. Install with: pip install 'contractex[export]'"
             ) from e
 
         if not contract.financial_terms:
@@ -125,7 +125,7 @@ class ExcelExporter:
             import pandas as pd
         except ImportError as e:
             raise ImportError(
-                "pandas and openpyxl required. Install with: pip install pandas openpyxl"
+                "pandas and openpyxl required. Install with: pip install 'contractex[export]'"
             ) from e
 
         with pd.ExcelWriter(file_path, engine="openpyxl") as writer:

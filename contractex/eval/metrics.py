@@ -210,7 +210,13 @@ class ExtractionMetrics(BaseModel):
 
 
 class PrivacyCaseResult(BaseModel):
-    """Privacy / redaction evaluation result for a single eval case."""
+    """
+    Privacy / redaction evaluation result for a single eval case.
+
+    PII precision and recall are measured on entity *types*: a case reaches
+    full recall when every expected type is detected at least once.  They do
+    not count individual occurrences.
+    """
 
     case_id: str
 
@@ -243,7 +249,7 @@ class PrivacyCaseResult(BaseModel):
         expected_redaction_count: int | None,
         actual_redaction_count: int | None,
         should_be_blocked: bool,
-        was_blocked: bool,
+        was_blocked: bool | None,
         error: str | None = None,
         elapsed: float | None = None,
     ) -> PrivacyCaseResult:
@@ -255,7 +261,7 @@ class PrivacyCaseResult(BaseModel):
             expected_redaction_count=expected_redaction_count,
             actual_redaction_count=actual_redaction_count,
             should_be_blocked=should_be_blocked,
-            was_blocked=was_blocked,
+            was_blocked=bool(was_blocked),
             error=error,
             elapsed_seconds=elapsed,
         )
@@ -274,8 +280,9 @@ class PrivacyCaseResult(BaseModel):
         if expected_redaction_count is not None and actual_redaction_count is not None:
             result.redaction_count_match = actual_redaction_count >= expected_redaction_count
 
-        # Blocking accuracy
-        result.blocking_correct = was_blocked == should_be_blocked
+        # Blocking accuracy (only when a router was evaluated)
+        if was_blocked is not None:
+            result.blocking_correct = was_blocked == should_be_blocked
 
         return result
 
@@ -287,7 +294,8 @@ class PrivacyMetrics(BaseModel):
     pii_cases: int = 0  # cases with expected_pii_entities set
     blocking_cases: int = 0  # cases with should_be_blocked set
 
-    # Micro-averaged PII precision / recall / F1 (across all pii_cases)
+    # PII precision / recall averaged over pii_cases (entity-type level);
+    # F1 is the harmonic mean of the averaged precision and recall
     pii_precision: float | None = None
     pii_recall: float | None = None
     pii_f1: float | None = None

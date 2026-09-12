@@ -19,9 +19,13 @@ Implementing a custom task
         doc_types = [DocType.CONTRACT, DocType.PLEADING]
         requires_llm = True
 
+        def __init__(self, llm_provider):
+            self._llm_provider = llm_provider
+
         def run(self, doc: LegalDoc, **kwargs) -> LegalDoc:
-            # ... call LLM, populate doc.extracted ...
-            doc.extracted["obligations"] = [...]
+            # llm_for() enforces doc.privacy_profile on every call
+            answer = self.llm_for(doc).complete(f"List the obligations in: {doc.full_text}")
+            doc.extracted["obligations"] = answer
             return doc
 
     # Register it
@@ -35,10 +39,16 @@ import asyncio
 import logging
 import time
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from contractex.core.document import LegalDoc
 from contractex.core.legal_document import DocType
+from contractex.privacy.profile import PrivacyProfile
+from contractex.privacy.router import PrivacyBlockedError, default_router, resolve_profile
+
+if TYPE_CHECKING:
+    from contractex.llm.base import LLMProvider
+    from contractex.privacy.router import PrivacyAwareLLMRouter
 
 logger = logging.getLogger(__name__)
 
@@ -57,13 +67,18 @@ class LegalTask(ABC):
     doc_types: list[DocType]
         Document types this task can process.  Empty list means all types.
     requires_llm: bool
-        Whether the task calls an external or local LLM.  Used for cost
-        estimation and routing.
+        Whether the task calls an external or local LLM.  ``TaskPipeline``
+        refuses to run such tasks on documents whose privacy profile is
+        blocked.
+    router: PrivacyAwareLLMRouter | None
+        Router used by ``llm_for()``.  ``None`` uses the shared default.
     """
 
     task_id: str = ""
     doc_types: list[DocType] = []
     requires_llm: bool = False
+    router: PrivacyAwareLLMRouter | None = None
+    _llm_provider: Any = None
 
     # ------------------------------------------------------------------
     # Abstract interface
@@ -88,6 +103,32 @@ class LegalTask(ABC):
             Document with task results merged into ``doc.extracted``.
         """
         ...
+
+    # ------------------------------------------------------------------
+    # LLM access
+    # ------------------------------------------------------------------
+
+    def llm_for(self, *docs: LegalDoc) -> LLMProvider:
+        """
+        Return this task's provider wrapped so that every call on it enforces
+        the strictest privacy profile among *docs* (block, local-only,
+        redact).  Pass every document whose text goes into the prompt.
+        """
+        return (self.router or default_router()).guard(self._resolve_provider(), *docs)
+
+    def _resolve_provider(self) -> LLMProvider:
+        """Resolve ``self._llm_provider`` (instance or name string) once."""
+        provider = self._llm_provider
+        if provider is None:
+            raise ValueError(
+                f"Task {self.task_id!r}: no LLM provider configured.  Pass llm_provider= "
+                f"(an LLMProvider instance or a full model name) when building the task."
+            )
+        if isinstance(provider, str):
+            from contractex.core.extractors import ContractExtractor
+
+            provider = self._llm_provider = ContractExtractor._create_provider(provider)
+        return provider  # type: ignore[no-any-return]
 
     # ------------------------------------------------------------------
     # Optional overrides
@@ -207,6 +248,7 @@ class TaskPipeline:
                     f"Task {task.task_id!r} does not support doc_type={doc.doc_type!r}"
                 )
 
+            _refuse_if_blocked(task, doc)
             logger.debug("Running task %r", task.task_id)
             t0 = time.perf_counter()
             doc = task.run(doc, **kwargs)
@@ -231,6 +273,7 @@ class TaskPipeline:
                     f"Task {task.task_id!r} does not support doc_type={doc.doc_type!r}"
                 )
 
+            _refuse_if_blocked(task, doc)
             t0 = time.perf_counter()
             doc = await task.run_async(doc, **kwargs)
             timings[task.task_id] = round(time.perf_counter() - t0, 4)
@@ -250,3 +293,12 @@ class TaskPipeline:
     def __repr__(self) -> str:
         ids = [t.task_id for t in self._tasks]
         return f"<TaskPipeline tasks={ids}>"
+
+
+def _refuse_if_blocked(task: LegalTask, doc: LegalDoc) -> None:
+    """Never hand a blocked document to a task that calls an LLM."""
+    if task.requires_llm and resolve_profile(doc, PrivacyProfile()).is_blocked:
+        raise PrivacyBlockedError(
+            f"Task {task.task_id!r} requires an LLM and document {doc.doc_id!r} is blocked "
+            f"from LLM processing."
+        )

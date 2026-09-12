@@ -75,21 +75,6 @@ class ComparisonTask(LegalTask):
     ) -> None:
         self._llm_provider = llm_provider
         self._max_input_chars = max_input_chars
-        self._provider: Any | None = None
-
-    def _get_provider(self) -> Any:
-        if self._provider is None:
-            if isinstance(self._llm_provider, str):
-                from contractex.core.extractors import ContractExtractor
-
-                self._provider = ContractExtractor._create_provider(self._llm_provider)  # type: ignore[arg-type]
-            elif self._llm_provider is not None:
-                self._provider = self._llm_provider
-            else:
-                from contractex.core.extractors import ContractExtractor
-
-                self._provider = ContractExtractor._create_provider("gpt-4o")  # type: ignore[arg-type]
-        return self._provider
 
     def run(self, doc: LegalDoc, doc_b: LegalDoc | None = None, **kwargs: Any) -> LegalDoc:
         if not doc.full_text:
@@ -114,7 +99,7 @@ class ComparisonTask(LegalTask):
             text_b=doc_b.full_text[: self._max_input_chars],
         )
 
-        provider = self._get_provider()
+        provider = self.llm_for(doc, doc_b)
         result = provider.extract_structured(prompt, ComparisonResult)
 
         doc = doc.model_copy(
