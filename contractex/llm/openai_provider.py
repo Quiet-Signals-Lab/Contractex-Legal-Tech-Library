@@ -83,22 +83,20 @@ class OpenAIProvider(LLMProvider):
         self._max_tokens = max_tokens
 
         # Get API key
+        try:
+            from openai import OpenAI
+        except ImportError as e:
+            raise LLMProviderError(
+                "OpenAI package not installed. Install with: pip install 'contractex[openai]'"
+            ) from e
+
         api_key = api_key or os.getenv("OPENAI_API_KEY")
         if not api_key:
             raise LLMProviderError(
                 "OpenAI API key not found. Set OPENAI_API_KEY environment variable "
                 "or pass api_key parameter."
             )
-
-        # Initialize OpenAI client
-        try:
-            from openai import OpenAI
-
-            self.client = OpenAI(api_key=api_key)
-        except ImportError as e:
-            raise LLMProviderError(
-                "OpenAI package not installed. Install with: pip install openai"
-            ) from e
+        self.client = OpenAI(api_key=api_key)
 
     def _call_with_retry(self, fn, label: str, max_retries: int = 3, base_delay: float = 1.0):
         """

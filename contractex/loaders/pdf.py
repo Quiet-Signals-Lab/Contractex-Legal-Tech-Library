@@ -43,7 +43,7 @@ class PDFLoader(DocumentLoader):
             self.pdfium = pypdfium2
         except ImportError as e:
             raise DocumentLoadError(
-                "pypdfium2 not installed. Install with: pip install 'contractex[pdf]'"
+                "pypdfium2 not installed. Install with: pip install pypdfium2"
             ) from e
 
     def load(self, source: str) -> str:

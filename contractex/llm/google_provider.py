@@ -85,8 +85,8 @@ class GoogleProvider(LLMProvider):
                 self._model_name = model
         except ImportError as e:
             raise LLMProviderError(
-                "Google Generative AI package not installed. "
-                "Install with: pip install google-genai (recommended) or google-generativeai"
+                "Google Gen AI package not installed. "
+                "Install with: pip install 'contractex[google]'"
             ) from e
         except Exception as e:
             raise LLMProviderError(f"Failed to initialize Google client: {str(e)}") from e

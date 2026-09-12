@@ -81,22 +81,20 @@ class AnthropicProvider(LLMProvider):
         self._max_tokens = max_tokens
 
         # Get API key
+        try:
+            from anthropic import Anthropic
+        except ImportError as e:
+            raise LLMProviderError(
+                "Anthropic package not installed. Install with: pip install 'contractex[anthropic]'"
+            ) from e
+
         api_key = api_key or os.getenv("ANTHROPIC_API_KEY")
         if not api_key:
             raise LLMProviderError(
                 "Anthropic API key not found. Set ANTHROPIC_API_KEY environment variable "
                 "or pass api_key parameter."
             )
-
-        # Initialize Anthropic client
-        try:
-            from anthropic import Anthropic
-
-            self.client = Anthropic(api_key=api_key)
-        except ImportError as e:
-            raise LLMProviderError(
-                "Anthropic package not installed. Install with: pip install anthropic"
-            ) from e
+        self.client = Anthropic(api_key=api_key)
 
     def _call_with_retry(self, fn, label: str, max_retries: int = 3, base_delay: float = 1.0):
         """Call fn() with exponential backoff on transient Anthropic errors."""

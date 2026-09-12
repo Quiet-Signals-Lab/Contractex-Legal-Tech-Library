@@ -16,7 +16,9 @@ from contractex.storage.connection import (
     connect_to_postgres_server,
     get_connection,
     get_cursor,
-    test_connection,
+)
+from contractex.storage.connection import (
+    test_connection as check_connection,  # not a test; keep pytest from collecting it
 )
 
 # ============================================================================
@@ -231,7 +233,7 @@ class TestConnectionTesting:
         mock_get_conn.return_value.__enter__ = MagicMock(return_value=mock_conn)
         mock_get_conn.return_value.__exit__ = MagicMock(return_value=False)
 
-        result = test_connection()
+        result = check_connection()
 
         assert result is True
         mock_cursor.execute.assert_called_once_with("SELECT 1")
@@ -241,7 +243,7 @@ class TestConnectionTesting:
         """Test failed connection test."""
         mock_get_conn.side_effect = psycopg2.OperationalError("Connection failed")
 
-        result = test_connection()
+        result = check_connection()
 
         assert result is False
 
@@ -276,7 +278,7 @@ class TestConnectionIntegration:
 
     def test_test_connection_real(self, test_database):
         """Test connection test function with real database."""
-        result = test_connection(test_database)
+        result = check_connection(test_database)
         assert result is True
 
     def test_transaction_rollback(self, test_database):

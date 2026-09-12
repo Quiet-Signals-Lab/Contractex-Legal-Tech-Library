@@ -234,7 +234,8 @@ class URLLoader(SourceAdapter):
             import requests
         except ImportError as exc:
             raise DocumentLoadError(
-                "requests is required for URLLoader. " "Install with: pip install requests"
+                "requests is required for URLLoader. "
+                "Install with: pip install 'contractex[network]'"
             ) from exc
 
         req_headers: dict[str, str] = {
@@ -340,7 +341,7 @@ class URLLoader(SourceAdapter):
             import pypdfium2
         except ImportError as exc:
             raise DocumentLoadError(
-                "pypdfium2 is required to load PDF URLs. Install with: pip install 'contractex[pdf]'"
+                "pypdfium2 is required to load PDF URLs. Install with: pip install pypdfium2"
             ) from exc
 
         from contractex.loaders.pdf import pdf_text
@@ -402,7 +403,8 @@ class APILoader(SourceAdapter):
             import requests
         except ImportError as exc:
             raise DocumentLoadError(
-                "requests is required for APILoader. " "Install with: pip install requests"
+                "requests is required for APILoader. "
+                "Install with: pip install 'contractex[network]'"
             ) from exc
 
         req_headers: dict[str, str] = {

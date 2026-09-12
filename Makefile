@@ -20,7 +20,7 @@ help: ## Show this help message
 
 install-test: ## Install test dependencies
 	@echo '$(BLUE)Installing test dependencies...$(NC)'
-	pip install -r tests/requirements.txt
+	pip install -e ".[dev]"
 	@echo '$(GREEN)Test dependencies installed!$(NC)'
 
 test: ## Run all tests

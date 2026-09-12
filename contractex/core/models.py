@@ -366,7 +366,7 @@ class Contract(BaseModel):
             import pandas as pd
         except ImportError as e:
             raise ImportError(
-                "pandas is required for to_dataframe(). Install with: pip install pandas"
+                "pandas is required for to_dataframe(). Install with: pip install 'contractex[export]'"
             ) from e
 
         if not self.clauses:
@@ -397,7 +397,7 @@ class Contract(BaseModel):
             import pandas as pd
         except ImportError as e:
             raise ImportError(
-                "pandas and openpyxl are required. Install with: pip install pandas openpyxl"
+                "pandas and openpyxl are required. Install with: pip install 'contractex[export]'"
             ) from e
 
         with pd.ExcelWriter(file_path, engine="openpyxl") as writer:

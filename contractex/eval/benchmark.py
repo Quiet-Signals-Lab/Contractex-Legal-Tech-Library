@@ -256,8 +256,7 @@ class CUADBenchmark:
             from datasets import load_dataset  # type: ignore[import]
         except ImportError as err:
             raise ImportError(
-                "The 'datasets' package is required for CUAD benchmarking. "
-                "pip install -e '.[datasets]'"
+                "The 'datasets' package is required for CUAD benchmarking. " "pip install datasets"
             ) from err
 
         extractor_name = type(self._extractor).__name__

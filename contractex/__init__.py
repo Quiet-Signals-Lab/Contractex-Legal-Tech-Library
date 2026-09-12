@@ -199,7 +199,6 @@ __all__ = [
 
 # Optional modules (require additional dependencies):
 # - contractex.storage:   PostgreSQL persistence     pip install contractex[storage]
-# - contractex.data:      Dataset loaders            pip install contractex[datasets]
 # - contractex.core.ner:  Named Entity Recognition   pip install contractex[spacy]
-# - contractex.retrieval: Search and ranking         pip install contractex[retrieval]
-# - contractex.eval:      Eval harness               pip install contractex[eval]
+# - contractex.rag:       RAG pipeline               pip install contractex[rag]
+# - LLM providers:        openai / anthropic / google / ollama extras
