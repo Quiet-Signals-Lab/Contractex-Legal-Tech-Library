@@ -7,8 +7,10 @@ Key properties
 * **Consistent replacement** — the same literal value in a document always
   receives the same placeholder (``GARCIA`` on line 3 and line 47 both become
   ``<PERSON_1>``).
-* **Reversible** — ``RedactionMap`` stores the forward mapping; callers with
-  a decryption key can call ``restore()`` to get original values back.
+* **Reversible** — ``restore()`` puts original values back: REPLACE via the
+  ``RedactionMap`` (which therefore holds the original PII in plaintext and is
+  as sensitive as the source document), ENCRYPT by decrypting each token with
+  the key.  MASK and HASH are one-way.
 * **Strategy per entity type** — the default strategy may be overridden
   per entity type (e.g. REPLACE for names, HASH for IBANs).
 
@@ -46,11 +48,14 @@ from __future__ import annotations
 import hashlib
 import hmac
 import os
+import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from contractex.privacy.detector import PIISpan
+from contractex.privacy.detector import PIISpan, merge_overlapping
 from contractex.privacy.profile import RedactionStrategy
+
+_ENC_TOKEN = re.compile(r"<[A-Z0-9_]+_ENC:([0-9a-f]+)>")
 
 # ---------------------------------------------------------------------------
 # Public data types
@@ -65,10 +70,11 @@ class RedactionMap:
     Attributes
     ----------
     placeholder_to_original:
-        Maps placeholder strings (e.g. ``"<PERSON_1>"``) to original values.
+        Maps REPLACE placeholders (e.g. ``"<PERSON_1>"``) to original values.
+        This is plaintext PII.  ENCRYPT tokens are never stored here.
     original_to_placeholder:
-        Reverse index: original value → placeholder string (same object,
-        different key direction).
+        Reverse index used to give repeated values the same placeholder.
+        Held in memory only; ``serialise()`` does not write it.
     counters:
         Per-entity-type incrementing counter used to generate unique labels.
     encryption_key:
@@ -93,7 +99,12 @@ class RedactionMap:
         return f"<{entity_type}_{n}>"
 
     def serialise(self) -> dict[str, Any]:
-        """Serialise to a JSON-compatible dict (for storage / audit)."""
+        """
+        Serialise to a JSON-compatible dict.
+
+        The result contains the original REPLACE values in plaintext: store it
+        with the same protection as the source document, never in an audit log.
+        """
         return {
             "placeholder_to_original": self.placeholder_to_original,
             "counters": self.counters,
@@ -180,9 +191,9 @@ class PIIRedactor:
         """
         Replace all *spans* in *text* according to the configured strategies.
 
-        Spans must not overlap (``PIIDetector.detect()`` guarantees this).
-        Spans are processed in reverse order so that character offsets remain
-        valid after each replacement.
+        Spans may arrive in any order and may overlap; overlapping spans are
+        merged so every covered character is redacted.  Placeholder labels
+        that already occur in *text* are skipped, so ``restore()`` is exact.
 
         Parameters
         ----------
@@ -198,13 +209,14 @@ class PIIRedactor:
         """
         rmap = RedactionMap(encryption_key=self._encryption_key)
         entity_types: set[str] = set()
+        spans = merge_overlapping(spans, text)
 
         # Process in reverse so offsets stay valid
         result = text
         for span in reversed(spans):
-            original = span.text
+            original = text[span.start : span.end]
             strategy = self._strategy_overrides.get(span.entity_type, self._default_strategy)
-            placeholder = self._make_placeholder(span, original, strategy, rmap)
+            placeholder = self._make_placeholder(span, original, strategy, rmap, text)
             result = result[: span.start] + placeholder + result[span.end :]
             entity_types.add(span.entity_type)
 
@@ -220,7 +232,9 @@ class PIIRedactor:
         Restore placeholders in *text* back to their original values.
 
         Only works for ``REPLACE`` and ``ENCRYPT`` strategies.  ``MASK``
-        and ``HASH`` replacements are irreversible.
+        and ``HASH`` replacements are irreversible.  ENCRYPT tokens are
+        decrypted with ``redaction_map.encryption_key`` (or this redactor's
+        key); without a key they are left in place.
 
         Parameters
         ----------
@@ -238,6 +252,9 @@ class PIIRedactor:
         result = text
         for placeholder, original in redaction_map.placeholder_to_original.items():
             result = result.replace(placeholder, original)
+        key = redaction_map.encryption_key or self._encryption_key
+        if key:
+            result = _ENC_TOKEN.sub(lambda m: self._decrypt_or_keep(m, key), result)
         return result
 
     # ------------------------------------------------------------------
@@ -250,14 +267,15 @@ class PIIRedactor:
         original: str,
         strategy: RedactionStrategy,
         rmap: RedactionMap,
+        text: str,
     ) -> str:
         # Consistent replacement: reuse existing placeholder for same value
         if original in rmap.original_to_placeholder:
             return rmap.original_to_placeholder[original]
 
-        if strategy == RedactionStrategy.REPLACE:
-            placeholder = rmap.next_label(span.entity_type)
-            rmap.register(span.entity_type, original, placeholder)
+        if strategy == RedactionStrategy.ENCRYPT:
+            placeholder = self._encrypt(span, original, rmap)
+            rmap.original_to_placeholder[original] = placeholder
             return placeholder
 
         if strategy == RedactionStrategy.MASK:
@@ -269,13 +287,11 @@ class PIIRedactor:
             # HASH is not reversible — don't register in forward map
             return placeholder
 
-        if strategy == RedactionStrategy.ENCRYPT:
-            placeholder = self._encrypt(span, original, rmap)
-            rmap.register(span.entity_type, original, placeholder)
-            return placeholder
-
-        # Fallback to REPLACE
+        # REPLACE.  Skip labels already present in the source text, otherwise
+        # restore() would also rewrite that pre-existing text.
         placeholder = rmap.next_label(span.entity_type)
+        while placeholder in text:
+            placeholder = rmap.next_label(span.entity_type)
         rmap.register(span.entity_type, original, placeholder)
         return placeholder
 
@@ -283,22 +299,21 @@ class PIIRedactor:
         """
         AES-256-GCM encrypt *original*.
 
-        Requires ``cryptography`` (``pip install contractex[privacy]``).
-        Falls back to REPLACE if the package is not installed.
+        Requires ``cryptography`` (``pip install contractex[privacy]``); raises
+        ``ImportError`` rather than silently using a different strategy.
         """
         try:
             from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+        except ImportError as exc:
+            raise ImportError(
+                "RedactionStrategy.ENCRYPT requires the cryptography package: "
+                "pip install 'contractex[privacy]'"
+            ) from exc
 
-            key = self._ensure_encryption_key(rmap)
-            aesgcm = AESGCM(key)
-            nonce = os.urandom(12)
-            ct = aesgcm.encrypt(nonce, original.encode(), None)
-            token = (nonce + ct).hex()
-            return f"<{span.entity_type}_ENC:{token}>"
-        except ImportError:
-            # Graceful fallback
-            label = rmap.next_label(span.entity_type)
-            return label
+        key = self._ensure_encryption_key(rmap)
+        nonce = os.urandom(12)
+        ct = AESGCM(key).encrypt(nonce, original.encode(), None)
+        return f"<{span.entity_type}_ENC:{(nonce + ct).hex()}>"
 
     def _ensure_encryption_key(self, rmap: RedactionMap) -> bytes:
         if self._encryption_key:
@@ -307,6 +322,13 @@ class PIIRedactor:
         self._encryption_key = key
         rmap.encryption_key = key
         return key
+
+    def _decrypt_or_keep(self, match: re.Match[str], key: bytes) -> str:
+        """Decrypt one token; leave it untouched if it was altered (e.g. by an LLM)."""
+        try:
+            return self._decrypt_token(match.group(1), key)
+        except Exception:
+            return match.group(0)
 
     def _decrypt_token(self, token_hex: str, key: bytes) -> str:
         from cryptography.hazmat.primitives.ciphers.aead import AESGCM

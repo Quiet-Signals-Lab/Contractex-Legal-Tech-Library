@@ -257,13 +257,11 @@ class TestRedactorReplace:
         rmap = RedactionMap.from_dict(r.redaction_map.serialise())
         assert PIIRedactor().restore(r.text, rmap) == text
 
-    @defect("source text that already contains a placeholder string collides on restore")
     def test_placeholder_collision_with_source_text(self):
         text = "Template field <PERSON_1> is filled by Jane."
         r = PIIRedactor().redact(text, [span(text, "Jane")])
         assert PIIRedactor().restore(r.text, r.redaction_map) == text
 
-    @defect("redact() assumes sorted, non-overlapping spans")
     def test_unsorted_spans(self):
         text = "Jane met Bob."
         spans = [PIISpan("PERSON", 9, 12, 0.9, "Bob"), PIISpan("PERSON", 0, 4, 0.9, "Jane")]
@@ -271,7 +269,6 @@ class TestRedactorReplace:
         assert "Jane" not in r.text and "Bob" not in r.text
         assert PIIRedactor().restore(r.text, r.redaction_map) == text
 
-    @defect("redact() corrupts text when given overlapping spans")
     def test_overlapping_spans_redact_union(self):
         text = "ID AB12345678901 end"
         spans = [
@@ -316,7 +313,6 @@ class TestRedactorOtherStrategies:
         assert "415-555-0132" not in r.text and "<PHONE_NUMBER_ENC:" in r.text
         assert PIIRedactor().restore(r.text, r.redaction_map) == text
 
-    @defect("serialise() writes plaintext originals even for ENCRYPT")
     def test_encrypt_serialised_map_has_no_plaintext(self):
         pytest.importorskip("cryptography")
         text = "Call 415-555-0132."
@@ -325,7 +321,17 @@ class TestRedactorOtherStrategies:
         )
         assert "415-555-0132" not in repr(r.redaction_map.serialise())
 
-    @defect("ENCRYPT silently degrades to an unregistered label without cryptography")
+    def test_encrypt_tampered_token_left_in_place(self):
+        pytest.importorskip("cryptography")
+        text = "Call 415-555-0132."
+        r = PIIRedactor(default_strategy=RedactionStrategy.ENCRYPT).redact(
+            text, [span(text, "415-555-0132", "PHONE_NUMBER")]
+        )
+        token = r.text[len("Call ") : -1]
+        tampered = token[:-3] + ("0" if token[-2] != "0" else "1") + ">"
+        out = PIIRedactor().restore(f"{tampered} and {token}", r.redaction_map)
+        assert out == f"{tampered} and 415-555-0132"
+
     def test_encrypt_without_cryptography_fails_loudly(self, monkeypatch):
         monkeypatch.setitem(sys.modules, "cryptography.hazmat.primitives.ciphers.aead", None)
         text = "Call 415-555-0132."
@@ -333,6 +339,35 @@ class TestRedactorOtherStrategies:
             PIIRedactor(default_strategy=RedactionStrategy.ENCRYPT).redact(
                 text, [span(text, "415-555-0132", "PHONE_NUMBER")]
             )
+
+
+class TestNoPIISurvives:
+    DOC = (
+        "Contact jane.doe@acme.com or 415\u2011555\u20110132. SSN 123-45-6789, "
+        "card 4111-1111-1111-1111, IBAN GB82WEST12345698765432, passport X1234567, "
+        "DOB: 04/05/1985, alt email j\u0430ne@acme.com, phone 212-555\u200b-0199."
+    )
+    SECRETS = [
+        "jane.doe",
+        "0132",
+        "6789",
+        "1111",
+        "GB82WEST",
+        "X1234567",
+        "04/05/1985",
+        "j\u0430ne",
+        "0199",
+    ]
+
+    @pytest.mark.parametrize("strategy", list(RedactionStrategy))
+    def test_mixed_document(self, detector, strategy):
+        if strategy is RedactionStrategy.ENCRYPT:
+            pytest.importorskip("cryptography")
+        redactor = PIIRedactor(default_strategy=strategy)
+        r = redactor.redact(self.DOC, detector.detect(self.DOC))
+        assert [s for s in self.SECRETS if s in r.text] == []
+        if strategy in (RedactionStrategy.REPLACE, RedactionStrategy.ENCRYPT):
+            assert redactor.restore(r.text, r.redaction_map) == self.DOC
 
 
 # ---------------------------------------------------------------------------
