@@ -211,14 +211,17 @@ class PIIRedactor:
         entity_types: set[str] = set()
         spans = merge_overlapping(spans, text)
 
-        # Process in reverse so offsets stay valid
-        result = text
-        for span in reversed(spans):
+        # Label in document order (the first value becomes <TYPE_1>), then
+        # replace from the end so earlier offsets stay valid.
+        placeholders = []
+        for span in spans:
             original = text[span.start : span.end]
             strategy = self._strategy_overrides.get(span.entity_type, self._default_strategy)
-            placeholder = self._make_placeholder(span, original, strategy, rmap, text)
-            result = result[: span.start] + placeholder + result[span.end :]
+            placeholders.append(self._make_placeholder(span, original, strategy, rmap, text))
             entity_types.add(span.entity_type)
+        result = text
+        for span, placeholder in zip(reversed(spans), reversed(placeholders), strict=True):
+            result = result[: span.start] + placeholder + result[span.end :]
 
         return RedactedText(
             text=result,
