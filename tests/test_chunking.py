@@ -10,7 +10,6 @@ and the "a clause is never split across chunks" claim depend on them:
 * a chunk never starts or ends in the middle of a word;
 * a section heading stays in the same chunk as the start of its body.
 
-Tests marked ``xfail(strict=True)`` document known defects.
 """
 
 from __future__ import annotations
@@ -18,10 +17,6 @@ from __future__ import annotations
 import pytest
 
 from contractex.chunking import ClauseAwareChunker
-
-
-def defect(reason: str):
-    return pytest.mark.xfail(strict=True, reason=f"known defect: {reason}")
 
 
 def words(prefix: str, n: int) -> str:
@@ -53,7 +48,7 @@ def squash(s: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Current behaviour that must be kept
+# Boundaries
 # ---------------------------------------------------------------------------
 
 
@@ -61,7 +56,6 @@ class TestBoundaries:
     def test_empty_text(self):
         assert ClauseAwareChunker().chunk("") == []
 
-    @defect("sections are re-joined with '\\n\\n', so output differs from the source")
     def test_small_document_is_one_chunk(self):
         text = "1. Term.\nThis Agreement lasts one year.\n2. Law.\nDelaware law applies."
         assert ClauseAwareChunker(max_chunk_size=1000).chunk(text) == [text]
@@ -98,14 +92,11 @@ class TestBoundaries:
 
 
 # ---------------------------------------------------------------------------
-# Known defects
+# Invariants
 # ---------------------------------------------------------------------------
 
 
 class TestInvariants:
-    @defect(
-        "sections are re-joined with '\\n\\n' and sentences with ' ', so chunks are not substrings"
-    )
     @pytest.mark.parametrize("overlap", [0, 20])
     def test_every_chunk_is_a_substring_of_the_source(self, overlap):
         chunks = ClauseAwareChunker(max_chunk_size=100, overlap=overlap).chunk(SHORT_SECTIONS)
@@ -113,20 +104,17 @@ class TestInvariants:
         for c in chunks:
             assert c in SHORT_SECTIONS
 
-    @defect("a sentence longer than max_chunk_size is emitted whole")
     def test_no_chunk_exceeds_max_chunk_size(self):
         text = "1. Term.\n" + " ".join(f"w{i}" for i in range(2000)) + "\n2. Law.\nDelaware."
         chunker = ClauseAwareChunker(max_chunk_size=100, overlap=0)
         assert all(chunker.count_tokens(c) <= 100 for c in chunker.chunk(text))
 
-    @defect("overlap copies the last overlap*4 characters, starting mid-word")
     def test_overlap_starts_on_a_word_boundary(self):
         chunks = ClauseAwareChunker(max_chunk_size=150, overlap=15).chunk(CONTRACT)
         for c in chunks[1:]:
             i = CONTRACT.find(c)
             assert i == 0 or CONTRACT[i - 1].isspace(), c[:30]
 
-    @defect("an oversized section's heading is flushed as its own chunk")
     def test_heading_stays_with_body_in_oversized_section(self):
         text = "1. Term.\n" + " ".join(f"w{i}" for i in range(400)) + "\n2. Law.\nDelaware."
         chunks = ClauseAwareChunker(max_chunk_size=100, overlap=0).chunk(text)
@@ -134,15 +122,80 @@ class TestInvariants:
         assert "w0" in first
 
 
-class TestFalseHeadings:
-    @defect("'^\\d+\\.' matches a wrapped line such as '10. million units'")
-    def test_wrapped_number_is_not_a_heading(self):
+class TestHeadingPatterns:
+    @pytest.mark.parametrize(
+        "line",
+        [
+            "1. Definitions",
+            "10. Payment",
+            "2.1 Term",
+            "2.1. Term",
+            '1.1 "Affiliate" means',
+            "1.1 \u201cAffiliate\u201d means",
+            "   3. Indented heading",
+            "Article 4",
+            "SECTION 5 Notices",
+            "(a) the Supplier",
+            "(B) the Customer",
+            "(12) notices",
+            "EARLY TERMINATION",
+        ],
+    )
+    def test_heading(self, line):
+        assert ClauseAwareChunker().section_regex.match(line)
+
+    @pytest.mark.parametrize(
+        "line",
+        [
+            "10. million units ship first.",
+            "2024. was a good year",
+            "Early termination fees apply.",
+            "The fee is $10.",
+            "Articles of association",
+        ],
+    )
+    def test_not_heading(self, line):
+        assert not ClauseAwareChunker().section_regex.match(line)
+
+    def test_wrapped_number_does_not_start_a_chunk(self):
         text = f"1. Payment.\nThe fee is $10.\n10. million units ship first. {words('x', 30)}"
         chunks = ClauseAwareChunker(max_chunk_size=30, overlap=0).chunk(text)
         assert not any(c.startswith("10. million") for c in chunks)
 
-    @defect("the TERMINATION pattern is case-insensitive and matches body text")
-    def test_body_line_mentioning_termination_is_not_a_heading(self):
-        text = f"1. Fees.\n{words('f', 30)}\nEarly termination fees apply {words('e', 30)}"
-        chunks = ClauseAwareChunker(max_chunk_size=40, overlap=0).chunk(text)
-        assert not any(c.startswith("Early termination") for c in chunks)
+
+class TestInvariantsFuzz:
+    """Seeded random documents: the invariants hold for every size and overlap."""
+
+    @staticmethod
+    def document(rng) -> str:
+        parts = []
+        for i in range(rng.randint(1, 25)):
+            if rng.random() < 0.7:
+                parts.append(rng.choice([f"{i + 1}. Heading {i}", f"({chr(97 + i % 26)}) sub", ""]))
+            sentences = [
+                " ".join(f"t{rng.randint(0, 999)}" for _ in range(rng.randint(1, 60))) + "."
+                for _ in range(rng.randint(1, 8))
+            ]
+            parts.append(" ".join(sentences))
+        sep = rng.choice(["\n", "\n\n", "\n  \n"])
+        return sep.join(parts)
+
+    @pytest.mark.parametrize("seed", range(40))
+    def test_invariants(self, seed):
+        import random
+
+        rng = random.Random(seed)
+        text = self.document(rng)
+        max_size = rng.choice([8, 20, 50, 200])
+        overlap = rng.choice([0, 0, 5, 30])
+        chunker = ClauseAwareChunker(
+            max_chunk_size=max_size, overlap=overlap, preserve_sentences=rng.random() < 0.8
+        )
+        chunks = chunker.chunk(text)
+        for c in chunks:
+            assert c and c in text
+            assert chunker.count_tokens(c) <= max_size
+            i = text.find(c)
+            assert i == 0 or text[i - 1].isspace() or not text[i - 1].isalnum()
+        if overlap == 0:
+            assert squash("".join(chunks)) == squash(text)
