@@ -129,7 +129,10 @@ class ContractExtractor:
             estimate = extractor.estimate_extraction_cost("contract.pdf")
             print(f"Estimated cost: ${estimate['estimated_cost']:.4f}")
         """
-        text = self.document_loader.load(document_path)
+        return self.estimate_extraction_cost_from_text(self.document_loader.load(document_path))
+
+    def estimate_extraction_cost_from_text(self, text: str) -> dict[str, Any]:
+        """Like ``estimate_extraction_cost`` but for already-loaded text."""
         chunks = self.chunking_strategy.chunk(text)
 
         # Phase 1: contract info — first 2 chunks capped at _INFO_EXTRACTION_CHARS
@@ -219,27 +222,61 @@ class ContractExtractor:
             ExtractionError: If extraction fails
         """
         start_time = time.monotonic()
-
         try:
-            # Load document
             text = self.document_loader.load(document_path)
+        except Exception as e:
+            raise ExtractionError(f"Failed to extract contract: {str(e)}") from e
 
-            # Gather file metadata
-            doc_path = Path(document_path)
-            file_metadata: dict[str, Any] = {
-                "filename": doc_path.name,
-                "file_type": doc_path.suffix.lstrip("."),
+        doc_path = Path(document_path)
+        return self._extract_text(
+            text,
+            start_time,
+            {"filename": doc_path.name, "file_type": doc_path.suffix.lstrip(".")},
+            contract_type=contract_type,
+            analyze_risks=analyze_risks,
+            extract_financial=extract_financial,
+            known_parties=known_parties,
+        )
+
+    def extract_from_text(
+        self,
+        text: str,
+        contract_type: ContractType | None = None,
+        analyze_risks: bool = True,
+        extract_financial: bool = True,
+        known_parties: list[str] | None = None,
+    ) -> Contract:
+        """Like ``extract`` but for already-loaded text (no file metadata)."""
+        return self._extract_text(
+            text,
+            time.monotonic(),
+            {},
+            contract_type=contract_type,
+            analyze_risks=analyze_risks,
+            extract_financial=extract_financial,
+            known_parties=known_parties,
+        )
+
+    def _extract_text(
+        self,
+        text: str,
+        start_time: float,
+        file_metadata: dict[str, Any],
+        contract_type: ContractType | None,
+        analyze_risks: bool,
+        extract_financial: bool,
+        known_parties: list[str] | None,
+    ) -> Contract:
+        try:
+            file_metadata = {
+                **file_metadata,
                 "llm_provider": self.llm_provider.__class__.__name__,
                 "llm_model": getattr(self.llm_provider, "model", None),
             }
 
             # Chunk document
             chunks = self.chunking_strategy.chunk(text)
-            logger.info(
-                "Chunked '%s' into %d chunk(s) for extraction",
-                doc_path.name,
-                len(chunks),
-            )
+            logger.info("Chunked document into %d chunk(s) for extraction", len(chunks))
 
             # Extract structured data using LLM
             contract_data = self._extract_from_chunks(

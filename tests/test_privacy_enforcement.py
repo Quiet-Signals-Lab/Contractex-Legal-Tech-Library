@@ -55,7 +55,6 @@ class TestTaskEnforcement:
         run_task("summarization", make_doc("public"), spy)
         assert any(SECRET_TEXT in p for p in spy.prompts)
 
-    @defect("tasks call the provider directly; the router is never consulted")
     @pytest.mark.parametrize("task_id", LLM_TASKS)
     @pytest.mark.parametrize("provider_cls", [SpyProvider, SpyLocalProvider])
     def test_secret_doc_never_reaches_any_provider(self, task_id, provider_cls):
@@ -64,7 +63,6 @@ class TestTaskEnforcement:
             run_task(task_id, make_doc("secret"), spy)
         assert spy.prompts == []
 
-    @defect("tasks call the provider directly; the router is never consulted")
     @pytest.mark.parametrize("task_id", LLM_TASKS)
     def test_restricted_doc_rejected_by_cloud_provider(self, task_id):
         spy = SpyProvider()
@@ -72,21 +70,18 @@ class TestTaskEnforcement:
             run_task(task_id, make_doc("restricted"), spy)
         assert spy.prompts == []
 
-    @defect("tasks call the provider directly; nothing is redacted")
     @pytest.mark.parametrize("task_id", ["summarization", "timeline", "obligations"])
     def test_restricted_doc_redacted_for_local_provider(self, task_id):
         local = SpyLocalProvider()
         run_task(task_id, make_doc("restricted"), local)
         assert local.prompts and all(PHONE not in p for p in local.prompts)
 
-    @defect("tasks call the provider directly; nothing is redacted")
     @pytest.mark.parametrize("task_id", LLM_TASKS)
     def test_confidential_doc_redacted_on_every_call(self, task_id):
         spy = SpyProvider()
         run_task(task_id, make_doc("confidential"), spy)
         assert spy.prompts and all(PHONE not in p for p in spy.prompts)
 
-    @defect("comparison puts doc_b in the prompt without checking doc_b's profile")
     def test_comparison_enforces_the_second_document(self):
         spy = SpyProvider()
         with pytest.raises(PrivacyBlockedError):
@@ -118,14 +113,13 @@ class _CustomLLMTask(LegalTask):
 
 
 class TestPipelineEnforcement:
-    @defect("TaskPipeline runs requires_llm tasks on blocked documents")
     def test_pipeline_refuses_llm_task_on_secret_doc(self):
         spy = SpyProvider()
         with pytest.raises(PrivacyBlockedError):
             TaskPipeline([_CustomLLMTask(spy)]).run(make_doc("secret"))
         assert spy.prompts == []
 
-    @defect("TaskPipeline runs requires_llm tasks on blocked documents")
+    @pytest.mark.asyncio
     async def test_async_pipeline_refuses_llm_task_on_secret_doc(self):
         spy = SpyProvider()
         with pytest.raises(PrivacyBlockedError):
@@ -161,13 +155,11 @@ def rag_factory(monkeypatch):
 
 
 class TestRAGEnforcement:
-    @defect("ingest() cannot ingest LegalDoc objects (and fails on every path)")
     def test_ingest_legaldocs(self, rag_factory):
         rag = rag_factory(SpyProvider())
         result = rag.ingest([make_doc("public", "Governing law is Delaware.")])
         assert result.ingested == 1 and result.failed == 0
 
-    @defect("RAG: restricted chunks go to cloud providers and confidential chunks are not redacted")
     def test_query_context_respects_every_sensitivity(self, rag_factory):
         spy = SpyProvider()
         rag = rag_factory(spy)
@@ -185,7 +177,6 @@ class TestRAGEnforcement:
         assert PHONE not in prompt
         assert "RESTRICTED-CLAUSE" not in prompt and "SECRET-CLAUSE" not in prompt
 
-    @defect("ingest() cannot ingest LegalDoc objects (and fails on every path)")
     def test_local_provider_may_see_restricted_but_never_secret(self, rag_factory):
         local = SpyLocalProvider()
         rag = rag_factory(local)
@@ -198,3 +189,20 @@ class TestRAGEnforcement:
         rag.query("Summarise.", top_k=10)
         (prompt,) = local.prompts
         assert "RESTRICTED-CLAUSE" in prompt and "SECRET-CLAUSE" not in prompt
+
+    def test_ingest_path_as_public(self, rag_factory, tmp_path):
+        path = tmp_path / "msa.txt"
+        path.write_text("PATH-CLAUSE governing law is Delaware.", encoding="utf-8")
+        spy = SpyProvider()
+        rag = rag_factory(spy)
+        assert rag.ingest([path]).ingested == 1
+        rag.query("Governing law?")
+        assert "PATH-CLAUSE" in spy.prompts[0]
+
+    def test_streaming_query_is_redacted(self, rag_factory):
+        spy = SpyProvider(reply="answer")
+        rag = rag_factory(spy)
+        rag.ingest([make_doc("confidential", "CONF-CLAUSE contact 415-555-0132.")])
+        final = list(rag.query("Who to contact?", stream=True))[-1]
+        assert final.answer == "answer"
+        assert "CONF-CLAUSE" in spy.prompts[0] and PHONE not in spy.prompts[0]

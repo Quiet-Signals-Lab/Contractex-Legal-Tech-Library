@@ -44,6 +44,7 @@ Usage
 
 from __future__ import annotations
 
+import functools
 import logging
 from collections.abc import Iterator
 from typing import Any, Literal, cast
@@ -298,6 +299,12 @@ class PrivacyAwareLLMRouter:
         if isinstance(result, BaseModel):
             return type(result).model_validate(walk(result.model_dump()))
         return walk(result)
+
+
+@functools.cache
+def default_router() -> PrivacyAwareLLMRouter:
+    """The router used by built-in tasks that are not given one explicitly."""
+    return PrivacyAwareLLMRouter()
 
 
 def _language(doc: Any) -> str:

@@ -27,9 +27,16 @@ Architecture
 
 Privacy behaviour
 -----------------
-Documents marked ``llm_routing="blocked"`` are indexed (their embeddings are
-stored) but their text is **never** included in LLM context.  They can still
-surface as citations if the source URL is public.
+Every chunk carries its document's ``PrivacyProfile``.  At query time chunks
+the configured provider may never see are dropped before ranking:
+``blocked``/``secret`` chunks always, ``local_only``/``restricted`` chunks
+unless the provider is a ``LocalProvider``.  The prompt is then sent through
+the privacy router with the strictest profile among the remaining chunks, so
+``confidential`` and ``restricted`` text is redacted.  Blocked documents are
+still embedded (locally) but their text never enters an LLM context window.
+
+Paths and URLs are ingested as ``public``.  To index a sensitive document,
+pass a ``LegalDoc`` with its ``privacy_profile`` set.
 
 Source freshness
 ----------------
@@ -70,6 +77,13 @@ from pydantic import BaseModel, Field
 
 from contractex.core.document import LegalDoc
 from contractex.core.legal_document import SourceSpan
+from contractex.privacy.profile import PrivacyProfile
+from contractex.privacy.router import (
+    PrivacyAwareLLMRouter,
+    PrivacyBlockedError,
+    PrivacyRoutingError,
+    resolve_profile,
+)
 from contractex.rag.citation import Citation, CitationFormatter
 from contractex.rag.conflict import Conflict, ConflictDetector
 
@@ -287,12 +301,7 @@ class LegalRAGPipeline:
             self._conflict_detector = conflict_detector
 
         # Privacy router
-        if privacy_router is not None:
-            self._router = privacy_router
-        else:
-            from contractex.privacy.router import PrivacyAwareLLMRouter
-
-            self._router = PrivacyAwareLLMRouter()
+        self._router = privacy_router or PrivacyAwareLLMRouter()
 
         # Source tracking for sync
         self._source_urls: list[str] = []
@@ -304,14 +313,16 @@ class LegalRAGPipeline:
     # Ingestion
     # ------------------------------------------------------------------
 
-    def ingest(self, sources: list[str | Path]) -> IngestResult:
+    def ingest(self, sources: list[str | Path | LegalDoc]) -> IngestResult:
         """
         Load, chunk, embed, and index *sources*.
 
         Parameters
         ----------
         sources:
-            List of file paths or URLs to ingest.
+            File paths, URLs, or ``LegalDoc`` objects.  Paths and URLs are
+            indexed as ``public``; pass a ``LegalDoc`` to set a privacy
+            profile.
 
         Returns
         -------
@@ -328,9 +339,13 @@ class LegalRAGPipeline:
         t0 = time.perf_counter()
 
         for source in sources:
-            source_str = str(source)
+            source_str = source.doc_id if isinstance(source, LegalDoc) else str(source)
             try:
-                doc = cast(LegalDoc, loader.load(source_str))
+                if isinstance(source, LegalDoc):
+                    doc = source
+                else:
+                    doc = LegalDoc(full_text=loader.load(source_str))
+                profile = resolve_profile(doc, PrivacyProfile())
                 chunks = chunker.chunk(doc.full_text or "")
 
                 for i, chunk in enumerate(chunks):
@@ -346,9 +361,7 @@ class LegalRAGPipeline:
                         metadata={
                             "source_url": source_str,
                             "doc_type": str(doc.doc_type),
-                            "llm_routing": (
-                                doc.privacy_profile.llm_routing if doc.privacy_profile else "any"
-                            ),
+                            "privacy_profile": profile.model_dump(mode="json"),
                             "page": getattr(chunk, "page", None),
                             # Authority + jurisdiction metadata for weighted scoring
                             "authority_weight": doc.authority_weight,
@@ -435,8 +448,8 @@ class LegalRAGPipeline:
         # Retrieve extra candidates (top_k*3) to allow for jurisdiction and
         # superseded filtering before selecting the final top_k.
 
-        # 1. Filter blocked documents
-        hits = [h for h in hits if h.get("metadata", {}).get("llm_routing") != "blocked"]
+        # 1. Drop chunks the configured provider may never see
+        hits = [h for h in hits if self._provider_may_see(h)]
 
         # 2. Filter superseded sources
         hits = [h for h in hits if not h.get("metadata", {}).get("is_superseded", False)]
@@ -541,13 +554,16 @@ class LegalRAGPipeline:
         # Format citation strings
         self._formatter.format_all(citations, style=self._citation_format)
 
+        # Enforce the strictest profile among the chunks in the prompt
+        llm = self._router.guard(self._provider, *[_Chunk(h) for h in context_hits])
+
         if stream:
             return self._stream_query(
-                prompt, citations, avg_score, conflicts, authority_range, source_docs
+                llm, prompt, citations, avg_score, conflicts, authority_range, source_docs
             )
 
         # Non-streaming
-        answer = self._provider.complete(prompt, temperature=0.1)
+        answer = llm.complete(prompt, temperature=0.1)
         return RAGResponse(
             answer=answer,
             citations=citations,
@@ -581,8 +597,16 @@ class LegalRAGPipeline:
             ),
         )
 
+    def _provider_may_see(self, hit: dict[str, Any]) -> bool:
+        try:
+            self._router.guard(self._provider, _Chunk(hit))
+        except (PrivacyBlockedError, PrivacyRoutingError):
+            return False
+        return True
+
     def _stream_query(
         self,
+        llm: Any,
         prompt: str,
         citations: list[Citation],
         avg_score: float,
@@ -594,7 +618,7 @@ class LegalRAGPipeline:
         accumulated = ""
         _conflicts = conflicts or []
         _source_docs = source_docs or []
-        for token in self._provider.stream_complete(prompt, temperature=0.1):
+        for token in llm.stream_complete(prompt, temperature=0.1):
             accumulated += token
             yield RAGResponse(
                 answer=accumulated,
@@ -666,3 +690,10 @@ class LegalRAGPipeline:
             f"<LegalRAGPipeline model={self._embedding_model_name!r} "
             f"chunks_indexed={store_size}>"
         )
+
+
+class _Chunk:
+    """Expose a retrieved chunk's stored privacy profile to the router."""
+
+    def __init__(self, hit: dict[str, Any]) -> None:
+        self.privacy_profile = hit.get("metadata", {}).get("privacy_profile")
