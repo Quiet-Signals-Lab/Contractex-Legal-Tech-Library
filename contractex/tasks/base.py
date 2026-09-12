@@ -120,7 +120,10 @@ class LegalTask(ABC):
         """Resolve ``self._llm_provider`` (instance or name string) once."""
         provider = self._llm_provider
         if provider is None:
-            provider = "gpt-4o"
+            raise ValueError(
+                f"Task {self.task_id!r}: no LLM provider configured.  Pass llm_provider= "
+                f"(an LLMProvider instance or a full model name) when building the task."
+            )
         if isinstance(provider, str):
             from contractex.core.extractors import ContractExtractor
 

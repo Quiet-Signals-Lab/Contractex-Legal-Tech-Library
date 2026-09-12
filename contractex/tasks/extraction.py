@@ -18,7 +18,7 @@ class ContractExtractionTask(LegalTask):
     Parameters
     ----------
     llm_provider:
-        LLM provider instance or name string (e.g. ``"gpt-4o"``).
+        LLM provider instance or full model name.  Required.
     confidence_threshold:
         Minimum confidence for accepted extractions.
     analyze_risks:

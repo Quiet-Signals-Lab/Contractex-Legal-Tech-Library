@@ -202,3 +202,35 @@ class TestRAGEnforcement:
         final = list(rag.query("Who to contact?", stream=True))[-1]
         assert final.answer == "answer"
         assert "CONF-CLAUSE" in spy.prompts[0] and PHONE not in spy.prompts[0]
+
+
+# ---------------------------------------------------------------------------
+# No implicit provider: the library never picks a vendor or model
+# ---------------------------------------------------------------------------
+
+
+class TestNoDefaultProvider:
+    def test_task_without_provider_raises(self):
+        pipeline = TaskRegistry.default().build_pipeline(["summarization"])
+        with pytest.raises(ValueError, match="no LLM provider configured"):
+            pipeline.run(make_doc("public"))
+
+    def test_contract_extractor_without_provider_raises(self):
+        from contractex.core.extractors import ContractExtractor
+
+        with pytest.raises(ValueError, match="No LLM provider configured"):
+            ContractExtractor()
+
+    @pytest.mark.parametrize("name", ["openai", "anthropic", "gpt", "Claude"])
+    def test_vendor_name_without_model_raises(self, name):
+        from contractex.core.extractors import ContractExtractor
+
+        with pytest.raises(ValueError, match="does not name a model"):
+            ContractExtractor._create_provider(name)
+
+    def test_extract_contract_requires_llm(self):
+        import inspect
+
+        from contractex import extract_contract
+
+        assert inspect.signature(extract_contract).parameters["llm"].default is inspect._empty
