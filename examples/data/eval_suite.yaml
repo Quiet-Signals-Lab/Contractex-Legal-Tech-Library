@@ -1,0 +1,31 @@
+name: structure-parser-demo
+description: >
+  Labelled cases for the deterministic structure parser, used in the
+  evaluation guide. The third case is a phrasing the governing-law heuristic
+  does not recognise.
+cases:
+  - id: sample_nda
+    input_path: examples/data/sample_nda.txt
+    expected_fields:
+      governing_law: Delaware
+      unresolved_references: 1
+    field_weights:
+      governing_law: 2.0
+  - id: english_law
+    input_text: |
+      1. Law.
+      This Agreement is governed by the laws of England and Wales.
+    expected_fields:
+      governing_law: England and Wales
+      unresolved_references: 0
+    field_weights:
+      governing_law: 2.0
+  - id: inverted_phrasing
+    input_text: |
+      8. Law.
+      Delaware law governs this Agreement. See Section 12.
+    expected_fields:
+      governing_law: Delaware
+      unresolved_references: 1
+    field_weights:
+      governing_law: 2.0

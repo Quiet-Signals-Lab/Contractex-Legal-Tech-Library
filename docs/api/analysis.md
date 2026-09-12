@@ -1,6 +1,6 @@
 # Analysis
 
-Layer 3 analysis modules. All analysis is deterministic — no LLM calls.
+Deterministic analysis of extracted contracts: no model calls.  See [Contract analysis](../guides/analysis.md).
 
 ## RiskAnalyzer
 

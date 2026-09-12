@@ -1,6 +1,6 @@
 # Extraction Schemas
 
-Pydantic models that represent the structured output of Layer 2 extraction.
+Pydantic models for the output of `ContractExtractor`.
 
 ## Contract
 

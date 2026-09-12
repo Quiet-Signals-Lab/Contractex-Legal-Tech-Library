@@ -1,6 +1,6 @@
 # Document Structure
 
-Layer 1 types produced by `parse_structure()`. All types are pure-Python dataclasses with no external dependencies.
+Types produced by `parse_structure()`: deterministic parsing, no model calls.
 
 ## DocumentStructure
 

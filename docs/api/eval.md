@@ -1,23 +1,13 @@
 # Evaluation
 
-Tools for measuring extraction quality and confidence calibration against CUAD and custom datasets.
+See the [evaluation guide](../guides/evaluation.md).
 
-## CUADBenchmark
+::: contractex.eval.EvalSuite
 
-::: contractex.eval.benchmark.CUADBenchmark
+::: contractex.eval.EvalCase
 
-## BenchmarkResult
+::: contractex.eval.EvalHarness
 
-::: contractex.eval.benchmark.BenchmarkResult
+::: contractex.eval.ExtractionMetrics
 
-## ClauseTypeMetrics
-
-::: contractex.eval.benchmark.ClauseTypeMetrics
-
-## CalibrationAnalyzer
-
-::: contractex.eval.calibration.CalibrationAnalyzer
-
-## CalibrationResult
-
-::: contractex.eval.calibration.CalibrationResult
+::: contractex.eval.PrivacyMetrics

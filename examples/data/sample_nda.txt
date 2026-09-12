@@ -1,0 +1,32 @@
+MUTUAL NON-DISCLOSURE AGREEMENT
+
+This Mutual Non-Disclosure Agreement (the "Agreement") is made on 3 March 2025 between Harbourline Analytics Ltd. ("Harbourline") and Kestrel Point LLP ("Kestrel").
+
+WHEREAS, the parties wish to explore a possible data-analytics engagement (the "Purpose");
+
+1. Definitions.
+"Confidential Information" means any non-public information disclosed by one party to the other in connection with the Purpose, whether oral or written.
+"Representatives" means a party's officers, employees and professional advisers.
+
+2. Obligations.
+Each party shall keep the other party's Confidential Information secret and use it only for the Purpose. A party may disclose Confidential Information to its Representatives who need to know it, subject to Section 4.
+
+3. Term.
+This Agreement continues for two (2) years from the date above. Either party may terminate it on thirty (30) days' written notice.
+
+4. Exceptions.
+The obligations in Section 2 do not apply to information that is public or that the receiving party already lawfully held.
+
+5. Notices.
+Notices to Harbourline go to Priya Raman at priya.raman@harbourline.test or 415-555-0132. Notices to Kestrel go to legal@kestrelpoint.test.
+
+6. Governing Law.
+This Agreement is governed by the laws of the State of Delaware. See also Section 9.
+
+IN WITNESS WHEREOF the parties have signed this Agreement.
+
+Harbourline Analytics Ltd.
+By: ______________________
+
+Kestrel Point LLP
+By: ______________________
