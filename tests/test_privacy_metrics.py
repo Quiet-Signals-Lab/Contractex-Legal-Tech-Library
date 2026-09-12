@@ -13,11 +13,6 @@ from contractex.privacy import PrivacyAwareLLMRouter, PrivacyProfile
 from contractex.privacy.router import PrivacyBlockedError
 from tests._providers import SpyProvider
 
-
-def defect(reason: str):
-    return pytest.mark.xfail(strict=True, reason=f"known defect: {reason}")
-
-
 HARNESS = EvalHarness(extractor_fn=lambda case: {})
 
 
@@ -45,7 +40,6 @@ class TestPIIRecall:
         with pytest.raises(AssertionError):
             HARNESS.run_privacy(suite(EvalCase(id="a", input_text="x"))).assert_min_pii_recall(0.5)
 
-    @defect("a detector that raises is excluded from recall instead of counting as a miss")
     def test_crashing_detector_counts_as_a_miss(self):
         cases = [
             EvalCase(id="ok", input_text="x", expected_pii_entities=["PERSON"]),
@@ -81,6 +75,17 @@ def blocking_case(case_id: str, sensitivity: str, should_block: bool) -> EvalCas
     )
 
 
+class TestRedactionCount:
+    def test_crashing_redactor_is_not_scored_correct(self):
+        def redactor_fn(case):
+            raise RuntimeError("redactor crashed")
+
+        case = EvalCase(id="r", input_text="x", expected_redaction_count=0)
+        m = HARNESS.run_privacy(suite(case), redactor_fn=redactor_fn)
+        assert m.redaction_accuracy == 0.0
+        assert "redactor crashed" in m.case_results[0].error
+
+
 class TestBlocking:
     def test_gate_fails_when_a_block_is_missed(self):
         m = HARNESS.run_privacy(
@@ -89,13 +94,11 @@ class TestBlocking:
         with pytest.raises(AssertionError):
             m.assert_perfect_blocking()
 
-    @defect("blocking_accuracy is computed with no router_fn, so the gate passes vacuously")
     def test_gate_refuses_to_pass_without_a_router(self):
         m = HARNESS.run_privacy(suite(blocking_case("p", "public", False)))
         with pytest.raises(AssertionError):
             m.assert_perfect_blocking()
 
-    @defect("a router that raises PrivacyBlockedError is recorded as an error, not a block")
     def test_real_router_raising_counts_as_blocked(self):
         m = HARNESS.run_privacy(
             suite(blocking_case("s", "secret", True), blocking_case("p", "public", False)),
@@ -103,7 +106,6 @@ class TestBlocking:
         )
         m.assert_perfect_blocking()
 
-    @defect("a router that crashes is scored correct on should-not-block cases")
     def test_crashing_router_is_not_scored_correct(self):
         def router_fn(case):
             raise RuntimeError("provider down")

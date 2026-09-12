@@ -22,10 +22,6 @@ SECRET_TEXT = "Project Falcon: acquire Acme at $4.2bn. Contact 415-555-0132."
 PHONE = "415-555-0132"
 
 
-def defect(reason: str):
-    return pytest.mark.xfail(strict=True, reason=f"known defect: {reason}")
-
-
 def make_doc(sensitivity: str, text: str = SECRET_TEXT) -> LegalDoc:
     return LegalDoc(
         doc_type=DocType.CONTRACT,

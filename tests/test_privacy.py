@@ -26,10 +26,6 @@ from contractex.privacy.router import PrivacyBlockedError, PrivacyRoutingError
 from tests._providers import SpyLocalProvider, SpyProvider
 
 
-def defect(reason: str):
-    return pytest.mark.xfail(strict=True, reason=f"known defect: {reason}")
-
-
 class Doc:
     """Minimal duck-typed document, as the router accepts any object."""
 
