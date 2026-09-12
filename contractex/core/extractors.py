@@ -120,13 +120,10 @@ class ContractExtractor:
             document_path: Path to the contract document.
 
         Returns:
-            Dict with keys:
-              - ``estimated_cost``   (float) total estimated USD
-              - ``estimated_tokens`` (int)   total estimated input tokens
-              - ``num_chunks``       (int)   number of chunks the document produces
-              - ``llm_provider``     (str)   provider class name
-              - ``llm_model``        (str)   model identifier
-              - ``breakdown``        (dict)  per-phase cost/token estimates
+            Dict with keys ``estimated_cost`` (float, USD), ``estimated_tokens``
+            (int, input tokens), ``num_chunks`` (int), ``llm_provider`` (str,
+            provider class name), ``llm_model`` (str) and ``breakdown`` (dict,
+            per-phase cost and token estimates).
 
         Example::
 

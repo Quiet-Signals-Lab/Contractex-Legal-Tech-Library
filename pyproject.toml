@@ -74,7 +74,8 @@ dev = [
     "requests>=2.31.0",
 ]
 docs = [
-    "mkdocs>=1.5.0",
+    # MkDocs 2.0 removes the plugin system this site depends on
+    "mkdocs>=1.5.0,<2",
     "mkdocs-material>=9.5.0",
     "mkdocstrings[python]>=0.24",
     "mkdocs-autorefs>=0.5",
