@@ -54,7 +54,7 @@ class PIIDetectionTask(LegalTask):
             profile = PrivacyProfile(sensitivity="public")
 
         if spans:
-            entity_types = list({s.entity_type for s in spans})
+            entity_types = list(dict.fromkeys(s.entity_type for s in spans))
             profile = profile.model_copy(
                 update={
                     "contains_pii": True,
