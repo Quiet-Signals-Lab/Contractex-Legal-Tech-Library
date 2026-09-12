@@ -1,0 +1,1158 @@
+{
+ "chunking": {
+  "breakdown_size": 512,
+  "by_category": {
+   "clause_aware": {
+    "Affiliate License-Licensee": [
+     27,
+     27
+    ],
+    "Affiliate License-Licensor": [
+     19,
+     20
+    ],
+    "Agreement Date": [
+     93,
+     93
+    ],
+    "Anti-Assignment": [
+     137,
+     137
+    ],
+    "Audit Rights": [
+     103,
+     105
+    ],
+    "Cap On Liability": [
+     118,
+     118
+    ],
+    "Change Of Control": [
+     61,
+     61
+    ],
+    "Competitive Restriction Exception": [
+     27,
+     27
+    ],
+    "Covenant Not To Sue": [
+     43,
+     44
+    ],
+    "Document Name": [
+     102,
+     102
+    ],
+    "Effective Date": [
+     84,
+     84
+    ],
+    "Exclusivity": [
+     77,
+     78
+    ],
+    "Expiration Date": [
+     83,
+     83
+    ],
+    "Governing Law": [
+     89,
+     90
+    ],
+    "Insurance": [
+     115,
+     116
+    ],
+    "Ip Ownership Assignment": [
+     60,
+     61
+    ],
+    "Irrevocable Or Perpetual License": [
+     22,
+     23
+    ],
+    "Joint Ip Ownership": [
+     14,
+     14
+    ],
+    "License Grant": [
+     130,
+     135
+    ],
+    "Liquidated Damages": [
+     23,
+     23
+    ],
+    "Minimum Commitment": [
+     85,
+     88
+    ],
+    "Most Favored Nation": [
+     3,
+     3
+    ],
+    "No-Solicit Of Customers": [
+     15,
+     15
+    ],
+    "No-Solicit Of Employees": [
+     18,
+     18
+    ],
+    "Non-Compete": [
+     58,
+     59
+    ],
+    "Non-Disparagement": [
+     12,
+     12
+    ],
+    "Non-Transferable License": [
+     41,
+     43
+    ],
+    "Notice Period To Terminate Renewal": [
+     18,
+     18
+    ],
+    "Parties": [
+     542,
+     543
+    ],
+    "Post-Termination Services": [
+     80,
+     82
+    ],
+    "Renewal Term": [
+     30,
+     30
+    ],
+    "Revenue/Profit Sharing": [
+     85,
+     87
+    ],
+    "Rofr/Rofo/Rofn": [
+     67,
+     68
+    ],
+    "Source Code Escrow": [
+     5,
+     5
+    ],
+    "Termination For Convenience": [
+     41,
+     41
+    ],
+    "Third Party Beneficiary": [
+     11,
+     11
+    ],
+    "Uncapped Liability": [
+     16,
+     16
+    ],
+    "Unlimited/All-You-Can-Eat-License": [
+     5,
+     6
+    ],
+    "Volume Restriction": [
+     34,
+     35
+    ],
+    "Warranty Duration": [
+     19,
+     19
+    ]
+   },
+   "fixed_window": {
+    "Affiliate License-Licensee": [
+     18,
+     27
+    ],
+    "Affiliate License-Licensor": [
+     15,
+     20
+    ],
+    "Agreement Date": [
+     93,
+     93
+    ],
+    "Anti-Assignment": [
+     119,
+     137
+    ],
+    "Audit Rights": [
+     91,
+     105
+    ],
+    "Cap On Liability": [
+     98,
+     118
+    ],
+    "Change Of Control": [
+     51,
+     61
+    ],
+    "Competitive Restriction Exception": [
+     25,
+     27
+    ],
+    "Covenant Not To Sue": [
+     37,
+     44
+    ],
+    "Document Name": [
+     102,
+     102
+    ],
+    "Effective Date": [
+     81,
+     84
+    ],
+    "Exclusivity": [
+     67,
+     78
+    ],
+    "Expiration Date": [
+     73,
+     83
+    ],
+    "Governing Law": [
+     81,
+     90
+    ],
+    "Insurance": [
+     101,
+     116
+    ],
+    "Ip Ownership Assignment": [
+     45,
+     61
+    ],
+    "Irrevocable Or Perpetual License": [
+     16,
+     23
+    ],
+    "Joint Ip Ownership": [
+     13,
+     14
+    ],
+    "License Grant": [
+     105,
+     135
+    ],
+    "Liquidated Damages": [
+     20,
+     23
+    ],
+    "Minimum Commitment": [
+     76,
+     88
+    ],
+    "Most Favored Nation": [
+     1,
+     3
+    ],
+    "No-Solicit Of Customers": [
+     13,
+     15
+    ],
+    "No-Solicit Of Employees": [
+     14,
+     18
+    ],
+    "Non-Compete": [
+     50,
+     59
+    ],
+    "Non-Disparagement": [
+     9,
+     12
+    ],
+    "Non-Transferable License": [
+     37,
+     43
+    ],
+    "Notice Period To Terminate Renewal": [
+     16,
+     18
+    ],
+    "Parties": [
+     540,
+     543
+    ],
+    "Post-Termination Services": [
+     69,
+     82
+    ],
+    "Renewal Term": [
+     26,
+     30
+    ],
+    "Revenue/Profit Sharing": [
+     70,
+     87
+    ],
+    "Rofr/Rofo/Rofn": [
+     54,
+     68
+    ],
+    "Source Code Escrow": [
+     4,
+     5
+    ],
+    "Termination For Convenience": [
+     36,
+     41
+    ],
+    "Third Party Beneficiary": [
+     9,
+     11
+    ],
+    "Uncapped Liability": [
+     11,
+     16
+    ],
+    "Unlimited/All-You-Can-Eat-License": [
+     5,
+     6
+    ],
+    "Volume Restriction": [
+     33,
+     35
+    ],
+    "Warranty Duration": [
+     16,
+     19
+    ]
+   },
+   "semantic": {
+    "Affiliate License-Licensee": [
+     24,
+     27
+    ],
+    "Affiliate License-Licensor": [
+     17,
+     20
+    ],
+    "Agreement Date": [
+     93,
+     93
+    ],
+    "Anti-Assignment": [
+     133,
+     137
+    ],
+    "Audit Rights": [
+     102,
+     105
+    ],
+    "Cap On Liability": [
+     112,
+     118
+    ],
+    "Change Of Control": [
+     59,
+     61
+    ],
+    "Competitive Restriction Exception": [
+     25,
+     27
+    ],
+    "Covenant Not To Sue": [
+     40,
+     44
+    ],
+    "Document Name": [
+     102,
+     102
+    ],
+    "Effective Date": [
+     84,
+     84
+    ],
+    "Exclusivity": [
+     74,
+     78
+    ],
+    "Expiration Date": [
+     82,
+     83
+    ],
+    "Governing Law": [
+     88,
+     90
+    ],
+    "Insurance": [
+     108,
+     116
+    ],
+    "Ip Ownership Assignment": [
+     56,
+     61
+    ],
+    "Irrevocable Or Perpetual License": [
+     19,
+     23
+    ],
+    "Joint Ip Ownership": [
+     13,
+     14
+    ],
+    "License Grant": [
+     118,
+     135
+    ],
+    "Liquidated Damages": [
+     21,
+     23
+    ],
+    "Minimum Commitment": [
+     81,
+     88
+    ],
+    "Most Favored Nation": [
+     3,
+     3
+    ],
+    "No-Solicit Of Customers": [
+     14,
+     15
+    ],
+    "No-Solicit Of Employees": [
+     16,
+     18
+    ],
+    "Non-Compete": [
+     53,
+     59
+    ],
+    "Non-Disparagement": [
+     11,
+     12
+    ],
+    "Non-Transferable License": [
+     38,
+     43
+    ],
+    "Notice Period To Terminate Renewal": [
+     18,
+     18
+    ],
+    "Parties": [
+     543,
+     543
+    ],
+    "Post-Termination Services": [
+     71,
+     82
+    ],
+    "Renewal Term": [
+     29,
+     30
+    ],
+    "Revenue/Profit Sharing": [
+     82,
+     87
+    ],
+    "Rofr/Rofo/Rofn": [
+     66,
+     68
+    ],
+    "Source Code Escrow": [
+     4,
+     5
+    ],
+    "Termination For Convenience": [
+     41,
+     41
+    ],
+    "Third Party Beneficiary": [
+     10,
+     11
+    ],
+    "Uncapped Liability": [
+     15,
+     16
+    ],
+    "Unlimited/All-You-Can-Eat-License": [
+     5,
+     6
+    ],
+    "Volume Restriction": [
+     35,
+     35
+    ],
+    "Warranty Duration": [
+     17,
+     19
+    ]
+   }
+  },
+  "by_length": {
+   "clause_aware": [
+    [
+     1359,
+     1362
+    ],
+    [
+     1203,
+     1218
+    ],
+    [
+     50,
+     60
+    ],
+    [
+     0,
+     0
+    ]
+   ],
+   "fixed_window": [
+    [
+     1321,
+     1362
+    ],
+    [
+     983,
+     1218
+    ],
+    [
+     36,
+     60
+    ],
+    [
+     0,
+     0
+    ]
+   ],
+   "semantic": [
+    [
+     1349,
+     1362
+    ],
+    [
+     1134,
+     1218
+    ],
+    [
+     39,
+     60
+    ],
+    [
+     0,
+     0
+    ]
+   ]
+  },
+  "failure_reasons": {
+   "clause_aware": {
+    "size limit split a section inside the span": 11,
+    "span contains a heading; split there by design": 14,
+    "span longer than half the chunk budget": 2
+   }
+  },
+  "length_buckets": [
+   [
+    0,
+    200
+   ],
+   [
+    200,
+    1000
+   ],
+   [
+    1000,
+    4000
+   ],
+   [
+    4000,
+    1000000000
+   ]
+  ],
+  "rows": [
+   {
+    "chunker": "clause_aware",
+    "chunks": 6343,
+    "chunks_over_size": 0,
+    "contracts_unlocatable": 0,
+    "integrity": 0.9799,
+    "mean_chunk_tokens": 187.2,
+    "size": 256,
+    "spans_intact": 2534,
+    "spans_longer_than_chunk": 57,
+    "spans_scored": 2586
+   },
+   {
+    "chunker": "clause_aware",
+    "chunks": 3094,
+    "chunks_over_size": 0,
+    "contracts_unlocatable": 0,
+    "integrity": 0.9894,
+    "mean_chunk_tokens": 384.8,
+    "size": 512,
+    "spans_intact": 2612,
+    "spans_longer_than_chunk": 3,
+    "spans_scored": 2640
+   },
+   {
+    "chunker": "clause_aware",
+    "chunks": 1491,
+    "chunks_over_size": 0,
+    "contracts_unlocatable": 0,
+    "integrity": 0.9955,
+    "mean_chunk_tokens": 799.8,
+    "size": 1024,
+    "spans_intact": 2631,
+    "spans_longer_than_chunk": 0,
+    "spans_scored": 2643
+   },
+   {
+    "chunker": "clause_aware",
+    "chunks": 741,
+    "chunks_over_size": 0,
+    "contracts_unlocatable": 0,
+    "integrity": 0.9981,
+    "mean_chunk_tokens": 1610.7,
+    "size": 2048,
+    "spans_intact": 2638,
+    "spans_longer_than_chunk": 0,
+    "spans_scored": 2643
+   },
+   {
+    "chunker": "semantic",
+    "chunks": 6415,
+    "chunks_over_size": 167,
+    "contracts_unlocatable": 0,
+    "integrity": 0.8913,
+    "mean_chunk_tokens": 184.1,
+    "size": 256,
+    "spans_intact": 2305,
+    "spans_longer_than_chunk": 57,
+    "spans_scored": 2586
+   },
+   {
+    "chunker": "semantic",
+    "chunks": 3314,
+    "chunks_over_size": 123,
+    "contracts_unlocatable": 0,
+    "integrity": 0.9553,
+    "mean_chunk_tokens": 356.9,
+    "size": 512,
+    "spans_intact": 2522,
+    "spans_longer_than_chunk": 3,
+    "spans_scored": 2640
+   },
+   {
+    "chunker": "semantic",
+    "chunks": 1447,
+    "chunks_over_size": 102,
+    "contracts_unlocatable": 0,
+    "integrity": 0.9936,
+    "mean_chunk_tokens": 818.3,
+    "size": 1024,
+    "spans_intact": 2626,
+    "spans_longer_than_chunk": 0,
+    "spans_scored": 2643
+   },
+   {
+    "chunker": "semantic",
+    "chunks": 681,
+    "chunks_over_size": 93,
+    "contracts_unlocatable": 0,
+    "integrity": 0.9981,
+    "mean_chunk_tokens": 1739.6,
+    "size": 2048,
+    "spans_intact": 2638,
+    "spans_longer_than_chunk": 0,
+    "spans_scored": 2643
+   },
+   {
+    "chunker": "fixed_window",
+    "chunks": 4739,
+    "chunks_over_size": 0,
+    "contracts_unlocatable": 0,
+    "integrity": 0.7838,
+    "mean_chunk_tokens": 251.3,
+    "size": 256,
+    "spans_intact": 2027,
+    "spans_longer_than_chunk": 57,
+    "spans_scored": 2586
+   },
+   {
+    "chunker": "fixed_window",
+    "chunks": 2391,
+    "chunks_over_size": 0,
+    "contracts_unlocatable": 0,
+    "integrity": 0.8864,
+    "mean_chunk_tokens": 498.9,
+    "size": 512,
+    "spans_intact": 2340,
+    "spans_longer_than_chunk": 3,
+    "spans_scored": 2640
+   },
+   {
+    "chunker": "fixed_window",
+    "chunks": 1220,
+    "chunks_over_size": 0,
+    "contracts_unlocatable": 0,
+    "integrity": 0.9414,
+    "mean_chunk_tokens": 978.5,
+    "size": 1024,
+    "spans_intact": 2488,
+    "spans_longer_than_chunk": 0,
+    "spans_scored": 2643
+   },
+   {
+    "chunker": "fixed_window",
+    "chunks": 639,
+    "chunks_over_size": 0,
+    "contracts_unlocatable": 0,
+    "integrity": 0.9697,
+    "mean_chunk_tokens": 1868.8,
+    "size": 2048,
+    "spans_intact": 2563,
+    "spans_longer_than_chunk": 0,
+    "spans_scored": 2643
+   }
+  ],
+  "sizes": [
+   256,
+   512,
+   1024,
+   2048
+  ]
+ },
+ "cuad": {
+  "characters": 4778515,
+  "contracts": 102,
+  "spans": 2643
+ },
+ "fixtures": {
+  "cuad_test.json.gz": "b8f46aad0dc7822d93e80fc278434ecff01c33bb41cf34ebea0cd90ce4821089",
+  "privacy_cases.jsonl": "2f5582939bf45e058cc862a6317d051577d479263ebde980d7ba599bd357bb9b"
+ },
+ "privacy": {
+  "detection": {
+   "backend": "regex fallback, use_presidio=False",
+   "caught": {
+    "CREDIT_CARD": {
+     "plain": [
+      8,
+      8
+     ],
+     "unsupported": [
+      0,
+      4
+     ],
+     "zero_width": [
+      4,
+      4
+     ]
+    },
+    "DATE_OF_BIRTH": {
+     "plain": [
+      8,
+      8
+     ],
+     "unsupported": [
+      0,
+      4
+     ]
+    },
+    "EMAIL_ADDRESS": {
+     "homoglyph": [
+      4,
+      4
+     ],
+     "plain": [
+      8,
+      8
+     ],
+     "zero_width": [
+      4,
+      4
+     ]
+    },
+    "IBAN_CODE": {
+     "plain": [
+      8,
+      8
+     ],
+     "unsupported": [
+      0,
+      4
+     ]
+    },
+    "LOCATION": {
+     "unsupported": [
+      0,
+      4
+     ]
+    },
+    "PASSPORT_NUMBER": {
+     "plain": [
+      8,
+      8
+     ]
+    },
+    "PERSON": {
+     "unsupported": [
+      0,
+      8
+     ]
+    },
+    "PHONE_NUMBER": {
+     "fullwidth": [
+      4,
+      4
+     ],
+     "plain": [
+      12,
+      12
+     ],
+     "unicode_dash": [
+      8,
+      8
+     ],
+     "unsupported": [
+      0,
+      8
+     ],
+     "zero_width": [
+      4,
+      4
+     ]
+    },
+    "US_SSN": {
+     "fullwidth": [
+      4,
+      4
+     ],
+     "plain": [
+      8,
+      8
+     ],
+     "unicode_dash": [
+      4,
+      4
+     ]
+    }
+   },
+   "distractor_false_positives": 0,
+   "distractors": 224,
+   "harness_entity_type_precision": 0.9583,
+   "harness_entity_type_recall": 0.9583
+  },
+  "routing": {
+   "cells": [
+    {
+     "entry_point": "router",
+     "expected": "sent_raw",
+     "observed": "sent_raw",
+     "pass": true,
+     "provider": "cloud",
+     "sensitivity": "public"
+    },
+    {
+     "entry_point": "router",
+     "expected": "sent_raw",
+     "observed": "sent_raw",
+     "pass": true,
+     "provider": "local",
+     "sensitivity": "public"
+    },
+    {
+     "entry_point": "router",
+     "expected": "sent_redacted",
+     "observed": "sent_redacted",
+     "pass": true,
+     "provider": "cloud",
+     "sensitivity": "confidential"
+    },
+    {
+     "entry_point": "router",
+     "expected": "sent_redacted",
+     "observed": "sent_redacted",
+     "pass": true,
+     "provider": "local",
+     "sensitivity": "confidential"
+    },
+    {
+     "entry_point": "router",
+     "expected": "routing_error",
+     "observed": "routing_error",
+     "pass": true,
+     "provider": "cloud",
+     "sensitivity": "restricted"
+    },
+    {
+     "entry_point": "router",
+     "expected": "sent_redacted",
+     "observed": "sent_redacted",
+     "pass": true,
+     "provider": "local",
+     "sensitivity": "restricted"
+    },
+    {
+     "entry_point": "router",
+     "expected": "blocked",
+     "observed": "blocked",
+     "pass": true,
+     "provider": "cloud",
+     "sensitivity": "secret"
+    },
+    {
+     "entry_point": "router",
+     "expected": "blocked",
+     "observed": "blocked",
+     "pass": true,
+     "provider": "local",
+     "sensitivity": "secret"
+    },
+    {
+     "entry_point": "pipeline",
+     "expected": "sent_raw",
+     "observed": "sent_raw",
+     "pass": true,
+     "provider": "cloud",
+     "sensitivity": "public"
+    },
+    {
+     "entry_point": "pipeline",
+     "expected": "sent_raw",
+     "observed": "sent_raw",
+     "pass": true,
+     "provider": "local",
+     "sensitivity": "public"
+    },
+    {
+     "entry_point": "pipeline",
+     "expected": "sent_redacted",
+     "observed": "sent_redacted",
+     "pass": true,
+     "provider": "cloud",
+     "sensitivity": "confidential"
+    },
+    {
+     "entry_point": "pipeline",
+     "expected": "sent_redacted",
+     "observed": "sent_redacted",
+     "pass": true,
+     "provider": "local",
+     "sensitivity": "confidential"
+    },
+    {
+     "entry_point": "pipeline",
+     "expected": "routing_error",
+     "observed": "routing_error",
+     "pass": true,
+     "provider": "cloud",
+     "sensitivity": "restricted"
+    },
+    {
+     "entry_point": "pipeline",
+     "expected": "sent_redacted",
+     "observed": "sent_redacted",
+     "pass": true,
+     "provider": "local",
+     "sensitivity": "restricted"
+    },
+    {
+     "entry_point": "pipeline",
+     "expected": "blocked",
+     "observed": "blocked",
+     "pass": true,
+     "provider": "cloud",
+     "sensitivity": "secret"
+    },
+    {
+     "entry_point": "pipeline",
+     "expected": "blocked",
+     "observed": "blocked",
+     "pass": true,
+     "provider": "local",
+     "sensitivity": "secret"
+    },
+    {
+     "entry_point": "comparison_doc_b",
+     "expected": "sent_raw",
+     "observed": "sent_raw",
+     "pass": true,
+     "provider": "cloud",
+     "sensitivity": "public"
+    },
+    {
+     "entry_point": "comparison_doc_b",
+     "expected": "sent_raw",
+     "observed": "sent_raw",
+     "pass": true,
+     "provider": "local",
+     "sensitivity": "public"
+    },
+    {
+     "entry_point": "comparison_doc_b",
+     "expected": "sent_redacted",
+     "observed": "sent_redacted",
+     "pass": true,
+     "provider": "cloud",
+     "sensitivity": "confidential"
+    },
+    {
+     "entry_point": "comparison_doc_b",
+     "expected": "sent_redacted",
+     "observed": "sent_redacted",
+     "pass": true,
+     "provider": "local",
+     "sensitivity": "confidential"
+    },
+    {
+     "entry_point": "comparison_doc_b",
+     "expected": "routing_error",
+     "observed": "routing_error",
+     "pass": true,
+     "provider": "cloud",
+     "sensitivity": "restricted"
+    },
+    {
+     "entry_point": "comparison_doc_b",
+     "expected": "sent_redacted",
+     "observed": "sent_redacted",
+     "pass": true,
+     "provider": "local",
+     "sensitivity": "restricted"
+    },
+    {
+     "entry_point": "comparison_doc_b",
+     "expected": "blocked",
+     "observed": "blocked",
+     "pass": true,
+     "provider": "cloud",
+     "sensitivity": "secret"
+    },
+    {
+     "entry_point": "comparison_doc_b",
+     "expected": "blocked",
+     "observed": "blocked",
+     "pass": true,
+     "provider": "local",
+     "sensitivity": "secret"
+    },
+    {
+     "entry_point": "rag",
+     "expected": "sent_raw",
+     "observed": "sent_raw",
+     "pass": true,
+     "provider": "cloud",
+     "sensitivity": "public"
+    },
+    {
+     "entry_point": "rag",
+     "expected": "sent_raw",
+     "observed": "sent_raw",
+     "pass": true,
+     "provider": "local",
+     "sensitivity": "public"
+    },
+    {
+     "entry_point": "rag",
+     "expected": "sent_redacted",
+     "observed": "sent_redacted",
+     "pass": true,
+     "provider": "cloud",
+     "sensitivity": "confidential"
+    },
+    {
+     "entry_point": "rag",
+     "expected": "sent_redacted",
+     "observed": "sent_redacted",
+     "pass": true,
+     "provider": "local",
+     "sensitivity": "confidential"
+    },
+    {
+     "entry_point": "rag",
+     "expected": "excluded",
+     "observed": "excluded",
+     "pass": true,
+     "provider": "cloud",
+     "sensitivity": "restricted"
+    },
+    {
+     "entry_point": "rag",
+     "expected": "sent_redacted",
+     "observed": "sent_redacted",
+     "pass": true,
+     "provider": "local",
+     "sensitivity": "restricted"
+    },
+    {
+     "entry_point": "rag",
+     "expected": "excluded",
+     "observed": "excluded",
+     "pass": true,
+     "provider": "cloud",
+     "sensitivity": "secret"
+    },
+    {
+     "entry_point": "rag",
+     "expected": "excluded",
+     "observed": "excluded",
+     "pass": true,
+     "provider": "local",
+     "sensitivity": "secret"
+    }
+   ],
+   "harness_blocking_accuracy": 1.0,
+   "passed": 32,
+   "total": 32
+  }
+ },
+ "provenance": {
+  "chunk_size": 512,
+  "counts": {
+   "legacy": {
+    "lowercase": {
+     "correct": 37,
+     "exact": 35,
+     "resolved": 149,
+     "values": 2643
+    },
+    "verbatim": {
+     "correct": 1492,
+     "exact": 737,
+     "resolved": 2615,
+     "values": 2643
+    },
+    "whitespace": {
+     "correct": 1347,
+     "exact": 710,
+     "resolved": 2195,
+     "values": 2643
+    }
+   },
+   "source_text": {
+    "lowercase": {
+     "correct": 78,
+     "exact": 111,
+     "resolved": 149,
+     "values": 2643
+    },
+    "verbatim": {
+     "correct": 2570,
+     "exact": 2612,
+     "resolved": 2615,
+     "values": 2643
+    },
+    "whitespace": {
+     "correct": 2149,
+     "exact": 2186,
+     "resolved": 2195,
+     "values": 2643
+    }
+   }
+  },
+  "overlap": 50,
+  "values_whose_text_occurs_earlier": 45
+ }
+}
