@@ -435,7 +435,6 @@ class TestRouterRouting:
         with pytest.raises(PrivacyBlockedError):
             strict.route_completion(Doc(), "p", spy)
 
-    @defect("local-only check matches any class with 'Local' in its name")
     def test_restricted_rejects_cloud_provider_named_like_local(self, router):
         class NotLocalOpenAIProxy(SpyProvider):
             pass
@@ -444,14 +443,12 @@ class TestRouterRouting:
         with pytest.raises(PrivacyRoutingError):
             router.route_completion(Doc(PrivacyProfile(sensitivity="restricted")), "p", spy)
 
-    @defect("a profile that is not a PrivacyProfile instance falls back to public")
     def test_dict_profile_is_enforced(self, router):
         spy = SpyProvider()
         with pytest.raises(PrivacyBlockedError):
             router.route_completion(Doc({"sensitivity": "secret"}), "p", spy)
         assert spy.prompts == []
 
-    @defect("a LegalDoc reloaded from JSON carries a dict profile, which reads as public")
     def test_legaldoc_json_roundtrip_stays_blocked(self, router):
         from contractex.core.document import LegalDoc
 
@@ -462,7 +459,6 @@ class TestRouterRouting:
             router.route_completion(reloaded, "p", spy)
         assert spy.prompts == []
 
-    @defect("a profile that is not a PrivacyProfile instance falls back to public")
     def test_unrecognised_profile_type_fails_closed(self, router):
         spy = SpyProvider()
         with pytest.raises((TypeError, ValueError, PrivacyBlockedError)):
@@ -494,7 +490,6 @@ class TestRouterRedaction:
         r.route_completion(Doc(PrivacyProfile(sensitivity="confidential")), "415-555-0132", spy)
         assert spy.prompts == ["415-555-0132"]
 
-    @defect("auto-redaction marks the document redacted, so later prompts go out raw")
     def test_every_call_on_a_confidential_doc_is_redacted(self, router):
         spy = SpyProvider()
         doc = Doc(PrivacyProfile(sensitivity="confidential"))
@@ -513,7 +508,6 @@ class TestRouterRedaction:
         )
         assert out.signatory == "415-555-0132"
 
-    @defect("restore only walks top-level string fields")
     def test_route_restores_nested_fields(self, router):
         spy = SpyProvider(structured={"parties": [{"name": "<PHONE_NUMBER_1>"}]})
         out = router.route(
@@ -524,3 +518,52 @@ class TestRouterRedaction:
             restore_redaction=True,
         )
         assert out.parties[0].name == "415-555-0132"
+
+
+class TestGuard:
+    def test_guard_raises_immediately_for_secret_doc(self, router):
+        with pytest.raises(PrivacyBlockedError):
+            router.guard(SpyProvider(), Doc(PrivacyProfile(sensitivity="secret")))
+
+    def test_guard_raises_immediately_for_restricted_doc_and_cloud(self, router):
+        with pytest.raises(PrivacyRoutingError):
+            router.guard(SpyProvider(), Doc(PrivacyProfile(sensitivity="restricted")))
+
+    def test_guard_applies_strictest_profile_across_docs(self, router):
+        docs = [Doc(PrivacyProfile()), Doc({"sensitivity": "secret"})]
+        with pytest.raises(PrivacyBlockedError):
+            router.guard(SpyLocalProvider(), *docs)
+
+    def test_guard_combines_routing_and_redaction(self, router):
+        local = SpyLocalProvider()
+        docs = [
+            Doc(PrivacyProfile(sensitivity="confidential")),
+            Doc(PrivacyProfile(llm_routing="local_only")),
+        ]
+        with pytest.raises(PrivacyRoutingError):
+            router.guard(SpyProvider(), *docs)
+        router.guard(local, *docs).complete("Call 415-555-0132")
+        assert local.prompts == ["Call <PHONE_NUMBER_1>"]
+
+    def test_guarded_complete_redacts_and_restores(self, router):
+        spy = SpyProvider(reply="Ring <PHONE_NUMBER_1>")
+        llm = router.guard(spy, Doc(PrivacyProfile(sensitivity="confidential")))
+        assert llm.complete("Call 415-555-0132") == "Ring 415-555-0132"
+        assert spy.prompts == ["Call <PHONE_NUMBER_1>"]
+
+    def test_guarded_extract_structured_restores_nested(self, router):
+        spy = SpyProvider(structured={"parties": [{"name": "<PHONE_NUMBER_1>"}]})
+        llm = router.guard(spy, Doc(PrivacyProfile(sensitivity="confidential")))
+        assert (
+            llm.extract_structured("Call 415-555-0132", Summary).parties[0].name == "415-555-0132"
+        )
+
+    def test_guarded_stream_is_redacted(self, router):
+        spy = SpyProvider(reply="done")
+        llm = router.guard(spy, Doc(PrivacyProfile(sensitivity="confidential")))
+        assert list(llm.stream_complete("Call 415-555-0132")) == ["done"]
+        assert spy.prompts == ["Call <PHONE_NUMBER_1>"]
+
+    def test_guarded_provider_delegates_metadata(self, router):
+        llm = router.guard(SpyProvider(), Doc(PrivacyProfile()))
+        assert (llm.model, llm.context_window, llm.count_tokens("abcd")) == ("spy", 100_000, 1)

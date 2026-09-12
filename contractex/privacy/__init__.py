@@ -38,7 +38,12 @@ from __future__ import annotations
 from contractex.privacy.detector import PIIDetector, PIISpan
 from contractex.privacy.profile import PrivacyProfile, RedactionStrategy
 from contractex.privacy.redactor import PIIRedactor, RedactedText, RedactionMap
-from contractex.privacy.router import PrivacyAwareLLMRouter
+from contractex.privacy.router import (
+    PrivacyAwareLLMRouter,
+    PrivacyBlockedError,
+    PrivacyGuardedProvider,
+    PrivacyRoutingError,
+)
 
 __all__ = [
     "PIIDetector",
@@ -49,4 +54,7 @@ __all__ = [
     "PrivacyProfile",
     "RedactionStrategy",
     "PrivacyAwareLLMRouter",
+    "PrivacyGuardedProvider",
+    "PrivacyBlockedError",
+    "PrivacyRoutingError",
 ]
