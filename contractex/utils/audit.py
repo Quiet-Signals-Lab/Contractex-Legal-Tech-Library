@@ -328,7 +328,7 @@ class AuditLogger:
     Example::
 
         with AuditLogger.from_jsonl("audit/pipeline.jsonl") as al:
-            al.log_ingestion("doc-1", source_url="https://example.com/doc.pdf")
+            al.log_ingestion("doc-1", source_url="https://docs.test/doc.pdf")
             al.log_extraction("doc-1", ["name", "dob"], overall_confidence=0.91)
     """
 

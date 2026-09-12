@@ -42,10 +42,10 @@ class TestChunkRecord:
 
 class TestProvenanceTrackerRegistration:
     def test_register_single_chunk(self):
-        tracker = ProvenanceTracker(source_url="https://example.com")
+        tracker = ProvenanceTracker(source_url="https://docs.test")
         records = tracker.register_chunks(["The quick brown fox"])
         assert len(records) == 1
-        assert records[0].source_url == "https://example.com"
+        assert records[0].source_url == "https://docs.test"
         assert records[0].char_start == 0
         assert records[0].char_end == len("The quick brown fox")
 
@@ -113,7 +113,7 @@ class TestProvenanceTrackerRegistration:
 
 class TestFindSpanExact:
     def setup_method(self):
-        self.tracker = ProvenanceTracker(source_url="https://example.com")
+        self.tracker = ProvenanceTracker(source_url="https://docs.test")
         self.chunks = [
             "Section 1: The parties agree to pay monthly fees.",
             "Section 2: Termination requires thirty days notice.",
@@ -282,7 +282,7 @@ class TestGetChunkAndRepr:
         assert len(tracker) == 2  # original unmodified
 
     def test_repr(self):
-        tracker = ProvenanceTracker(source_url="https://example.com")
+        tracker = ProvenanceTracker(source_url="https://docs.test")
         tracker.register_chunks(["text"])
         r = repr(tracker)
         assert "ProvenanceTracker" in r

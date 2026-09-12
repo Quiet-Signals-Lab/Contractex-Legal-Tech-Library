@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "Apache-2.0"}
 authors = [
-    {name = "Contract-Clause-Extractor Team", email = "contact@example.com"}
+    {name = "Alexander Hepburn", email = "hello@quietsignalslab.com"}
 ]
 keywords = ["legal-tech", "contract-analysis", "nlp", "llm", "document-intelligence", "cuad"]
 classifiers = [
@@ -81,10 +81,10 @@ docs = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/aahepburn/Contract-Clause-Extractor"
-Documentation = "https://github.com/aahepburn/Contract-Clause-Extractor/blob/main/README.md"
-Repository = "https://github.com/aahepburn/Contract-Clause-Extractor"
-Issues = "https://github.com/aahepburn/Contract-Clause-Extractor/issues"
+Homepage = "https://github.com/Quiet-Signals-Lab/Contractex-Legal-Tech-Library"
+Repository = "https://github.com/Quiet-Signals-Lab/Contractex-Legal-Tech-Library"
+Issues = "https://github.com/Quiet-Signals-Lab/Contractex-Legal-Tech-Library/issues"
+Changelog = "https://github.com/Quiet-Signals-Lab/Contractex-Legal-Tech-Library/blob/main/CHANGELOG.md"
 
 [tool.setuptools.packages.find]
 where = ["."]

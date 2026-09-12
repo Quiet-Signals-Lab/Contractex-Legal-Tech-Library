@@ -37,7 +37,7 @@ class TestConfiguration:
 
             assert config["host"] == "localhost"
             assert config["port"] == 5432
-            assert config["user"] == "aahepburn"
+            assert config["user"] == "postgres"
             assert config["db_name"] == "clause_docs"
             assert config["password"] == ""
 
@@ -70,7 +70,7 @@ class TestConfiguration:
             assert config["host"] == "customhost"
             assert config["db_name"] == "customdb"
             # Other values should be defaults
-            assert config["user"] == "aahepburn"
+            assert config["user"] == "postgres"
             assert config["port"] == 5432
 
 

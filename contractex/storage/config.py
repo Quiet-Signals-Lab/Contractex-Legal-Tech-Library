@@ -8,7 +8,7 @@ Configuration priority:
 For production, set environment variables:
     export POSTGRES_HOST=localhost
     export POSTGRES_PORT=5432
-    export POSTGRES_USER=aahepburn
+    export POSTGRES_USER=postgres
     export POSTGRES_DB=clause_docs
     export POSTGRES_PASSWORD=your_password
 """
@@ -29,7 +29,7 @@ def get_db_config() -> dict[str, Any]:
     return {
         "host": os.getenv("POSTGRES_HOST", "localhost"),
         "port": int(os.getenv("POSTGRES_PORT", "5432")),
-        "user": os.getenv("POSTGRES_USER", "aahepburn"),
+        "user": os.getenv("POSTGRES_USER", "postgres"),
         "db_name": os.getenv("POSTGRES_DB", "clause_docs"),
         "password": os.getenv("POSTGRES_PASSWORD", ""),
     }
