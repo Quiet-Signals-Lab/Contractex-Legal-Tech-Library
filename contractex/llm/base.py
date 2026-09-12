@@ -1,7 +1,7 @@
 """
 Abstract base class for LLM providers.
 
-All LLM providers must implement this interface to be compatible with ContractEx.
+All LLM providers must implement this interface to be compatible with Contractex.
 """
 
 from __future__ import annotations

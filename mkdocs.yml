@@ -1,4 +1,4 @@
-site_name: ContractEx
+site_name: Contractex
 hooks:
   - docs/hooks.py
 site_description: Deterministic structural parsing + schema-constrained LLM extraction for contract analysis.

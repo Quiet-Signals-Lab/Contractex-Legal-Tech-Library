@@ -1,4 +1,4 @@
-"""Version information for ContractEx."""
+"""Version information for Contractex."""
 
 from __future__ import annotations
 

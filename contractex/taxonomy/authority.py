@@ -1,7 +1,7 @@
 """
 Authority taxonomy for legal source ranking.
 
-Every legal document ingested into ContractEx carries an ``AuthorityProfile``
+Every legal document ingested into Contractex carries an ``AuthorityProfile``
 that describes how authoritative its content is relative to other sources.
 The ``LegalRAGPipeline`` uses this profile to weight retrieval scores so that
 a Supreme Court ruling outranks a law-review article even when the article's

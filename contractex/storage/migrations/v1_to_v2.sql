@@ -1,5 +1,5 @@
 -- =============================================================================
--- ContractEx Storage: Migration v1 → v2
+-- Contractex Storage: Migration v1 → v2
 --
 -- Run this script ONCE on an existing v1 database to upgrade to schema_v2.
 -- Always take a full backup before running migrations.

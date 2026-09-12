@@ -1,5 +1,5 @@
 """
-Task registry for ContractEx.
+Task registry for Contractex.
 
 All legal NLP tasks are implemented as ``LegalTask`` subclasses and registered
 in the ``TaskRegistry``.  Tasks are composable — the output of one is the

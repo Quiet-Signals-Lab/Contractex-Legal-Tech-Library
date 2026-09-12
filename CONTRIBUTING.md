@@ -1,6 +1,6 @@
-# Contributing to ContractEx
+# Contributing to Contractex
 
-Thank you for your interest in contributing! ContractEx is a community-driven project and welcomes contributions of all kinds.
+Thank you for your interest in contributing! Contractex is a community-driven project and welcomes contributions of all kinds.
 
 ---
 
