@@ -124,30 +124,49 @@ class ProvenanceTracker:
         chunks: list[str],
         source_url: str | None = None,
         page_map: dict[int, int] | None = None,
+        source_text: str | None = None,
     ) -> list[ChunkRecord]:
         """
         Register an ordered list of text chunks.
 
         Args:
-            chunks:     Text chunks (e.g. output of ``ClauseAwareChunker``).
-            source_url: Override the tracker-level source URL for this batch.
-            page_map:   Optional mapping of chunk index → 1-based page number.
+            chunks:      Text chunks (e.g. output of ``ClauseAwareChunker``).
+            source_url:  Override the tracker-level source URL for this batch.
+            page_map:    Optional mapping of chunk index → 1-based page number.
+            source_text: The document text the chunks were cut from.  When
+                         given, each chunk is located in it (in order;
+                         overlapping chunks are fine), so ``char_start`` /
+                         ``char_end`` and every resolved ``SourceSpan`` are
+                         true offsets into *source_text*.  Raises
+                         ``ValueError`` if a chunk is not a substring of it.
+                         Without it, offsets assume the chunks tile the
+                         document separated by one character each, which is
+                         not true of any chunker that trims, joins or
+                         overlaps.
 
         Returns:
             The list of ``ChunkRecord`` objects created for these chunks.
         """
         url = source_url or self.source_url
         records: list[ChunkRecord] = []
+        cursor = 0
 
         for idx, text in enumerate(chunks):
             global_idx = len(self._chunks)
+            if source_text is None:
+                start = self._global_offset
+            else:
+                start = source_text.find(text, cursor)
+                if start == -1:
+                    raise ValueError(f"chunk {idx} is not a substring of source_text")
+                cursor = start + 1
             record = ChunkRecord(
                 chunk_id=self._make_id(global_idx, text),
                 text=text,
                 source_url=url,
                 page=page_map.get(idx) if page_map else None,
-                char_start=self._global_offset,
-                char_end=self._global_offset + len(text),
+                char_start=start,
+                char_end=start + len(text),
             )
             self._chunks.append(record)
             # +1 represents the separator that the chunker inserts between chunks

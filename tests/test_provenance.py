@@ -287,3 +287,37 @@ class TestGetChunkAndRepr:
         r = repr(tracker)
         assert "ProvenanceTracker" in r
         assert "chunks=1" in r
+
+
+class TestOffsetsIntoSourceText:
+    """SourceSpan offsets must index the original document, whatever the chunker did."""
+
+    SOURCE = (
+        "\n\n1. Definitions.\n"
+        + "The Company means Acme Inc. " * 60
+        + "\n\n2. Governing Law.\nThis Agreement is governed by the laws of the State of Delaware."
+        + "\n\n3. Term.\n"
+        + "It lasts. " * 200
+    )
+
+    @pytest.mark.parametrize("overlap", [0, 50])
+    def test_spans_index_source_after_real_chunking(self, overlap):
+        from contractex.chunking import ClauseAwareChunker
+
+        chunks = ClauseAwareChunker(max_chunk_size=200, overlap=overlap).chunk(self.SOURCE)
+        tracker = ProvenanceTracker()
+        tracker.register_chunks(chunks, source_text=self.SOURCE)
+        for record in tracker.chunks:
+            assert self.SOURCE[record.char_start : record.char_end] == record.text
+        query = "governed by the laws of the State of Delaware"
+        span = tracker.find_span(query)
+        assert self.SOURCE[span.char_start : span.char_end] == query
+
+    def test_chunk_not_in_source_raises(self):
+        with pytest.raises(ValueError, match="chunk 1"):
+            ProvenanceTracker().register_chunks(["abc", "zzz"], source_text="abc def")
+
+    def test_repeated_chunk_text_is_located_in_order(self):
+        tracker = ProvenanceTracker()
+        tracker.register_chunks(["same", "same"], source_text="same x same")
+        assert [(r.char_start, r.char_end) for r in tracker.chunks] == [(0, 4), (7, 11)]
