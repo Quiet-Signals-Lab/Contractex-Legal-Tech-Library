@@ -9,6 +9,7 @@ suite is deterministic and runs without the ``privacy`` extra.  Tests marked
 
 from __future__ import annotations
 
+import re
 import sys
 
 import pytest
@@ -361,7 +362,10 @@ class TestNoPIISurvives:
             pytest.importorskip("cryptography")
         redactor = PIIRedactor(default_strategy=strategy)
         r = redactor.redact(self.DOC, detector.detect(self.DOC))
-        assert [s for s in self.SECRETS if s in r.text] == []
+        # HASH and ENCRYPT placeholders hold random hex, which can contain a
+        # digit run such as "0132" by chance; look only at text outside them.
+        outside = re.sub(r"<[A-Z_]+_(?:\d+|ENC:[0-9a-f]+|HASH:[0-9a-f]+)>", "", r.text)
+        assert [s for s in self.SECRETS if s in outside] == []
         if strategy in (RedactionStrategy.REPLACE, RedactionStrategy.ENCRYPT):
             assert redactor.restore(r.text, r.redaction_map) == self.DOC
 
