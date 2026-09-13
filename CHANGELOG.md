@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-09-13
+
+### Changed
+
+- The PyPI description (README) now uses the documentation home page text.
+  The README holds that text once, and the docs home page includes it, so
+  the two cannot drift apart.  No code changes.
+
 ## [0.5.0] - 2026-09-12
 
 The first release since 0.3.1.  It includes the unpublished 0.4.0 work
