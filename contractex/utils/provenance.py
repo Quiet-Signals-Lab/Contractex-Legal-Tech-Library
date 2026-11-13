@@ -138,7 +138,8 @@ class ProvenanceTracker:
                          overlapping chunks are fine), so ``char_start`` /
                          ``char_end`` and every resolved ``SourceSpan`` are
                          true offsets into *source_text*.  Raises
-                         ``ValueError`` if a chunk is not a substring of it.
+                         ``ValueError`` if a chunk is not a substring of it,
+                         and then registers none of *chunks*.
                          Without it, offsets assume the chunks tile the
                          document separated by one character each, which is
                          not true of any chunker that trims, joins or
@@ -150,11 +151,12 @@ class ProvenanceTracker:
         url = source_url or self.source_url
         records: list[ChunkRecord] = []
         cursor = 0
+        offset = self._global_offset
 
         for idx, text in enumerate(chunks):
-            global_idx = len(self._chunks)
+            global_idx = len(self._chunks) + idx
             if source_text is None:
-                start = self._global_offset
+                start = offset
             else:
                 start = source_text.find(text, cursor)
                 if start == -1:
@@ -168,10 +170,13 @@ class ProvenanceTracker:
                 char_start=start,
                 char_end=start + len(text),
             )
-            self._chunks.append(record)
             # +1 represents the separator that the chunker inserts between chunks
-            self._global_offset += len(text) + 1
+            offset += len(text) + 1
             records.append(record)
+
+        # Committed only once every chunk was located
+        self._chunks.extend(records)
+        self._global_offset = offset
 
         logger.debug(
             "Registered %d chunk(s); total=%d, global_offset=%d",
@@ -257,7 +262,8 @@ class ProvenanceTracker:
                 page=best_record.page,
                 char_start=best_record.char_start,
                 char_end=best_record.char_end,
-                snippet=query[:_SNIPPET_MAX],
+                # the span is the whole chunk; the query itself is not in the source
+                snippet=best_record.text[:_SNIPPET_MAX],
             )
 
         logger.debug(
