@@ -61,6 +61,9 @@ Contract sample_nda.txt
 
 What the model returns is not shown here.  Items below `confidence_threshold`
 are kept and listed in `contract.metadata.warnings`, never silently dropped.
+A model call that fails is listed there too.  If every call fails (a wrong API
+key, Ollama not running) `ExtractionError` is raised: an empty `Contract`
+always means the model answered and found nothing.
 
 ## Playbook review
 

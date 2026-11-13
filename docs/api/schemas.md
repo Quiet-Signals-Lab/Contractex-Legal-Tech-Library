@@ -18,6 +18,10 @@ Pydantic models for the output of `ContractExtractor`.
 
 ::: contractex.core.models.FinancialTerm
 
+## RiskFlag
+
+::: contractex.core.models.RiskFlag
+
 ## ContractMetadata
 
 ::: contractex.core.models.ContractMetadata

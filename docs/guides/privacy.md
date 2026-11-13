@@ -33,7 +33,9 @@ document without a profile is treated as `public`; pass
   blocked document.  This also covers custom tasks that declare it.
 - **`LegalRAGPipeline`** stores each chunk's profile.  At query time it drops
   chunks the provider may never see, then sends the prompt through the router
-  with the strictest profile among the chunks that remain.
+  with the strictest profile among the chunks that remain.  A `LegalDoc`
+  ingested without a profile follows the router's `default_profile`; files
+  and URLs are ingested as `public`.
 - **Your own code** can call `router.route()` / `router.route_completion()`,
   or wrap a provider with `router.guard(provider, *docs)`.
 

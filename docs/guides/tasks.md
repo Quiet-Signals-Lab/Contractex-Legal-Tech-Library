@@ -13,12 +13,12 @@ The pipeline uses it to refuse model-calling tasks on
 | `pii_detection` | no | `pii_spans` | Built-in patterns, plus Presidio when installed; also sets `doc.privacy_profile` | Missed PII stays in the text.  See [Limitations](../limitations.md). |
 | `citation` | no | `citations` | Regular expressions for US case citations, U.S.C., C.F.R., EU regulations and directives, and acronyms such as GDPR | Other citation formats are silently absent. |
 | `classification` | no | `cuad_labels` | Keyword matching against CUAD clause types | A label means an indicative phrase occurs, not that the clause exists. |
-| `ner` | no | `ner_entities` | spaCy (`contractex[spacy]` plus a spaCy model) | As good as the spaCy model. |
+| `ner` | no | `ner_entities` | spaCy (`contractex[spacy]` plus a spaCy model); a list of `{text, label, start, end}` | As good as the spaCy model. |
 | `summarization` | yes | `summary` | One completion over the first 12,000 characters | Returned as-is; nothing is validated.  Longer documents are truncated. |
 | `timeline` | yes | `timeline` | One structured call over the first 12,000 characters | Output that does not fit the schema raises an error; nothing is repaired. |
 | `obligations` | yes | `obligations` | One structured call over the first 12,000 characters | As for `timeline`. |
 | `comparison` | yes | `comparison` | One structured call over the first 8,000 characters of each document (`doc_b=` keyword) | As for `timeline`.  Both documents' profiles are enforced. |
-| `contract_extraction` | yes | `contract` | `ContractExtractor`: document details, then clauses and financial terms per chunk, then risks | Items below `confidence_threshold` get a warning in `contract.metadata.warnings`. |
+| `contract_extraction` | yes | `contract` | `ContractExtractor`: document details, then clauses and financial terms per chunk, then risks | Items below `confidence_threshold` and failed model calls get a warning in `contract.metadata.warnings`; `ExtractionError` if every call fails. |
 | `risk_analysis` | yes, plus rules | `risks` | Keyword rules over extracted clauses, plus one model call over the first 20,000 characters | If the model call fails, only the rule results are returned (logged). |
 
 Model-calling tasks need a provider: an `LLMProvider` instance, or a model

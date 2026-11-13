@@ -7,3 +7,5 @@
 ::: contractex.core.legal_document.DocType
 
 ::: contractex.core.legal_document.SourceSpan
+
+::: contractex.core.legal_document.LegalDocument
