@@ -21,6 +21,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from contractex.analysis.compare import _clause_ref, _clause_text, _clause_type, _get_clauses
 from contractex.playbooks.base import Playbook, RiskSeverity
 
 # ---------------------------------------------------------------------------
@@ -50,40 +51,6 @@ class RiskFlag:
 
 class _HasClauses:
     """Protocol: any object with a .clauses attribute (list of Clause-like)."""
-
-
-def _get_clauses(result: object) -> list:
-    """Extract clauses from whatever result type is passed in."""
-    if hasattr(result, "clauses"):
-        return list(result.clauses)  # type: ignore[return-value]
-    if isinstance(result, list):
-        return result
-    return []
-
-
-def _clause_type(clause: object) -> str:
-    if hasattr(clause, "clause_type"):
-        return str(clause.clause_type)  # type: ignore[return-value]
-    if isinstance(clause, dict):
-        return str(clause.get("clause_type", ""))
-    return ""
-
-
-def _clause_text(clause: object) -> str:
-    if hasattr(clause, "text"):
-        return str(clause.text)  # type: ignore[return-value]
-    if isinstance(clause, dict):
-        return str(clause.get("text", ""))
-    return ""
-
-
-def _clause_ref(clause: object) -> str:
-    for attr in ("section_number", "section_ref", "id"):
-        if hasattr(clause, attr):
-            val = getattr(clause, attr)
-            if val:
-                return str(val)
-    return ""
 
 
 # ---------------------------------------------------------------------------

@@ -13,7 +13,7 @@ Usage::
     diff = compare(result_v1, result_v2)
     print(diff.added_clauses)     # clause types new in v2
     print(diff.removed_clauses)   # clause types removed from v2
-    print(diff.modified_clauses)  # same type, changed text
+    print(diff.modified_clauses)  # same type, changed text (edited, added or removed)
 """
 
 from __future__ import annotations
@@ -28,7 +28,13 @@ from dataclasses import dataclass, field
 
 @dataclass
 class ClauseChange:
-    """A clause that exists in both versions but with different text."""
+    """
+    A change to a clause whose type exists in both versions.
+
+    An edited clause carries both texts.  A clause with no counterpart in the
+    other version has ``text_v2 == ""`` (removed) or ``text_v1 == ""`` (added),
+    and similarity 0.0.
+    """
 
     clause_type: str
     section_ref_v1: str
@@ -57,7 +63,12 @@ class ContractDiff:
         if self.removed_clauses:
             lines.append(f"  - {', '.join(self.removed_clauses)}")
         for mc in self.modified_clauses:
-            lines.append(f"  ~ {mc.clause_type} (similarity={mc.similarity:.2f})")
+            what = (
+                "added"
+                if not mc.text_v1
+                else "removed" if not mc.text_v2 else f"similarity={mc.similarity:.2f}"
+            )
+            lines.append(f"  ~ {mc.clause_type} ({what})")
         return "\n".join(lines)
 
 
@@ -67,6 +78,7 @@ class ContractDiff:
 
 
 def _get_clauses(result: object) -> list:
+    """Extract clauses from whatever result type is passed in."""
     if hasattr(result, "clauses"):
         return list(result.clauses)  # type: ignore[return-value]
     if isinstance(result, list):
@@ -115,12 +127,14 @@ def compare(
     Args:
         result_v1: First extraction result (or list of clauses).
         result_v2: Second extraction result (or list of clauses).
-        similarity_threshold: Clauses with text similarity above this value
-            are considered "same clause, minor edit" rather than "removed + added".
-            Default 0.85.
+        similarity_threshold: Clauses of the same type with text similarity at
+            or above this value are considered "same clause, minor edit" and
+            reported as one ClauseChange; below it they are reported as one
+            removed and one added ClauseChange.  Default 0.85.
 
     Returns:
-        ContractDiff with added, removed, and modified clauses.
+        ContractDiff with added and removed clause types, and every changed
+        clause of a type present in both versions.
     """
     clauses_v1 = _get_clauses(result_v1)
     clauses_v2 = _get_clauses(result_v2)
@@ -143,23 +157,25 @@ def compare(
 
     modified: list[ClauseChange] = []
 
-    for ct in common_types:
+    for ct in sorted(common_types):
+        matched_v2: set[int] = set()  # indices into map_v2[ct] that have a v1 counterpart
+
         for c1 in map_v1[ct]:
             text1 = _clause_text(c1)
-            best_sim = 0.0
-            best_c2 = None
+            best_sim = -1.0
+            best_idx = 0
 
-            for c2 in map_v2[ct]:
-                text2 = _clause_text(c2)
-                sim = difflib.SequenceMatcher(None, text1, text2).ratio()
+            for idx, c2 in enumerate(map_v2[ct]):
+                sim = difflib.SequenceMatcher(None, text1, _clause_text(c2)).ratio()
                 if sim > best_sim:
                     best_sim = sim
-                    best_c2 = c2
+                    best_idx = idx
 
-            # If best match is not identical, record as modified
-            if best_c2 is not None and best_sim < 1.0:
-                if best_sim >= similarity_threshold:
+            if best_sim >= similarity_threshold:
+                matched_v2.add(best_idx)
+                if best_sim < 1.0:
                     # Substantially the same, small edit
+                    best_c2 = map_v2[ct][best_idx]
                     modified.append(
                         ClauseChange(
                             clause_type=ct,
@@ -170,6 +186,14 @@ def compare(
                             similarity=best_sim,
                         )
                     )
+            else:
+                # Nothing close enough in v2: removed (or rewritten beyond recognition)
+                modified.append(ClauseChange(ct, _clause_ref(c1), "", text1, "", 0.0))
+
+        for idx, c2 in enumerate(map_v2[ct]):
+            if idx not in matched_v2:
+                # No v1 clause maps to it: added (or the rewrite of a removed one)
+                modified.append(ClauseChange(ct, "", _clause_ref(c2), "", _clause_text(c2), 0.0))
 
     return ContractDiff(
         added_clauses=sorted(added_types),
