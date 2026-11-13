@@ -141,6 +141,28 @@ class TestTaskEnforcement:
         )
         assert pipeline.run(make_doc("restricted")).privacy_profile.sensitivity == "restricted"
 
+    @pytest.mark.parametrize(
+        ("mine", "theirs", "expected"),
+        [
+            ("public", "secret", "secret"),
+            ("secret", "public", "secret"),
+            ("confidential", "restricted", "restricted"),
+            (None, "restricted", "restricted"),
+            ("confidential", None, "confidential"),
+        ],
+    )
+    def test_merge_keeps_the_stricter_profile(self, mine, theirs, expected):
+        def doc(sensitivity):
+            profile = PrivacyProfile(sensitivity=sensitivity) if sensitivity else None
+            return LegalDoc(full_text="x", privacy_profile=profile, extracted={"k": sensitivity})
+
+        merged = doc(mine).merge(doc(theirs))
+        assert merged.extracted == {"k": theirs}
+        assert merged.privacy_profile.sensitivity == expected
+
+    def test_merge_of_two_unprofiled_documents_has_no_profile(self):
+        assert LegalDoc(full_text="x").merge(LegalDoc(full_text="y")).privacy_profile is None
+
 
 # ---------------------------------------------------------------------------
 # TaskPipeline — custom tasks
