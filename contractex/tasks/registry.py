@@ -221,7 +221,7 @@ class TaskRegistry:
             )
 
         try:
-            importlib.import_module(module_path)
+            module = importlib.import_module(module_path)
         except ImportError as exc:
             raise ImportError(
                 f"Could not load task {task_id!r} from {module_path!r}: {exc}\n"
@@ -230,6 +230,11 @@ class TaskRegistry:
 
         # The module registers itself via module-level code
         # (``TaskRegistry.default().register(...)`` at the bottom of each
-        # task module).  If it didn't, look for a class matching task_id.
+        # task module).  That reaches only the default registry, and runs only
+        # on first import, so otherwise register the class matching task_id.
         if task_id not in self._tasks:
-            logger.warning("Module %r did not self-register task %r", module_path, task_id)
+            for obj in vars(module).values():
+                if isinstance(obj, type) and issubclass(obj, LegalTask) and obj.task_id == task_id:
+                    self.register(obj)
+                    return
+            logger.warning("Module %r defines no task %r", module_path, task_id)
