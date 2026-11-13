@@ -22,11 +22,9 @@ may set it explicitly to make routing stricter (for example ``"local_only"`` on
 a ``public`` document), never looser: the routing enforced is always the
 stricter of the two (``effective_routing``).
 
-GDPR fields
------------
-* ``retention_days``      — ``None`` means no expiry; set to fulfil Art. 5(1)(e).
-* ``data_subject_ids``    — IDs of natural persons for Art. 17 erasure requests.
-* ``consent_reference``   — links to a consent record for Art. 7 compliance.
+A profile holds only what the router enforces or reports.  How PII is
+replaced is configured on ``PIIRedactor``; retention periods and consent
+records belong to your own records, where something acts on them.
 """
 
 from __future__ import annotations
@@ -81,32 +79,18 @@ class PrivacyProfile(BaseModel):
     redaction_applied:
         ``True`` once ``PIIRedactor.redact()`` has been applied to the text
         that will reach an LLM.
-    redaction_strategy:
-        How PII is replaced.  Defaults to ``REPLACE`` (typed placeholders).
     llm_routing:
         Stricter routing than ``sensitivity`` implies.  If ``None``, routing
         is derived from ``sensitivity``.  A looser value is ignored.
-    retention_days:
-        GDPR Art. 5(1)(e) — ``None`` means no expiry.
-    data_subject_ids:
-        Natural-person IDs for GDPR Art. 17 right-to-erasure requests.
-    consent_reference:
-        Identifier linking to a consent record for GDPR Art. 7 compliance.
     """
 
     sensitivity: Literal["public", "confidential", "restricted", "secret"] = "public"
     contains_pii: bool = False
     pii_entities_found: list[str] = Field(default_factory=list)
     redaction_applied: bool = False
-    redaction_strategy: RedactionStrategy = RedactionStrategy.REPLACE
 
     # Optional stricter routing; if None, derived from sensitivity
     llm_routing: Routing | None = None
-
-    # GDPR fields
-    retention_days: int | None = None
-    data_subject_ids: list[str] = Field(default_factory=list)
-    consent_reference: str | None = None
 
     @model_validator(mode="after")
     def _derive_routing(self) -> PrivacyProfile:

@@ -87,6 +87,27 @@ class TestPrivacyProfile:
         with pytest.raises(ValueError):
             PrivacyProfile(sensitivity="top-secret")
 
+    def test_every_field_is_one_the_library_acts_on(self):
+        # Fields that named a redaction strategy and GDPR articles were stored
+        # and never read.  A profile holds only what the router enforces or reports.
+        assert set(PrivacyProfile.model_fields) == {
+            "sensitivity",
+            "llm_routing",
+            "redaction_applied",
+            "contains_pii",
+            "pii_entities_found",
+        }
+
+    def test_profile_saved_by_an_older_version_still_loads(self):
+        old = {
+            "sensitivity": "secret",
+            "redaction_strategy": "hash",
+            "retention_days": 30,
+            "data_subject_ids": ["subject-1"],
+            "consent_reference": "consent-9",
+        }
+        assert PrivacyProfile.model_validate(old).is_blocked
+
     @pytest.mark.parametrize(
         ("sensitivity", "routing"), [("restricted", "local_only"), ("secret", "blocked")]
     )

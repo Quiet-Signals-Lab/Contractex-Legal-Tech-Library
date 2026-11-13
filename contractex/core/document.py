@@ -130,9 +130,9 @@ class LegalDoc(BaseModel):
     privacy_profile: Any | None = Field(
         None,
         description=(
-            "PrivacyProfile attached to this document.  Controls LLM routing, "
-            "redaction strategy, and GDPR retention.  None means no explicit "
-            "controls — pipelines may apply defaults."
+            "PrivacyProfile attached to this document.  Controls LLM routing and "
+            "redaction.  None means no explicit controls — the router's default "
+            "profile applies."
         ),
     )
 
