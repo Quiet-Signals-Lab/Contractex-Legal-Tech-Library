@@ -36,12 +36,14 @@ the privacy router with the strictest profile among the remaining chunks, so
 still embedded (locally) but their text never enters an LLM context window.
 
 Paths and URLs are ingested as ``public``.  To index a sensitive document,
-pass a ``LegalDoc`` with its ``privacy_profile`` set.
+pass a ``LegalDoc`` with its ``privacy_profile`` set.  A ``LegalDoc`` without
+a profile gets the router's ``default_profile`` at query time.
 
 Source freshness
 ----------------
-``sync_sources()`` re-fetches URL sources using ETag-based conditional GETs
-(reuses the URLLoader's ETag support) and re-indexes changed documents.
+``sync_sources()`` re-fetches every URL source and re-indexes those whose text
+changed, replacing the previous copy.  Each sync is a full fetch; conditional
+GETs (ETag) are not used.
 
 Streaming
 ---------
@@ -206,10 +208,14 @@ class _InMemoryVectorStore:
             }
         )
 
+    def remove(self, doc_id: str) -> None:
+        """Drop every chunk of *doc_id*."""
+        self._entries = [e for e in self._entries if e["doc_id"] != doc_id]
+
     def search(
         self, query_embedding: list[float], top_k: int = 5, filters: dict[str, Any] | None = None
     ) -> list[dict[str, Any]]:
-        """Cosine similarity search."""
+        """Cosine similarity search over the entries whose metadata equals *filters*."""
         import math
 
         def cosine(a: list[float], b: list[float]) -> float:
@@ -218,7 +224,12 @@ class _InMemoryVectorStore:
             nb = math.sqrt(sum(x * x for x in b))
             return dot / (na * nb) if na and nb else 0.0
 
-        scored = [(cosine(query_embedding, e["embedding"]), e) for e in self._entries]
+        entries = [
+            e
+            for e in self._entries
+            if all(e["metadata"].get(k) == v for k, v in (filters or {}).items())
+        ]
+        scored = [(cosine(query_embedding, e["embedding"]), e) for e in entries]
         scored.sort(key=lambda t: t[0], reverse=True)
         return [{**e, "score": score} for score, e in scored[:top_k] if score > 0]
 
@@ -247,7 +258,9 @@ class LegalRAGPipeline:
         Defaults to ``"all-MiniLM-L6-v2"`` (lightweight, no GPU required).
     vector_store:
         An object implementing ``add()`` and ``search()`` (see
-        ``_InMemoryVectorStore``).  Defaults to in-memory store.
+        ``_InMemoryVectorStore``).  Defaults to in-memory store.  If it also
+        implements ``remove(doc_id)``, re-ingesting a URL replaces its
+        previous chunks; otherwise they accumulate.
     privacy_router:
         ``PrivacyAwareLLMRouter`` instance.  A default router is created
         if not supplied.
@@ -303,8 +316,8 @@ class LegalRAGPipeline:
         # Privacy router
         self._router = privacy_router or PrivacyAwareLLMRouter()
 
-        # Source tracking for sync
-        self._source_urls: list[str] = []
+        # Source tracking for sync: URL → doc_id of its indexed copy
+        self._source_urls: dict[str, str] = {}
 
         # Doc registry: doc_id → LegalDoc (for conflict detection)
         self._doc_registry: dict[str, LegalDoc] = {}
@@ -322,7 +335,7 @@ class LegalRAGPipeline:
         sources:
             File paths, URLs, or ``LegalDoc`` objects.  Paths and URLs are
             indexed as ``public``; pass a ``LegalDoc`` to set a privacy
-            profile.
+            profile.  A URL that is already indexed is replaced.
 
         Returns
         -------
@@ -341,11 +354,19 @@ class LegalRAGPipeline:
         for source in sources:
             source_str = source.doc_id if isinstance(source, LegalDoc) else str(source)
             try:
+                profile: PrivacyProfile | None
                 if isinstance(source, LegalDoc):
                     doc = source
+                    # No profile is stored for an unprofiled LegalDoc, so the
+                    # router's default_profile applies at query time.
+                    profile = (
+                        None
+                        if doc.privacy_profile is None
+                        else resolve_profile(doc, PrivacyProfile())
+                    )
                 else:
                     doc = LegalDoc(full_text=loader.load(source_str))
-                profile = resolve_profile(doc, PrivacyProfile())
+                    profile = PrivacyProfile()
                 chunks = chunker.chunk(doc.full_text or "")
 
                 for i, chunk in enumerate(chunks):
@@ -360,8 +381,8 @@ class LegalRAGPipeline:
                         ),
                         metadata={
                             "source_url": source_str,
-                            "doc_type": str(doc.doc_type),
-                            "privacy_profile": profile.model_dump(mode="json"),
+                            "doc_type": doc.doc_type.value,
+                            "privacy_profile": profile.model_dump(mode="json") if profile else None,
                             "page": getattr(chunk, "page", None),
                             # Authority + jurisdiction metadata for weighted scoring
                             "authority_weight": doc.authority_weight,
@@ -388,7 +409,8 @@ class LegalRAGPipeline:
                 self._doc_registry[doc.doc_id] = doc
                 result.ingested += 1
                 if source_str.startswith("http"):
-                    self._source_urls.append(source_str)
+                    self._forget(self._source_urls.get(source_str))
+                    self._source_urls[source_str] = doc.doc_id
 
             except Exception as exc:
                 logger.warning("Failed to ingest %r: %s", source_str, exc)
@@ -552,7 +574,9 @@ class LegalRAGPipeline:
         authority_range = (min(auth_weights, default=0.0), max(auth_weights, default=0.0))
 
         # Format citation strings
-        self._formatter.format_all(citations, style=self._citation_format)
+        formatted = self._formatter.format_all(citations, style=self._citation_format)
+        for citation, citation_string in zip(citations, formatted, strict=True):
+            citation.citation_string = citation_string
 
         # Enforce the strictest profile among the chunks in the prompt
         llm = self._router.guard(self._provider, *[_Chunk(h) for h in context_hits])
@@ -646,30 +670,53 @@ class LegalRAGPipeline:
 
     def sync_sources(self) -> SyncResult:
         """
-        Re-fetch URL sources and re-index any that have changed.
+        Re-fetch every ingested URL and re-index those whose text changed.
 
-        Uses ETag-based conditional GETs to avoid unnecessary re-processing.
+        A changed source replaces its previous copy.  A source that cannot be
+        fetched keeps its previous copy and is reported in ``errors``.  Each
+        sync is a full fetch; conditional GETs (ETag) are not used.
         """
+        from contractex.loaders.auto import AutoLoader
+
+        loader = AutoLoader()
         result = SyncResult()
 
-        for url in self._source_urls:
+        # ingest() updates _source_urls, so iterate over a snapshot
+        for url, doc_id in list(self._source_urls.items()):
             result.checked += 1
             try:
-                # Use URLLoader / AutoLoader's ETag support
-                # For sync, we just re-ingest (idempotent for in-memory store)
-                ingest_result = self.ingest([url])
-                if ingest_result.ingested > 0:
-                    result.updated += 1
-                else:
-                    result.unchanged += 1
+                text = loader.load(url)
             except Exception as exc:
                 result.errors.append(f"{url}: {exc}")
+                continue
+
+            indexed = self._doc_registry.get(doc_id)
+            if indexed is not None and indexed.full_text == text:
+                result.unchanged += 1
+                continue
+
+            # shortcut: a changed URL is fetched a second time by ingest();
+            # pass the text through if fetches become expensive.
+            ingest_result = self.ingest([url])
+            if ingest_result.ingested:
+                result.updated += 1
+            else:
+                result.errors.extend(ingest_result.errors)
 
         return result
 
     # ------------------------------------------------------------------
     # Internal
     # ------------------------------------------------------------------
+
+    def _forget(self, doc_id: str | None) -> None:
+        """Drop a previously indexed document (the old copy of a re-ingested URL)."""
+        if doc_id is None:
+            return
+        self._doc_registry.pop(doc_id, None)
+        remove = getattr(self._vector_store, "remove", None)
+        if remove is not None:
+            remove(doc_id)
 
     def _get_embedder(self) -> Any:
         if self._embedder is None:
