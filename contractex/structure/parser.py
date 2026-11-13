@@ -25,6 +25,7 @@ from contractex.structure.types import (
     Schedule,
     Section,
     SignatureBlock,
+    _normalise_ref_text,
 )
 
 # ---------------------------------------------------------------------------
@@ -106,13 +107,18 @@ _SIGNATURE_PATTERNS = [
 _RECITAL_PATTERN = re.compile(r"^WHEREAS[,;:]?\s+(.+)$", re.IGNORECASE)
 
 # Governing law quick-detection (used to populate hint without LLM)
+# The jurisdiction is a run of capitalised words ("New York", "England and
+# Wales", "United States of America"); only the lead-in ignores case, so the
+# capture stops at the first ordinary word ("... New York without regard to").
+_PLACE = r"([A-Z][a-zA-Z]+(?:\s+(?:(?:and|of)\s+)?[A-Z][a-zA-Z]+)*)"
 _GOV_LAW_PATTERNS = [
+    # "the laws of the State of Delaware", "laws of England and Wales"
+    re.compile(r"(?i:laws?\s+of\s+(?:the\s+)?(?:(?:State|Commonwealth)\s+of\s+)?)" + _PLACE),
+    # "governed by New York law"
     re.compile(
-        r"laws?\s+of\s+(?:the\s+(?:State|Commonwealth)\s+of\s+)?([A-Z][a-zA-Z\s]+)", re.IGNORECASE
-    ),
-    re.compile(
-        r"(?:governed|construed)\s+(?:by|under|in\s+accordance\s+with)\s+(?:the\s+laws?\s+of\s+)?([A-Z][a-zA-Z\s,]+?)(?:\.|,|;|$)",
-        re.IGNORECASE,
+        r"(?i:(?:governed|construed)\s+(?:by|under|in\s+accordance\s+with)\s+)"
+        + _PLACE
+        + r"\s+(?i:laws?)\b"
     ),
 ]
 
@@ -291,6 +297,10 @@ class ContractStructureParser:
             body_lines = [lines[j].text for j in range(body_start, body_end)]
             body_text = "\n".join(body_lines).strip()
 
+            # The section ends after its last non-blank line (the heading if the body is empty)
+            last = max(j for j in range(hdr.line_idx, body_end) if lines[j].stripped)
+            end_char = lines[last].char_offset + len(lines[last].text.rstrip())
+
             level = self._infer_level(hdr)
             flat_sections.append(
                 Section(
@@ -299,7 +309,7 @@ class ContractStructureParser:
                     text=body_text,
                     level=level,
                     start_char=hdr.char_offset,
-                    end_char=hdr.char_offset + len(body_text),
+                    end_char=end_char,
                 )
             )
 
@@ -418,24 +428,21 @@ class ContractStructureParser:
         self, lines: list[_Line], headers: list[_ParsedHeader]
     ) -> list[Schedule]:
         schedules: list[Schedule] = []
-        schedule_line_indices: list[int] = []
+        starts = [
+            (i, m) for i, line in enumerate(lines) if (m := _SCHEDULE_PATTERN.match(line.stripped))
+        ]
 
-        for i, line in enumerate(lines):
-            m = _SCHEDULE_PATTERN.match(line.stripped)
-            if m:
-                schedule_line_indices.append(i)
-                kind_word = m.group(1)
-                label_num = m.group(2).rstrip(".")
-                label = f"{kind_word} {label_num}"
-                title = m.group(3).strip() if m.group(3) else ""
+        for k, (i, m) in enumerate(starts):
+            kind_word = m.group(1)
+            label_num = m.group(2).rstrip(".")
+            label = f"{kind_word} {label_num}"
+            title = m.group(3).strip() if m.group(3) else ""
 
-                # Body: everything until the next schedule or end of doc
-                next_start = (
-                    schedule_line_indices[1] if len(schedule_line_indices) > 1 else len(lines)
-                )
-                body = "\n".join(lines[j].text for j in range(i + 1, next_start)).strip()
+            # Body: everything until the next schedule or end of doc
+            next_start = starts[k + 1][0] if k + 1 < len(starts) else len(lines)
+            body = "\n".join(lines[j].text for j in range(i + 1, next_start)).strip()
 
-                schedules.append(Schedule(label=label, title=title, text=body))
+            schedules.append(Schedule(label=label, title=title, text=body))
 
         return schedules
 
@@ -514,4 +521,6 @@ class ContractStructureParser:
             index[sec.number] = sec
             # Also index stripped variants
             index[sec.number.lstrip("0")] = sec
+            # "Article III" and "Section 4" headings are referred to as "III" and "4"
+            index.setdefault(_normalise_ref_text(sec.number), sec)
         structure._section_index = index

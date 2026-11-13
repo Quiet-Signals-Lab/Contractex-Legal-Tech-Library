@@ -28,15 +28,18 @@ from contractex.structure.types import DefinedTerm, DocumentStructure
 # Regex patterns
 # ---------------------------------------------------------------------------
 
+# Quotes may be straight or typographic (\u201c \u201d)
+
 # Pattern A: "Term" means / "Term" shall mean
 _INLINE_DEF_PATTERN = re.compile(
-    r'"([^"]{2,80})"\s+(?:means?|shall\s+means?|refers?\s+to|is\s+defined\s+as)\s+(.{10,})',
+    r'["\u201c]([^"\u201c\u201d]{2,80})["\u201d]'
+    r"\s+(?:means?|shall\s+means?|refers?\s+to|is\s+defined\s+as)\s+(.{10,})",
     re.IGNORECASE,
 )
 
 # Pattern B: ("Term") or (the "Term") — parenthetical designation
 _PAREN_DEF_PATTERN = re.compile(
-    r'\((?:the\s+)?"([^"]{2,80})"\)',
+    r'\((?:the\s+)?["\u201c]([^"\u201c\u201d]{2,80})["\u201d]\)',
     re.IGNORECASE,
 )
 

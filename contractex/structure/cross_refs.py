@@ -25,11 +25,16 @@ from contractex.structure.types import CrossReference, DocumentStructure, _norma
 # Captures explicit cross-reference phrases like:
 #   "Section 4.2(b)"   "section 4"   "Article III"   "clause 2.1"
 #   "§ 4.2"            "paragraph 3" "Exhibit A"
+# The keyword must be a whole word followed by whitespace, and a roman numeral
+# or letter must be upper case and stand alone, so "clause violates",
+# "exhibition" and "this Article is" are not references.
 _REF_PATTERN = re.compile(
     r"""
     (?:
-        (?:Section|Article|Clause|Para(?:graph)?|Exhibit|Schedule|Annex|§)\s*
-        (?:[IVX]+|\d+(?:\.\d+)*(?:\([a-z0-9]+\))*)
+        \b(?:Section|Article|Clause|Para(?:graph)?|Exhibit|Schedule|Annex)\s+ | §\s*
+    )
+    (?:
+        (?-i:[IVX]+|[A-Z])\b | \d+(?:\.\d+)*(?:\([a-z0-9]+\))*
     )
     """,
     re.IGNORECASE | re.VERBOSE,
@@ -55,9 +60,11 @@ class CrossReferenceResolver:
         Detect and resolve all cross-references in *structure* in-place.
 
         Populates structure.cross_references.
-        Marks each reference as resolved=True if the target section exists.
+        Marks each reference as resolved=True if the target section (or, for
+        "Exhibit A" / "Schedule 2", the schedule with that label) exists.
         """
         refs: list[CrossReference] = []
+        schedule_labels = {s.label.lower() for s in structure.schedules}
 
         for section in structure.iter_all_sections():
             for m in _REF_PATTERN.finditer(section.text):
@@ -65,10 +72,13 @@ class CrossReferenceResolver:
                 target_number = _normalise_ref_text(raw_text)
 
                 # Skip self-references
-                if target_number == section.number:
+                if target_number == _normalise_ref_text(section.number):
                     continue
 
-                resolved = target_number in structure._section_index
+                resolved = (
+                    target_number in structure._section_index
+                    or " ".join(raw_text.lower().split()) in schedule_labels
+                )
                 refs.append(
                     CrossReference(
                         raw_text=raw_text,
