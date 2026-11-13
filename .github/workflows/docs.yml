@@ -8,27 +8,32 @@ on:
     types: [published]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.12"
           cache: pip
       - run: pip install -e ".[docs]"
       - run: mkdocs build --strict
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: site
           path: site/
 
-  # Publishes the built site to quietsignalslab.com/contractex/docs/ by
-  # committing it to the website repository.  Runs for releases and manual
-  # runs only, so the live docs match what is on PyPI.  One-time setup: add a
-  # deploy key with write access to aahepburn/aahepburn.github.io, and store
-  # its private half in this repository as the DOCS_DEPLOY_KEY secret.
+  # Commits the built site to the website repository under contractex/docs/.
+  # Runs for releases and manual runs only, so the docs match what is on PyPI.
+  # This does not put the pages online: quietsignalslab.com is deployed from
+  # that repository by hand (its ci/deploy.sh), so run that after a release.
+  # One-time setup: add a deploy key with write access to
+  # aahepburn/aahepburn.github.io, and store its private half in this
+  # repository as the DOCS_DEPLOY_KEY secret.
   deploy:
     if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
     needs: build
@@ -39,12 +44,12 @@ jobs:
       - if: env.DEPLOY_KEY == ''
         run: echo "::warning::DOCS_DEPLOY_KEY is not set; docs were built but not deployed."
       - if: env.DEPLOY_KEY != ''
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: site
           path: site/
       - if: env.DEPLOY_KEY != ''
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: aahepburn/aahepburn.github.io
           ssh-key: ${{ secrets.DOCS_DEPLOY_KEY }}
