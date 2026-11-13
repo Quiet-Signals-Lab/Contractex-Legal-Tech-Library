@@ -39,7 +39,9 @@ class ClauseAwareChunker(ChunkingStrategy):
 
     # Line starts that open a new section (leading whitespace is allowed)
     SECTION_PATTERNS = [
-        r"\d+\.(?:\d+\.?)*[ \t]*[A-Z(\"'“‘]",  # 1. Term / 2.1 Term / 1.1 "Affiliate"
+        # 1. Term / 2.1 Term / 1.1 "Affiliate".  Each digit run can match in
+        # only one way: a nested (\d+\.?)* here backtracks exponentially.
+        r"\d+\.(?:\d+(?:\.\d+)*\.?)?[ \t]*[A-Z(\"'“‘]",
         r"(?i:article)\s+\d+",  # Article 1
         r"(?i:section)\s+\d+",  # Section 1
         r"\([a-zA-Z]\)",  # (a) subsection
@@ -52,16 +54,21 @@ class ClauseAwareChunker(ChunkingStrategy):
         max_chunk_size: int = 4000,
         overlap: int = 200,
         preserve_sentences: bool = True,
-    ):
+    ) -> None:
         """
         Initialize clause-aware chunker.
 
         Args:
-            max_chunk_size: Maximum size of each chunk in tokens
+            max_chunk_size: Maximum size of each chunk in tokens (at least 1)
             overlap: Number of tokens to overlap between chunks
             preserve_sentences: Split oversized sections at sentence boundaries
                 (otherwise at word boundaries only)
+
+        Raises:
+            ValueError: If max_chunk_size is not positive
         """
+        if max_chunk_size <= 0:
+            raise ValueError(f"max_chunk_size must be positive, got {max_chunk_size}")
         self.max_chunk_size = max_chunk_size
         self.overlap = overlap
         self.preserve_sentences = preserve_sentences
