@@ -17,7 +17,9 @@ drop-in replacements anywhere the existing loaders are accepted.
 from __future__ import annotations
 
 import hashlib
+import ipaddress
 import logging
+import socket
 import time
 from abc import abstractmethod
 from collections.abc import Callable
@@ -212,8 +214,9 @@ class SourceAdapter(DocumentLoader):
         params: dict[str, str] | None = None,
     ) -> Any:
         """
-        GET *url* with retries.  When the request carries credentials, a
-        redirect is followed only within the same host.
+        GET *url* with retries, following redirects one hop at a time so each
+        can be checked: with credentials only within the same host, and never
+        from a public host to a private address.
         """
         import requests
 
@@ -226,16 +229,17 @@ class SourceAdapter(DocumentLoader):
                 headers=headers,
                 params=params,
                 timeout=self.timeout,
-                allow_redirects=not credentialed,
+                allow_redirects=False,
             )
-            if not (credentialed and response.status_code in _REDIRECTS):
+            if response.status_code not in _REDIRECTS:
                 return response
             target = urljoin(url, response.headers.get("Location", ""))
-            if not _same_host(target, url):
+            if credentialed and not _same_host(target, url):
                 raise DocumentLoadError(
                     f"{url!r} redirects to another host ({target!r}); "
                     "not followed because the request carries credentials"
                 )
+            _refuse_public_to_private(url, target)
             url, params = target, None
         raise DocumentLoadError(f"Too many redirects fetching {url!r}")
 
@@ -250,6 +254,36 @@ class SourceAdapter(DocumentLoader):
 
 def _same_host(url: str, other: str) -> bool:
     return urlparse(url).netloc.lower() == urlparse(other).netloc.lower()
+
+
+def _is_private(url: str) -> bool:
+    """True if *url*'s host is, or resolves to, an address that is not public."""
+    host = urlparse(url).hostname or ""
+    try:
+        addresses = [ipaddress.ip_address(host)]
+    except ValueError:
+        try:
+            addresses = [ipaddress.ip_address(a[4][0]) for a in socket.getaddrinfo(host, None)]
+        except (OSError, ValueError):
+            return False  # does not resolve: the request itself will fail
+    return any(not a.is_global for a in addresses)
+
+
+def _refuse_public_to_private(source: str, target: str) -> None:
+    """
+    Refuse to follow a link or redirect from a public host to a private one.
+
+    A server on the internet must not be able to point the loader at
+    loopback, a private network or a cloud metadata address and have the
+    answer indexed as a document.  A source that is itself private (an
+    intranet server you named) may link anywhere.
+    """
+    # shortcut: the name is resolved here and again by the HTTP client, so a
+    # DNS answer that changes in between (rebinding) is not caught; pin the
+    # resolved address if this must hold against a hostile DNS server.
+    if _same_host(source, target) or _is_private(source) or not _is_private(target):
+        return
+    raise DocumentLoadError(f"{source!r} points to a private address ({target!r}); not followed")
 
 
 # ---------------------------------------------------------------------------
@@ -518,6 +552,7 @@ class APILoader(SourceAdapter):
                 if _same_host(next_url, source):
                     response = self._get(next_url, req_headers, credentialed, self.base_params)
                 else:
+                    _refuse_public_to_private(source, next_url)
                     response = self._get(next_url, public_headers, credentialed=False)
                 if not response.ok:
                     raise DocumentLoadError(

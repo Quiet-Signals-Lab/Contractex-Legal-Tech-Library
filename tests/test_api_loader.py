@@ -22,6 +22,19 @@ def _json(data: dict, status_code: int = 200, headers: dict | None = None):
     )
 
 
+# Name → address for the hosts these tests use; nothing here touches real DNS.
+HOSTS = {"internal.attacker.test": "127.0.0.1", "metadata.attacker.test": "169.254.169.254"}
+
+
+@pytest.fixture(autouse=True)
+def fake_dns():
+    def getaddrinfo(host, *args, **kwargs):
+        return [(None, None, None, "", (HOSTS.get(host, "93.184.216.34"), 0))]
+
+    with patch("socket.getaddrinfo", getaddrinfo):
+        yield
+
+
 @pytest.fixture(autouse=True)
 def no_sleep():
     with patch("contractex.loaders.source_adapter.time.sleep") as sleep:
@@ -159,11 +172,66 @@ class TestRedirectsWithCredentials:
         assert result.content == "page 1"
         assert mock_get.call_args_list[1].args[0] == "https://api.court.test/v1/"
 
+
+class TestRedirectsToPrivateAddresses:
+    """A public server must not be able to point the loader at an internal host."""
+
+    @pytest.mark.parametrize(
+        "location",
+        [
+            "http://169.254.169.254/latest/meta-data/",
+            "http://127.0.0.1:8080/admin",
+            "http://10.0.0.5/internal.txt",
+            "http://[::1]/",
+            "https://internal.attacker.test/",
+            "https://metadata.attacker.test/",
+        ],
+    )
     @patch("requests.get")
-    def test_without_credentials_requests_follows_redirects(self, mock_get):
-        mock_get.return_value = _mock_response(text="ok")
-        URLLoader().fetch("https://docs.test/a.txt")
-        assert mock_get.call_args.kwargs["allow_redirects"] is True
+    def test_redirect_from_public_host_to_private_address_is_refused(self, mock_get, location):
+        mock_get.side_effect = [
+            _mock_response(status_code=302, headers={"Location": location}),
+            _mock_response(text="AWS_SECRET=internal-only"),
+        ]
+        with pytest.raises(DocumentLoadError, match="private"):
+            URLLoader().fetch("https://docs.test/a.txt")
+        assert mock_get.call_count == 1
+
+    @patch("requests.get")
+    def test_redirect_between_public_hosts_is_followed(self, mock_get):
+        mock_get.side_effect = [
+            _mock_response(status_code=302, headers={"Location": "https://cdn.docs.test/a.txt"}),
+            _mock_response(text="public text"),
+        ]
+        assert URLLoader().fetch("https://docs.test/a.txt").content == "public text"
+        assert mock_get.call_args_list[1].args[0] == "https://cdn.docs.test/a.txt"
+        assert all(c.kwargs["allow_redirects"] is False for c in mock_get.call_args_list)
+
+    @patch("requests.get")
+    def test_redirect_inside_a_private_network_is_followed(self, mock_get):
+        mock_get.side_effect = [
+            _mock_response(status_code=302, headers={"Location": "http://10.0.0.6/a.txt"}),
+            _mock_response(text="intranet text"),
+        ]
+        assert URLLoader().fetch("http://10.0.0.5/a.txt").content == "intranet text"
+
+    @patch("requests.get")
+    def test_pagination_link_from_public_api_to_private_address_is_refused(self, mock_get):
+        mock_get.side_effect = [
+            _json({"text": "page 1", "next": "http://169.254.169.254/latest/meta-data/"}),
+            _json({"text": "secret"}),
+        ]
+        with pytest.raises(DocumentLoadError, match="private"):
+            APILoader(paginate=True).fetch("https://api.court.test/v1/opinions")
+        assert mock_get.call_count == 1
+
+    @patch("requests.get")
+    def test_too_many_redirects_is_an_error(self, mock_get):
+        mock_get.return_value = _mock_response(
+            status_code=302, headers={"Location": "https://docs.test/a.txt"}
+        )
+        with pytest.raises(DocumentLoadError, match="Too many redirects"):
+            URLLoader().fetch("https://docs.test/a.txt")
 
 
 def test_user_agent_carries_the_package_version():
