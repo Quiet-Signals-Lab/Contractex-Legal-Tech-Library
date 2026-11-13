@@ -208,6 +208,25 @@ class TestDetectorHostileInput:
         (s,) = detector.detect(f"Write to {email} today.")
         assert (s.entity_type, s.text) == ("EMAIL_ADDRESS", email)
 
+    @pytest.mark.parametrize(
+        ("text", "addresses"),
+        [
+            ("x@y.com+jane@corp.com", ["x@y.com", "jane@corp.com"]),
+            ("a@b.com-john@x.com", ["a@b.com", "john@x.com"]),
+            ("jan@example.com,bob@x.org", ["jan@example.com", "bob@x.org"]),
+            ("e.g.jan@example.com", ["e.g.jan@example.com"]),
+            ("see .jan@example.com.", ["jan@example.com"]),
+            ("@example.com and +@example.com", []),
+        ],
+    )
+    def test_adjacent_addresses_are_each_found(self, detector, text, addresses):
+        assert [s.text for s in detector.detect(text)] == addresses
+
+    def test_many_at_signs_take_linear_time(self, detector):
+        start = time.perf_counter()
+        detector.detect("a@b." * 20_000 + "@" * 20_000 + "a@bb.cc+" * 5_000)
+        assert time.perf_counter() - start < 2.0
+
 
 class TestDetectorAdversarial:
     """PII that is disguised so a naive pattern misses it must still be redacted."""

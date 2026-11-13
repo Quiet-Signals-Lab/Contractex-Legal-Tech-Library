@@ -166,11 +166,6 @@ _DASH = r"[-\u2010-\u2015\u2212\ufe58\ufe63\uff0d]"
 _SEP = rf"(?:{_DASH}|[.\s])"
 
 _REGEX_PATTERNS: list[tuple[str, str]] = [
-    # Email (\w is Unicode-aware, so homoglyphs from other scripts are covered).
-    # The name before the @ may start only at the start of a run of name
-    # characters and is matched without backtracking: with a plain \b...+ every
-    # position inside a long "a.a.a." run was a new start, which is quadratic.
-    ("EMAIL_ADDRESS", r"(?<![\w.%+\-])[\w.%+\-]++@[\w.\-]+\.[^\W\d_]{2,}\b"),
     # US phone (various formats)
     ("PHONE_NUMBER", rf"\b(?:\+?1{_SEP}?)?\(?\d{{3}}\)?{_SEP}?\d{{3}}{_SEP}?\d{{4}}\b"),
     # US SSN
@@ -186,6 +181,36 @@ _REGEX_PATTERNS: list[tuple[str, str]] = [
     # US driver's licence (most states: letter + 7 digits)
     ("DRIVERS_LICENSE", r"\b[A-Z]\d{7}\b"),
 ]
+
+# Email is matched in two steps instead of one pattern.  A single pattern has
+# to try every position of a long "a.a.a." run as the start of an address,
+# which is quadratic.  Here each "@" is tried once: the domain is matched to
+# its right, then the name is read back to its left.  (\w is Unicode-aware, so
+# homoglyphs from other scripts are covered.)
+_EMAIL_DOMAIN = re.compile(r"@[\w.\-]+\.[^\W\d_]{2,}\b")
+_EMAIL_NAME_CHAR = re.compile(r"[\w.%+\-]")
+
+
+def _email_spans(text: str) -> list[tuple[int, int]]:
+    """(start, end) of every email address in *text*, in order, without overlap."""
+    spans: list[tuple[int, int]] = []
+    floor = 0  # end of the previous address: a name never reaches back past it
+    at = text.find("@")
+    while at != -1:
+        domain = _EMAIL_DOMAIN.match(text, at)
+        if domain:
+            start = at
+            while start > floor and _EMAIL_NAME_CHAR.match(text[start - 1]):
+                start -= 1
+            # like \b: the name starts at a letter, digit or underscore
+            while start < at and not (text[start].isalnum() or text[start] == "_"):
+                start += 1
+            if start < at:
+                spans.append((start, domain.end()))
+                floor = domain.end()
+        at = text.find("@", at + 1)
+    return spans
+
 
 # Regex matches carry no real confidence.  Score them at the highest default
 # threshold so every built-in pattern survives default filtering; raising an
@@ -388,6 +413,11 @@ class PIIDetector:
 
     def _detect_regex(self, text: str) -> list[PIISpan]:
         spans: list[PIISpan] = []
+        if "EMAIL_ADDRESS" in self._entities:
+            spans.extend(
+                PIISpan("EMAIL_ADDRESS", start, end, _REGEX_SCORE, text[start:end])
+                for start, end in _email_spans(text)
+            )
         for entity_type, pattern in _REGEX_PATTERNS:
             if entity_type not in self._entities:
                 continue
