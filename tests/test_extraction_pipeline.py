@@ -189,6 +189,17 @@ class TestExtractionSchemas:
         assert isinstance(f.amount, str)
         assert f.currency == "USD"
 
+    def test_financial_result_null_takes_the_default(self):
+        """One ``null`` for "none" must not invalidate the whole response."""
+        r = LLMFinancialResult(  # type: ignore[call-arg]
+            term_type="fee", currency=None, description=None, conditions=None
+        )
+        assert (r.currency, r.description, r.conditions) == ("USD", "", [])
+        # The schema sent to providers still declares these fields non-nullable
+        props = LLMFinancialResult.model_json_schema()["properties"]
+        assert props["currency"]["type"] == "string"
+        assert props["conditions"]["type"] == "array"
+
     def test_risk_result_defaults(self):
         r = LLMRiskResult(risk_type="unlimited_liability", severity="critical", description="x")
         assert r.confidence == 0.8
@@ -341,9 +352,9 @@ class TestContractExtractorMocked:
         assert ft[0].currency == "USD"
         assert ft[0].frequency == "monthly"
 
-    def test_llm_failure_on_single_chunk_falls_back_to_empty(self):
-        """If every LLM call fails, we get an empty Contract rather than a crash."""
-        from contractex.exceptions import LLMProviderError
+    def test_llm_failure_on_every_call_raises(self):
+        """If every LLM call fails, that is an error, not an empty Contract."""
+        from contractex.exceptions import ExtractionError, LLMProviderError
 
         llm = MockLLMProvider()
 
@@ -353,11 +364,8 @@ class TestContractExtractorMocked:
         llm.extract_structured = _raise  # type: ignore[method-assign]
 
         extractor = _make_extractor(llm)
-        result = extractor._extract_from_chunks(["Some contract text."])
-
-        assert result["parties"] == []
-        assert result["clauses"] == []
-        assert result["financial_terms"] == []
+        with pytest.raises(ExtractionError, match="Simulated failure"):
+            extractor._extract_from_chunks(["Some contract text."])
 
     def test_multi_chunk_merges_results(self):
         """Results from two chunks should be combined."""
@@ -437,6 +445,32 @@ class TestDeduplication:
         result = ext._deduplicate_clauses([short, long_])
         assert len(result) == 1
         assert "survives" in result[0].text
+
+    def test_nested_clause_of_another_type_is_kept(self):
+        """The prompt asks for nested clauses as separate entries; dedup must keep them."""
+        ext = self._extractor()
+        nested = "Following termination Provider shall not compete with Client for 5 years."
+        section = "8. Termination. Either party may terminate on 30 days notice. " + nested
+        termination = LLMClauseResult(
+            clause_type="termination_for_convenience", text=section, confidence=0.9
+        )
+        non_compete = LLMClauseResult(clause_type="non_compete", text=nested, confidence=0.95)
+        for clauses in ([termination, non_compete], [non_compete, termination]):
+            result = ext._deduplicate_clauses(clauses)
+            assert sorted(c.clause_type for c in result) == [
+                "non_compete",
+                "termination_for_convenience",
+            ]
+
+    def test_same_text_under_two_types_is_kept_once_per_type(self):
+        ext = self._extractor()
+        clauses = [
+            LLMClauseResult(clause_type="governing_law", text="Same text.", confidence=0.9),
+            LLMClauseResult(clause_type="venue", text="Same text.", confidence=0.9),
+            LLMClauseResult(clause_type="venue", text="Same text.", confidence=0.8),
+        ]
+        result = ext._deduplicate_clauses(clauses)
+        assert [c.clause_type for c in result] == ["governing_law", "venue"]
 
     def test_distinct_clauses_all_kept(self):
         ext = self._extractor()

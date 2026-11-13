@@ -160,6 +160,9 @@ class RiskAnalyzer:
         Uses the contract's full text (up to _RISK_TEXT_CHARS characters) so that
         contextual risks — e.g. a liability cap that is unreasonably low given the
         contract value — can be identified.
+
+        A failed call returns no LLM risks and is recorded in
+        ``contract.metadata.warnings``.
         """
         if self.llm_provider is None:
             return []
@@ -184,6 +187,9 @@ class RiskAnalyzer:
             llm_response = result  # type: ignore[assignment]
         except Exception as e:
             logger.warning("LLM-based risk analysis failed: %s — skipping", e)
+            # First line only: the rest of the error can quote the prompt
+            first_line = (str(e).splitlines() or [type(e).__name__])[0]
+            contract.metadata.warnings.append(f"LLM risk analysis failed: {first_line}")
             return []
 
         risks: list[RiskFlag] = []

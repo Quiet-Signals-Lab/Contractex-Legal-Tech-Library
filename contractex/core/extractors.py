@@ -6,9 +6,10 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Any
@@ -47,6 +48,9 @@ _CLAUSE_DEDUP_RATIO = 0.90
 # Maximum characters from the opening section used for contract-info extraction
 # (~3 K tokens for most tokenisers)
 _INFO_EXTRACTION_CHARS = 12_000
+
+# An amount the prompt asked for: digits with an optional sign and decimal part
+_PLAIN_NUMBER = re.compile(r"[+-]?\d+(\.\d+)?")
 
 
 class ContractExtractor:
@@ -158,7 +162,7 @@ class ContractExtractor:
             "estimated_cost": round(total_cost, 4),
             "estimated_tokens": total_tokens,
             "num_chunks": len(chunks),
-            "llm_provider": self.llm_provider.__class__.__name__,
+            "llm_provider": self._provider_name(),
             "llm_model": getattr(self.llm_provider, "model", "unknown"),
             "breakdown": {
                 "contract_info": {
@@ -176,19 +180,29 @@ class ContractExtractor:
             },
         }
 
+    def _provider_name(self) -> str:
+        """Class name of the provider, looking through a privacy guard's wrapper."""
+        return type(getattr(self.llm_provider, "wrapped", self.llm_provider)).__name__
+
     @staticmethod
     def _create_provider(name: str) -> LLMProvider:
         """
         Create an LLM provider from a full model name.
 
         ``gpt-...`` → OpenAIProvider, ``claude-...`` → AnthropicProvider, any
-        other name → LocalProvider (Ollama).  A vendor name without a model
-        (``"openai"``, ``"anthropic"``) is rejected rather than silently
+        other name → LocalProvider (Ollama).  ``gpt-oss...`` is an open-weight
+        model served by Ollama, so it is local too.  A vendor name without a
+        model (``"openai"``, ``"anthropic"``) is rejected rather than silently
         mapped to a model the library picks.
         """
         name_lower = name.lower()
 
-        if name_lower.startswith("gpt-"):
+        if name_lower.startswith("gpt-oss"):
+            from contractex.llm import LocalProvider
+
+            return LocalProvider(model=name)
+
+        elif name_lower.startswith("gpt-"):
             from contractex.llm import OpenAIProvider
 
             return OpenAIProvider(model=name)
@@ -283,7 +297,7 @@ class ContractExtractor:
         try:
             file_metadata = {
                 **file_metadata,
-                "llm_provider": self.llm_provider.__class__.__name__,
+                "llm_provider": self._provider_name(),
                 "llm_model": getattr(self.llm_provider, "model", None),
             }
 
@@ -381,7 +395,7 @@ class ContractExtractor:
             Dict matching Contract model field names plus '_metadata' for
             extraction provenance (token_usage, warnings).
         """
-        warnings: list[str] = []
+        failures: list[str] = []
         total_tokens = 0
 
         # ------------------------------------------------------------------
@@ -392,6 +406,7 @@ class ContractExtractor:
             info_text,
             contract_type_hint=contract_type,
             known_parties=known_parties,
+            failures=failures,
         )
         total_tokens += self.llm_provider.count_tokens(info_text)
 
@@ -400,16 +415,23 @@ class ContractExtractor:
         # ------------------------------------------------------------------
         if len(chunks) == 1:
             raw_clauses, raw_financial = self._extract_single_chunk(
-                chunks[0], extract_financial=extract_financial
+                chunks[0], extract_financial=extract_financial, failures=failures
             )
             total_tokens += self.llm_provider.count_tokens(chunks[0])
         else:
-            raw_clauses, raw_financial, chunk_warnings = self._extract_multi_chunk(
+            raw_clauses, raw_financial, chunk_failures = self._extract_multi_chunk(
                 chunks, extract_financial=extract_financial
             )
-            warnings.extend(chunk_warnings)
+            failures.extend(chunk_failures)
             for c in chunks:
                 total_tokens += self.llm_provider.count_tokens(c)
+
+        # One contract-info call, then a clause call (and a financial call) per
+        # chunk.  If none succeeded, an empty Contract would read as "nothing
+        # found in this document".
+        calls = 1 + len(chunks) * (2 if extract_financial else 1)
+        if len(failures) == calls:
+            raise ExtractionError(f"All {calls} LLM calls failed.  First error: {failures[0]}")
 
         # ------------------------------------------------------------------
         # Phase 3: Dedup + convert to public models
@@ -445,7 +467,7 @@ class ContractExtractor:
                     "output_tokens": 0,  # per-call output tracking not exposed by base interface
                     "total_tokens": total_tokens,
                 },
-                "warnings": warnings,
+                "warnings": failures,
             },
         }
 
@@ -453,13 +475,28 @@ class ContractExtractor:
     # LLM call helpers
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _record_failure(failures: list[str] | None, what: str, exc: Exception) -> None:
+        """Log a failed LLM call and add it to *failures* (→ ``metadata.warnings``)."""
+        logger.warning("%s failed: %s", what, exc)
+        if failures is not None:
+            # First line only: the rest of a provider or validation error can
+            # quote the prompt or the model's output.
+            first_line = (str(exc).splitlines() or [type(exc).__name__])[0]
+            failures.append(f"{what} failed: {first_line}")
+
     def _extract_contract_info(
         self,
         text: str,
         contract_type_hint: ContractType | None = None,
         known_parties: list[str] | None = None,
+        failures: list[str] | None = None,
     ) -> LLMContractInfoResponse:
-        """Extract contract metadata and parties from the opening section."""
+        """
+        Extract contract metadata and parties from the opening section.
+
+        A failed call returns empty info and is recorded in *failures*.
+        """
         hint_lines: list[str] = []
         if contract_type_hint:
             hint_lines.append(f"Hint: This is likely a {contract_type_hint.value} agreement.")
@@ -474,13 +511,14 @@ class ContractExtractor:
             result = self.llm_provider.extract_structured(prompt, LLMContractInfoResponse)
             return result  # type: ignore[return-value]
         except Exception as e:
-            logger.warning("Contract info extraction failed: %s — returning empty info", e)
+            self._record_failure(failures, "Contract info extraction", e)
             return LLMContractInfoResponse()  # type: ignore[call-arg]
 
     def _extract_single_chunk(
         self,
         text: str,
         extract_financial: bool = True,
+        failures: list[str] | None = None,
     ) -> tuple[list[LLMClauseResult], list[LLMFinancialResult]]:
         """
         Extract clauses and financial terms from a single chunk.
@@ -506,82 +544,77 @@ class ContractExtractor:
                     e,
                 )
 
-        clauses = self._extract_clauses_from_text(text)
-        financial: list[LLMFinancialResult] = []
-        if extract_financial:
-            financial = self._extract_financial_from_text(text)
-        return clauses, financial
+        return self._extract_chunk(text, extract_financial, failures)
 
     def _extract_multi_chunk(
         self,
         chunks: list[str],
         extract_financial: bool = True,
     ) -> tuple[list[LLMClauseResult], list[LLMFinancialResult], list[str]]:
-        """Extract clauses and financial terms from multiple chunks, optionally in parallel."""
-        all_clauses: list[LLMClauseResult] = []
-        all_financial: list[LLMFinancialResult] = []
-        warnings: list[str] = []
+        """
+        Extract clauses and financial terms from multiple chunks, optionally in parallel.
+
+        Results are in chunk order.  The third item lists the calls that failed.
+        """
+
+        def extract(
+            item: tuple[int, str],
+        ) -> tuple[list[LLMClauseResult], list[LLMFinancialResult], list[str]]:
+            idx, chunk = item
+            failures: list[str] = []
+            clauses, financial = self._extract_chunk(chunk, extract_financial, failures)
+            return clauses, financial, [f"Chunk {idx}: {msg}" for msg in failures]
 
         if self.parallel_processing and len(chunks) > 1:
-            max_workers = min(4, len(chunks))
-            with ThreadPoolExecutor(max_workers=max_workers) as executor:
-                futures = {
-                    executor.submit(self._extract_chunk, chunk, extract_financial): idx
-                    for idx, chunk in enumerate(chunks)
-                }
-                for future in as_completed(futures):
-                    idx = futures[future]
-                    try:
-                        chunk_clauses, chunk_financial = future.result()
-                        all_clauses.extend(chunk_clauses)
-                        all_financial.extend(chunk_financial)
-                    except Exception as e:
-                        msg = f"Chunk {idx} extraction failed: {e}"
-                        logger.warning(msg)
-                        warnings.append(msg)
+            with ThreadPoolExecutor(max_workers=min(4, len(chunks))) as executor:
+                results = list(executor.map(extract, enumerate(chunks)))
         else:
-            for idx, chunk in enumerate(chunks):
-                try:
-                    chunk_clauses, chunk_financial = self._extract_chunk(chunk, extract_financial)
-                    all_clauses.extend(chunk_clauses)
-                    all_financial.extend(chunk_financial)
-                except Exception as e:
-                    msg = f"Chunk {idx} extraction failed: {e}"
-                    logger.warning(msg)
-                    warnings.append(msg)
+            results = [extract(item) for item in enumerate(chunks)]
 
-        return all_clauses, all_financial, warnings
+        all_clauses: list[LLMClauseResult] = []
+        all_financial: list[LLMFinancialResult] = []
+        all_failures: list[str] = []
+        for clauses, financial, failures in results:
+            all_clauses.extend(clauses)
+            all_financial.extend(financial)
+            all_failures.extend(failures)
+        return all_clauses, all_financial, all_failures
 
     def _extract_chunk(
         self,
         text: str,
         extract_financial: bool = True,
+        failures: list[str] | None = None,
     ) -> tuple[list[LLMClauseResult], list[LLMFinancialResult]]:
-        """Extract clauses and financial terms from one chunk (multi-chunk path)."""
-        clauses = self._extract_clauses_from_text(text)
+        """Extract clauses and financial terms from one chunk, one call each."""
+        clauses = self._extract_clauses_from_text(text, failures)
         financial: list[LLMFinancialResult] = []
         if extract_financial:
-            financial = self._extract_financial_from_text(text)
+            financial = self._extract_financial_from_text(text, failures)
         return clauses, financial
 
-    def _extract_clauses_from_text(self, text: str) -> list[LLMClauseResult]:
+    def _extract_clauses_from_text(
+        self, text: str, failures: list[str] | None = None
+    ) -> list[LLMClauseResult]:
         """Call the LLM to extract clauses from a text chunk."""
         try:
             prompt = CLAUSE_EXTRACTION_PROMPT.format(contract_text=text)
             result = self.llm_provider.extract_structured(prompt, LLMClausesResponse)
             return result.clauses  # type: ignore[attr-defined, no-any-return]
         except Exception as e:
-            logger.warning("Clause extraction from chunk failed: %s", e)
+            self._record_failure(failures, "Clause extraction", e)
             return []
 
-    def _extract_financial_from_text(self, text: str) -> list[LLMFinancialResult]:
+    def _extract_financial_from_text(
+        self, text: str, failures: list[str] | None = None
+    ) -> list[LLMFinancialResult]:
         """Call the LLM to extract financial terms from a text chunk."""
         try:
             prompt = FINANCIAL_EXTRACTION_PROMPT.format(contract_text=text)
             result = self.llm_provider.extract_structured(prompt, LLMFinancialResponse)
             return result.financial_terms  # type: ignore[attr-defined, no-any-return]
         except Exception as e:
-            logger.warning("Financial extraction from chunk failed: %s", e)
+            self._record_failure(failures, "Financial extraction", e)
             return []
 
     # ------------------------------------------------------------------
@@ -591,6 +624,9 @@ class ContractExtractor:
     def _deduplicate_clauses(self, clauses: list[LLMClauseResult]) -> list[LLMClauseResult]:
         """
         Remove near-duplicate clauses produced by chunk overlap.
+
+        Only clauses of the same ``clause_type`` are compared, so a clause
+        nested inside another (a non-compete in a termination section) is kept.
 
         Priority:
           1. Containment: if A's text is fully contained in B's, keep B (more complete).
@@ -604,6 +640,8 @@ class ContractExtractor:
             is_dup = False
             c_text = candidate.text.strip()
             for i, existing in enumerate(kept):
+                if existing.clause_type != candidate.clause_type:
+                    continue
                 e_text = existing.text.strip()
 
                 # Containment checks (O(n) string ops, fast)
@@ -726,13 +764,11 @@ class ContractExtractor:
 
             amount: Decimal | None = None
             if t.amount:
-                parsed = CurrencyNormalizer.extract_amount(t.amount)
-                if parsed is not None:
-                    amount = parsed
+                if _PLAIN_NUMBER.fullmatch(t.amount.strip()):
+                    amount = Decimal(t.amount.strip())
                 else:
-                    try:
-                        amount = Decimal(t.amount.replace(",", ""))
-                    except InvalidOperation:
+                    amount = CurrencyNormalizer.extract_amount(t.amount)
+                    if amount is None:
                         logger.debug("Could not parse amount string '%s'", t.amount)
 
             due_date = DateNormalizer.normalize(t.due_date or "")
