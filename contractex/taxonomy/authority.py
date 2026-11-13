@@ -80,7 +80,7 @@ class AuthorityLevel(IntEnum):
 
     def is_binding(self) -> bool:
         """Return True if this level represents a binding legal source."""
-        return self.value >= AuthorityLevel.AGENCY_GUIDANCE
+        return self.value > AuthorityLevel.AGENCY_GUIDANCE
 
 
 class AuthorityProfile(BaseModel):
@@ -140,7 +140,7 @@ class AuthorityProfile(BaseModel):
 
     def model_post_init(self, __context: Any) -> None:
         """Derive ``is_binding`` from ``level`` when not explicitly set."""
-        if not self.is_binding:
+        if "is_binding" not in self.model_fields_set:
             object.__setattr__(self, "is_binding", self.level.is_binding())
 
     @property

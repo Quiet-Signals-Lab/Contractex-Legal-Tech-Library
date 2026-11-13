@@ -38,7 +38,7 @@ class ClauseTypeSchema(BaseModel):
 class CustomClauseRegistry:
     """Registry for managing custom clause types."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the registry."""
         self._registry: dict[str, ClauseTypeSchema] = {}
 
