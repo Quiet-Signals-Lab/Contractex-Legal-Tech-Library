@@ -112,8 +112,12 @@ class CaseResult(BaseModel):
 
     @property
     def passed(self) -> bool:
-        """True iff no error AND every field matched."""
-        return self.error is None and all(r.match for r in self.field_results)
+        """True iff no error AND at least one field was checked AND every field matched."""
+        return (
+            self.error is None
+            and bool(self.field_results)
+            and all(r.match for r in self.field_results)
+        )
 
     @property
     def failed_fields(self) -> list[FieldResult]:
@@ -143,12 +147,20 @@ class ExtractionMetrics(BaseModel):
 
     @property
     def case_accuracy(self) -> float:
-        """Fraction of cases where *all* fields matched (no partial credit)."""
+        """
+        Fraction of cases where *all* fields matched (no partial credit).
+
+        A case with no expected fields checks nothing, so it never counts as passed.
+        """
         return self.passed_cases / self.total_cases if self.total_cases else 0.0
 
     @property
     def field_accuracy(self) -> float:
-        """Weighted fraction of individual fields that matched."""
+        """
+        Weighted fraction of individual fields that matched.
+
+        The expected fields of a case whose extractor raised count as missed.
+        """
         return self.total_weighted_score / self.total_max_score if self.total_max_score else 0.0
 
     def report(self) -> str:
@@ -271,7 +283,8 @@ class PrivacyCaseResult(BaseModel):
             exp_set = {e.upper() for e in expected_pii}
             det_set = {e.upper() for e in detected_pii}
             tp = len(exp_set & det_set)
-            result.pii_precision = tp / len(det_set) if det_set else 0.0
+            # Nothing expected and nothing detected is a correct result, not a miss
+            result.pii_precision = tp / len(det_set) if det_set else (0.0 if exp_set else 1.0)
             result.pii_recall = tp / len(exp_set) if exp_set else 1.0
             denom = result.pii_precision + result.pii_recall
             result.pii_f1 = 2 * result.pii_precision * result.pii_recall / denom if denom else 0.0

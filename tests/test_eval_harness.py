@@ -391,6 +391,64 @@ class TestExtractionMetrics:
         assert m.case_accuracy == 0.0
 
 
+class TestGateCannotPassOnUnscoredCases:
+    """A crash or an empty case must never raise the reported accuracy."""
+
+    def _suite(self) -> EvalSuite:
+        return EvalSuite.from_cases(
+            [EvalCase(id=str(i), expected_fields={"a": "1", "b": "2"}) for i in range(10)]
+        )
+
+    def test_errored_cases_count_their_fields_as_missed(self):
+        def crashes_on_all_but_one(case: EvalCase) -> dict:
+            if case.id != "0":
+                raise RuntimeError("boom")
+            return {"a": "1", "b": "2"}
+
+        metrics = EvalHarness(crashes_on_all_but_one).run(self._suite())
+        assert metrics.error_cases == 9
+        assert metrics.field_accuracy == pytest.approx(0.1)
+        assert metrics.field_stats["a"] == {"correct": 1, "total": 10}
+        with pytest.raises(AssertionError):
+            metrics.assert_min_field_accuracy(0.90)
+
+    def test_errored_case_result_lists_the_missed_fields(self):
+        result = EvalHarness(_error_extractor).run_case(
+            EvalCase(id="c", expected_fields={"a": "1"}, field_weights={"a": 3.0})
+        )
+        assert result.error == "RuntimeError: OCR engine unavailable"
+        assert [(f.field_name, f.actual, f.match, f.weight) for f in result.field_results] == [
+            ("a", None, False, 3.0)
+        ]
+        assert result.passed is False
+
+    @pytest.mark.parametrize("returned", [None, ["a"], "a"])
+    def test_non_dict_return_is_recorded_as_an_error(self, returned):
+        metrics = EvalHarness(lambda case: returned).run(self._suite())
+        assert metrics.error_cases == 10
+        assert metrics.field_accuracy == 0.0
+        assert "TypeError" in metrics.case_results[0].error
+
+    def test_case_without_expected_fields_is_not_a_pass(self):
+        suite = EvalSuite.from_cases(
+            [EvalCase(id="scored", expected_fields={"a": "1"}), EvalCase(id="unscored")]
+        )
+        metrics = EvalHarness(_perfect_extractor).run(suite)
+        assert metrics.case_results[1].passed is False
+        assert metrics.passed_cases == 1
+        assert metrics.case_accuracy == 0.5
+        assert metrics.field_accuracy == 1.0
+
+    def test_suite_with_nothing_to_score_fails_both_gates(self):
+        metrics = EvalHarness(_perfect_extractor).run(
+            EvalSuite.from_cases([EvalCase(id="unscored")])
+        )
+        with pytest.raises(AssertionError):
+            metrics.assert_min_case_accuracy(0.5)
+        with pytest.raises(AssertionError):
+            metrics.assert_min_field_accuracy(0.5)
+
+
 def test_cuad_benchmark_is_deprecated():
     from contractex.eval.benchmark import CUADBenchmark
 
