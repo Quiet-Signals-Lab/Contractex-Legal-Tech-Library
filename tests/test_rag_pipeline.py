@@ -152,6 +152,7 @@ class _FakeWeb:
 
     def __init__(self, monkeypatch, pages: dict[str, str]) -> None:
         from contractex.loaders.auto import AutoLoader
+        from contractex.loaders.source_adapter import URLLoader
 
         self.pages = pages
         self.fetches = 0
@@ -163,7 +164,11 @@ class _FakeWeb:
                 raise AssertionError("sync_sources keeps re-fetching the same URL")
             return web.pages[source]
 
-        monkeypatch.setattr(AutoLoader, "load", load)
+        def not_a_file(self, source: str) -> str:
+            raise AssertionError(f"{source} is a URL but was loaded as a file")
+
+        monkeypatch.setattr(URLLoader, "load", load)
+        monkeypatch.setattr(AutoLoader, "load", not_a_file)
 
 
 class TestSyncSources:

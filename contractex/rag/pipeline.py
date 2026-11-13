@@ -342,9 +342,7 @@ class LegalRAGPipeline:
         IngestResult
         """
         from contractex.chunking.semantic import SemanticChunker
-        from contractex.loaders.auto import AutoLoader
 
-        loader = AutoLoader()
         chunker = SemanticChunker()
         embedder = self._get_embedder()
 
@@ -365,7 +363,7 @@ class LegalRAGPipeline:
                         else resolve_profile(doc, PrivacyProfile())
                     )
                 else:
-                    doc = LegalDoc(full_text=loader.load(source_str))
+                    doc = LegalDoc(full_text=self._load(source_str))
                     profile = PrivacyProfile()
                 chunks = chunker.chunk(doc.full_text or "")
 
@@ -676,16 +674,13 @@ class LegalRAGPipeline:
         fetched keeps its previous copy and is reported in ``errors``.  Each
         sync is a full fetch; conditional GETs (ETag) are not used.
         """
-        from contractex.loaders.auto import AutoLoader
-
-        loader = AutoLoader()
         result = SyncResult()
 
         # ingest() updates _source_urls, so iterate over a snapshot
         for url, doc_id in list(self._source_urls.items()):
             result.checked += 1
             try:
-                text = loader.load(url)
+                text = self._load(url)
             except Exception as exc:
                 result.errors.append(f"{url}: {exc}")
                 continue
@@ -708,6 +703,17 @@ class LegalRAGPipeline:
     # ------------------------------------------------------------------
     # Internal
     # ------------------------------------------------------------------
+
+    @staticmethod
+    def _load(source: str) -> str:
+        """Text of a URL (``contractex[network]``) or of a local file."""
+        if source.startswith(("http://", "https://")):
+            from contractex.loaders.source_adapter import URLLoader
+
+            return URLLoader().load(source)
+        from contractex.loaders.auto import AutoLoader
+
+        return AutoLoader().load(source)
 
     def _forget(self, doc_id: str | None) -> None:
         """Drop a previously indexed document (the old copy of a re-ingested URL)."""
