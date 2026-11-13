@@ -694,7 +694,7 @@ class TestExtractorErrorHandling:
 
 
 # ---------------------------------------------------------------------------
-# Tests: RiskAnalyzer with mocked LLM
+# Tests: LLMRiskAnalyzer with mocked LLM
 # ---------------------------------------------------------------------------
 
 
@@ -715,14 +715,14 @@ class TestRiskAnalyzerLLM:
         )
 
     def test_rule_based_detects_unlimited_liability(self):
-        from contractex.core.analyzers import RiskAnalyzer
+        from contractex.core.analyzers import LLMRiskAnalyzer
 
-        analyzer = RiskAnalyzer(use_llm=False)
+        analyzer = LLMRiskAnalyzer(use_llm=False)
         risks = analyzer.analyze(self._sample_contract())
         assert any(r.risk_type == "unlimited_liability" for r in risks)
 
     def test_llm_risks_appended_to_rule_based(self):
-        from contractex.core.analyzers import RiskAnalyzer
+        from contractex.core.analyzers import LLMRiskAnalyzer
 
         llm = MockLLMProvider()
         llm.register(
@@ -739,7 +739,7 @@ class TestRiskAnalyzerLLM:
             ),
         )
 
-        analyzer = RiskAnalyzer(use_llm=True, llm_provider=llm)
+        analyzer = LLMRiskAnalyzer(use_llm=True, llm_provider=llm)
         risks = analyzer.analyze(self._sample_contract())
 
         risk_types = {r.risk_type for r in risks}
@@ -748,7 +748,7 @@ class TestRiskAnalyzerLLM:
 
     def test_llm_risk_deduped_with_rule_based(self):
         """LLM returning the same risk_type+clause_reference as a rule-based hit is skipped."""
-        from contractex.core.analyzers import RiskAnalyzer
+        from contractex.core.analyzers import LLMRiskAnalyzer
 
         llm = MockLLMProvider()
         llm.register(
@@ -766,28 +766,28 @@ class TestRiskAnalyzerLLM:
             ),
         )
 
-        analyzer = RiskAnalyzer(use_llm=True, llm_provider=llm)
+        analyzer = LLMRiskAnalyzer(use_llm=True, llm_provider=llm)
         risks = analyzer.analyze(self._sample_contract())
 
         ul_risks = [r for r in risks if r.risk_type == "unlimited_liability"]
         assert len(ul_risks) == 1  # deduplicated
 
     def test_llm_failure_does_not_suppress_rule_based_risks(self):
-        from contractex.core.analyzers import RiskAnalyzer
+        from contractex.core.analyzers import LLMRiskAnalyzer
         from contractex.exceptions import LLMProviderError
 
         class FailingLLM(MockLLMProvider):
             def extract_structured(self, prompt, schema, **kwargs):
                 raise LLMProviderError("LLM unavailable")
 
-        analyzer = RiskAnalyzer(use_llm=True, llm_provider=FailingLLM())
+        analyzer = LLMRiskAnalyzer(use_llm=True, llm_provider=FailingLLM())
         risks = analyzer.analyze(self._sample_contract())
 
         # Rule-based risks still appear even when LLM fails
         assert any(r.risk_type == "unlimited_liability" for r in risks)
 
     def test_risk_sorted_critical_first(self):
-        from contractex.core.analyzers import RiskAnalyzer
+        from contractex.core.analyzers import LLMRiskAnalyzer
 
         llm = MockLLMProvider()
         llm.register(
@@ -804,7 +804,7 @@ class TestRiskAnalyzerLLM:
             ),
         )
 
-        analyzer = RiskAnalyzer(use_llm=True, llm_provider=llm)
+        analyzer = LLMRiskAnalyzer(use_llm=True, llm_provider=llm)
         # No clause text that triggers rule-based, so only LLM risks
         contract = Contract(  # type: ignore[call-arg]
             clauses=[

@@ -1,4 +1,4 @@
-"""Risk analysis task — wraps RiskAnalyzer as a pipeline stage."""
+"""Risk analysis task — wraps LLMRiskAnalyzer as a pipeline stage."""
 
 from __future__ import annotations
 
@@ -40,7 +40,7 @@ class RiskAnalysisTask(LegalTask):
         if not doc.full_text:
             return doc
 
-        from contractex.core.analyzers import RiskAnalyzer
+        from contractex.core.analyzers import LLMRiskAnalyzer
         from contractex.core.models import Contract
 
         # Reuse clauses from a preceding contract_extraction task when present,
@@ -48,7 +48,7 @@ class RiskAnalysisTask(LegalTask):
         contract = Contract.model_validate(
             doc.extracted.get("contract") or {"full_text": doc.full_text}
         )
-        risks = RiskAnalyzer(llm_provider=self.llm_for(doc)).analyze(contract)
+        risks = LLMRiskAnalyzer(llm_provider=self.llm_for(doc)).analyze(contract)
 
         doc = doc.model_copy(
             update={

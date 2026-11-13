@@ -20,9 +20,9 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from enum import Enum
 from typing import Any
 
+from contractex.core.models import RiskSeverity
 from contractex.exceptions import ValidationError
 
 # Optional YAML support (pyyaml); only required for load/save operations
@@ -32,14 +32,6 @@ try:
     _YAML_AVAILABLE = True
 except ImportError:
     _YAML_AVAILABLE = False
-
-
-class RiskSeverity(str, Enum):
-    CRITICAL = "critical"
-    HIGH = "high"
-    MEDIUM = "medium"
-    LOW = "low"
-    INFO = "info"
 
 
 @dataclass

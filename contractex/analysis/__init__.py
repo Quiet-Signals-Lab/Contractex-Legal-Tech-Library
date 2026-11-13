@@ -29,15 +29,29 @@ Public API::
 """
 
 from contractex.analysis.compare import ClauseChange, ContractDiff, compare
-from contractex.analysis.risk import RiskAnalyzer, RiskFlag
+from contractex.analysis.risk import PlaybookFlag, RiskAnalyzer
 from contractex.analysis.timeline import ObligationEntry, ObligationTimeline
 
 __all__ = [
     "RiskAnalyzer",
-    "RiskFlag",
+    "PlaybookFlag",
     "ObligationTimeline",
     "ObligationEntry",
     "compare",
     "ContractDiff",
     "ClauseChange",
 ]
+
+
+def __getattr__(name: str) -> object:
+    # RiskFlag was renamed: the same name also meant contractex.core.models.RiskFlag.
+    if name == "RiskFlag":
+        import warnings
+
+        warnings.warn(
+            "contractex.analysis.RiskFlag is now PlaybookFlag; the old name will be removed.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return PlaybookFlag
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

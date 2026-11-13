@@ -6,9 +6,9 @@ Deterministic analysis of extracted contracts: no model calls.  See [Contract an
 
 ::: contractex.analysis.risk.RiskAnalyzer
 
-## RiskFlag
+## PlaybookFlag
 
-::: contractex.analysis.risk.RiskFlag
+::: contractex.analysis.risk.PlaybookFlag
 
 ## ObligationTimeline
 

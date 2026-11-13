@@ -47,6 +47,7 @@ from contractex.__version__ import __version__
 # Layer 3: analysis (no LLM)
 from contractex.analysis import (
     ObligationTimeline,
+    PlaybookFlag,
     RiskAnalyzer,
 )
 from contractex.analysis import (
@@ -165,6 +166,7 @@ __all__ = [
     "ContractMetadata",
     # Layer 3: analysis
     "RiskAnalyzer",
+    "PlaybookFlag",
     "ObligationTimeline",
     "compare_contracts",
     # Playbooks

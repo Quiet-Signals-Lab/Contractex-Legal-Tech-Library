@@ -346,9 +346,9 @@ class ContractExtractor:
 
             # Perform risk analysis if requested
             if analyze_risks:
-                from contractex.core.analyzers import RiskAnalyzer
+                from contractex.core.analyzers import LLMRiskAnalyzer
 
-                analyzer = RiskAnalyzer(llm_provider=self.llm_provider)
+                analyzer = LLMRiskAnalyzer(llm_provider=self.llm_provider)
                 contract.risks = analyzer.analyze(contract)
 
             # Attach confidence warnings

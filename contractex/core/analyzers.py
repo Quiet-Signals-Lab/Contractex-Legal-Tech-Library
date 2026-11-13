@@ -23,7 +23,7 @@ _RISK_TEXT_CHARS = 20_000
 _VALID_SEVERITIES = {s.value for s in RiskSeverity}
 
 
-class RiskAnalyzer:
+class LLMRiskAnalyzer:
     """
     Analyzer for detecting risks in contracts using rule-based and LLM approaches.
 
@@ -234,3 +234,17 @@ class RiskAnalyzer:
         """
         temp_contract = Contract(clauses=[clause])  # type: ignore[call-arg]
         return self.analyze(temp_contract)
+
+
+def __getattr__(name: str) -> object:
+    # RiskAnalyzer was renamed: the same name also meant contractex.analysis.RiskAnalyzer.
+    if name == "RiskAnalyzer":
+        import warnings
+
+        warnings.warn(
+            "contractex.core.analyzers.RiskAnalyzer is now LLMRiskAnalyzer; the old name will be removed.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return LLMRiskAnalyzer
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
