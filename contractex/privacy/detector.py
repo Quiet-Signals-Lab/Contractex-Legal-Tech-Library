@@ -167,9 +167,10 @@ _SEP = rf"(?:{_DASH}|[.\s])"
 
 _REGEX_PATTERNS: list[tuple[str, str]] = [
     # Email (\w is Unicode-aware, so homoglyphs from other scripts are covered).
-    # The lengths are the limits of a real address (64 before the @, 253 after);
-    # unbounded, a long run of "a.a.a." took quadratic time.
-    ("EMAIL_ADDRESS", r"\b[\w.%+\-]{1,64}@[\w.\-]{1,253}\.[^\W\d_]{2,}\b"),
+    # The name before the @ may start only at the start of a run of name
+    # characters and is matched without backtracking: with a plain \b...+ every
+    # position inside a long "a.a.a." run was a new start, which is quadratic.
+    ("EMAIL_ADDRESS", r"(?<![\w.%+\-])[\w.%+\-]++@[\w.\-]+\.[^\W\d_]{2,}\b"),
     # US phone (various formats)
     ("PHONE_NUMBER", rf"\b(?:\+?1{_SEP}?)?\(?\d{{3}}\)?{_SEP}?\d{{3}}{_SEP}?\d{{4}}\b"),
     # US SSN

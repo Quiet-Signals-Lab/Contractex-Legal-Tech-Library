@@ -198,8 +198,13 @@ class TestDetectorHostileInput:
         detector.detect(text)
         assert time.perf_counter() - start < 2.0
 
-    def test_address_at_the_length_limits_is_still_found(self, detector):
-        email = "a" * 64 + "@" + "b" * 60 + ".example.com"
+    @pytest.mark.parametrize(
+        "local",
+        ["a" * 64, "x" * 70, "x" * 300, "ab." * 30 + "jan", "first-" * 20 + "last"],
+        ids=["64", "70", "300", "dotted-93", "hyphenated-124"],
+    )
+    def test_long_address_is_redacted_whole(self, detector, local):
+        email = f"{local}@{'b' * 60}.example.com"
         (s,) = detector.detect(f"Write to {email} today.")
         assert (s.entity_type, s.text) == ("EMAIL_ADDRESS", email)
 
