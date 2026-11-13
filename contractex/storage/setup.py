@@ -6,7 +6,7 @@ schema execution, and initial data loading. Designed to be idempotent - safe to
 run multiple times.
 
 Usage:
-    python -m dbase.setup
+    python -m contractex.storage.setup
 """
 
 from __future__ import annotations
@@ -23,8 +23,6 @@ from contractex.storage.connection import connect_to_postgres_server, test_conne
 from contractex.storage.models import Document, ProcessingLog, ProcessingStage, ProcessingStatus
 from contractex.storage.repository import DocumentRepository, ProcessingLogRepository
 
-# Configure logging
-logging.basicConfig(level=LOG_LEVEL, format=LOG_FORMAT)
 logger = logging.getLogger(__name__)
 
 SCRIPT_DIR = Path(__file__).parent
@@ -330,8 +328,12 @@ def run_setup(ingest_data: bool = True, data_limit: int | None = None) -> None:
         sys.exit(1)
 
 
-if __name__ == "__main__":
+def main() -> None:
+    """Command-line entry point: ``python -m contractex.storage.setup``."""
     import argparse
+
+    # Configured here, not at import: a library must not set up the caller's logging
+    logging.basicConfig(level=LOG_LEVEL, format=LOG_FORMAT)
 
     parser = argparse.ArgumentParser(description="Setup contract clause extraction database")
     parser.add_argument("--no-data", action="store_true", help="Skip initial data ingestion")
@@ -342,3 +344,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     run_setup(ingest_data=not args.no_data, data_limit=args.limit)
+
+
+if __name__ == "__main__":
+    main()

@@ -8,30 +8,74 @@ This makes the codebase testable (mock repositories) and database-agnostic.
 
 from __future__ import annotations
 
+import json
 import logging
+from collections.abc import Iterator
+from contextlib import contextmanager
 from typing import Any
 
 import psycopg2
+import psycopg2.errors
 import psycopg2.extras
 from psycopg2.extras import execute_values
 
-from contractex.storage.connection import get_cursor, get_vector_cursor
+from contractex.exceptions import ContractExError
+from contractex.storage.connection import (
+    error_summary,
+    get_cursor,
+    get_vector_cursor,
+    register_vector_types,
+)
 from contractex.storage.models import Clause, Document, ProcessingLog
 
 logger = logging.getLogger(__name__)
 
+_NO_EMBEDDING_COLUMN = (
+    "clauses.embedding does not exist. Apply "
+    "contractex/storage/migrations/add_embeddings.sql (needs the pgvector extension)."
+)
 
-class DocumentRepository:
-    """Repository for Document database operations."""
 
-    def __init__(self, connection=None):
+class DuplicateDocumentError(ContractExError):
+    """Raised when a different document is already stored under the same filename."""
+
+
+class DocumentNotFoundError(ContractExError):
+    """Raised when the document to update does not exist."""
+
+
+class _Repository:
+    """Cursor handling shared by the repositories."""
+
+    def __init__(self, connection: Any = None) -> None:
         """
         Initialize repository.
 
         Args:
-            connection: Optional psycopg2 connection. If None, uses context managers.
+            connection: Optional psycopg2 connection.  When given, every
+                operation runs on it and the caller commits or rolls back, so
+                several operations can share one transaction.  If None, each
+                operation opens its own connection and commits.
         """
         self.connection = connection
+
+    @contextmanager
+    def _cursor(self, vector: bool = False) -> Iterator[Any]:
+        if self.connection is None:
+            with get_vector_cursor() if vector else get_cursor() as cur:
+                yield cur
+            return
+        if vector:
+            register_vector_types(self.connection)
+        cur = self.connection.cursor()
+        try:
+            yield cur
+        finally:
+            cur.close()
+
+
+class DocumentRepository(_Repository):
+    """Repository for Document database operations."""
 
     def insert(self, doc: Document) -> int:
         """
@@ -41,7 +85,13 @@ class DocumentRepository:
             doc: Document object to insert
 
         Returns:
-            ID of the inserted document
+            ID of the inserted document, or of the stored one when this same
+            document (same hash, or same text when a hash is missing) is
+            inserted again
+
+        Raises:
+            DuplicateDocumentError: If a different document is already stored
+                under this filename
         """
         query = """
             INSERT INTO documents (filename, file_hash, file_data, extracted_text, metadata)
@@ -51,7 +101,7 @@ class DocumentRepository:
         """
 
         try:
-            with get_cursor() as cur:
+            with self._cursor() as cur:
                 cur.execute(
                     query,
                     (
@@ -67,14 +117,26 @@ class DocumentRepository:
                     doc_id: int = result[0]
                     logger.info(f"Inserted document: {doc.filename} (ID: {doc_id})")
                     return doc_id
-                else:
-                    logger.warning(f"Document already exists: {doc.filename}")
-                    existing_id = self.get_id_by_filename(doc.filename)
-                    if existing_id is None:
-                        raise ValueError(f"Failed to get ID for existing document: {doc.filename}")
-                    return existing_id
+
+                cur.execute(
+                    "SELECT id, file_hash, extracted_text IS NOT DISTINCT FROM %s "
+                    "FROM documents WHERE filename = %s",
+                    (doc.extracted_text, doc.filename),
+                )
+                existing = cur.fetchone()
+                if existing is None:
+                    raise ValueError(f"Failed to get ID for existing document: {doc.filename}")
+                existing_id, stored_hash, same_text = existing
+                same = doc.file_hash == stored_hash if doc.file_hash and stored_hash else same_text
+                if not same:
+                    raise DuplicateDocumentError(
+                        f"A different document is already stored as {doc.filename!r} "
+                        f"(id {existing_id})"
+                    )
+                logger.warning(f"Document already exists: {doc.filename}")
+                return int(existing_id)
         except Exception as e:
-            logger.error(f"Failed to insert document: {e}")
+            logger.error(f"Failed to insert document: {error_summary(e)}")
             raise
 
     def get_by_id(self, doc_id: int) -> Document | None:
@@ -95,7 +157,7 @@ class DocumentRepository:
         """
 
         try:
-            with get_cursor() as cur:
+            with self._cursor() as cur:
                 cur.execute(query, (doc_id,))
                 row = cur.fetchone()
                 if row:
@@ -115,26 +177,26 @@ class DocumentRepository:
         """
 
         try:
-            with get_cursor() as cur:
+            with self._cursor() as cur:
                 cur.execute(query, (filename,))
                 row = cur.fetchone()
                 if row:
                     return Document.from_db_row(row)
                 return None
         except Exception as e:
-            logger.error(f"Failed to retrieve document by filename: {e}")
+            logger.error(f"Failed to retrieve document by filename: {error_summary(e)}")
             raise
 
     def get_id_by_filename(self, filename: str) -> int | None:
         """Get document ID by filename."""
         query = "SELECT id FROM documents WHERE filename = %s"
         try:
-            with get_cursor() as cur:
+            with self._cursor() as cur:
                 cur.execute(query, (filename,))
                 result = cur.fetchone()
                 return result[0] if result else None
         except Exception as e:
-            logger.error(f"Failed to get document ID: {e}")
+            logger.error(f"Failed to get document ID: {error_summary(e)}")
             raise
 
     def search_by_metadata(self, filters: dict[str, Any]) -> list[Document]:
@@ -142,17 +204,22 @@ class DocumentRepository:
         Search documents by metadata fields.
 
         Args:
-            filters: Dict of metadata field filters (e.g., {'contract_type': 'NDA'})
+            filters: Dict of metadata field filters (e.g., {'contract_type': 'NDA'}).
+                Values are compared as text; no filters returns every document.
 
         Returns:
             List of matching Document objects
         """
+        if not filters:
+            return self.get_all()
+
         conditions = []
         params = []
 
         for key, value in filters.items():
             conditions.append("metadata->>%s = %s")
-            params.extend([key, value])
+            # ->> yields text: 3 is '3', True is 'true'
+            params.extend([key, value if isinstance(value, str) else json.dumps(value)])
 
         where_clause = " AND ".join(conditions)
         query = f"""
@@ -163,12 +230,12 @@ class DocumentRepository:
         """
 
         try:
-            with get_cursor() as cur:
+            with self._cursor() as cur:
                 cur.execute(query, tuple(params))
                 rows = cur.fetchall()
                 return [Document.from_db_row(row) for row in rows]
         except Exception as e:
-            logger.error(f"Failed to search documents: {e}")
+            logger.error(f"Failed to search documents: {error_summary(e)}")
             raise
 
     def get_all(self, limit: int | None = None) -> list[Document]:
@@ -189,19 +256,19 @@ class DocumentRepository:
         """
 
         try:
-            with get_cursor() as cur:
-                if limit:
+            with self._cursor() as cur:
+                if limit is not None:
                     cur.execute(query + " LIMIT %s", (limit,))
                 else:
                     cur.execute(query)
                 rows = cur.fetchall()
                 return [Document.from_db_row(row) for row in rows]
         except Exception as e:
-            logger.error(f"Failed to retrieve all documents: {e}")
+            logger.error(f"Failed to retrieve all documents: {error_summary(e)}")
             raise
 
     def update_extracted_text(self, doc_id: int, extracted_text: str) -> None:
-        """Update extracted text for a document."""
+        """Update extracted text for a document.  Raises DocumentNotFoundError if it is missing."""
         query = """
             UPDATE documents
             SET extracted_text = %s, updated_at = NOW()
@@ -209,60 +276,82 @@ class DocumentRepository:
         """
 
         try:
-            with get_cursor() as cur:
+            with self._cursor() as cur:
                 cur.execute(query, (extracted_text, doc_id))
+                if cur.rowcount == 0:
+                    raise DocumentNotFoundError(f"No document with id {doc_id}")
                 logger.info(f"Updated extracted text for document {doc_id}")
         except Exception as e:
-            logger.error(f"Failed to update extracted text: {e}")
+            logger.error(f"Failed to update extracted text: {error_summary(e)}")
             raise
 
     def update_metadata(self, doc_id: int, metadata: dict[str, Any]) -> None:
-        """Update metadata for a document."""
+        """
+        Merge *metadata* into a document's stored metadata.
+
+        Top-level keys given here replace the stored ones; other stored keys
+        are kept, so two writers do not erase each other's keys.
+
+        Raises:
+            DocumentNotFoundError: If the document does not exist
+        """
         query = """
             UPDATE documents
-            SET metadata = %s, updated_at = NOW()
+            SET metadata = COALESCE(metadata, '{}'::jsonb) || %s, updated_at = NOW()
             WHERE id = %s
         """
 
         try:
-            with get_cursor() as cur:
+            with self._cursor() as cur:
                 cur.execute(query, (psycopg2.extras.Json(metadata), doc_id))
+                if cur.rowcount == 0:
+                    raise DocumentNotFoundError(f"No document with id {doc_id}")
                 logger.info(f"Updated metadata for document {doc_id}")
         except Exception as e:
-            logger.error(f"Failed to update metadata: {e}")
+            logger.error(f"Failed to update metadata: {error_summary(e)}")
             raise
 
-    def delete(self, doc_id: int) -> None:
-        """Delete a document (cascades to clauses)."""
+    def delete(self, doc_id: int) -> bool:
+        """Delete a document (cascades to clauses).  Returns False if there was none."""
         query = "DELETE FROM documents WHERE id = %s"
 
         try:
-            with get_cursor() as cur:
+            with self._cursor() as cur:
                 cur.execute(query, (doc_id,))
-                logger.info(f"Deleted document {doc_id}")
+                deleted: bool = cur.rowcount > 0
+                if deleted:
+                    logger.info(f"Deleted document {doc_id}")
+                else:
+                    logger.warning(f"Document {doc_id} not found; nothing deleted")
+                return deleted
         except Exception as e:
-            logger.error(f"Failed to delete document: {e}")
+            logger.error(f"Failed to delete document: {error_summary(e)}")
             raise
 
     def count(self) -> int:
         """Count total documents."""
         query = "SELECT COUNT(*) FROM documents"
         try:
-            with get_cursor() as cur:
+            with self._cursor() as cur:
                 cur.execute(query)
                 result = cur.fetchone()
                 return result[0] if result else 0
         except Exception as e:
-            logger.error(f"Failed to count documents: {e}")
+            logger.error(f"Failed to count documents: {error_summary(e)}")
             raise
 
 
-class ClauseRepository:
+class ClauseRepository(_Repository):
     """Repository for Clause database operations."""
 
-    def __init__(self, connection=None):
-        """Initialize repository."""
-        self.connection = connection
+    @contextmanager
+    def _embedding_cursor(self, vector: bool = True) -> Iterator[Any]:
+        """Cursor for queries on clauses.embedding; a missing column gets a clear error."""
+        try:
+            with self._cursor(vector=vector) as cur:
+                yield cur
+        except psycopg2.errors.UndefinedColumn as e:
+            raise ContractExError(_NO_EMBEDDING_COLUMN) from e
 
     def insert(self, clause: Clause) -> int:
         """Insert a single clause."""
@@ -277,7 +366,7 @@ class ClauseRepository:
         """
 
         try:
-            with get_cursor() as cur:
+            with self._cursor() as cur:
                 cur.execute(
                     query,
                     (
@@ -299,7 +388,7 @@ class ClauseRepository:
                 logger.debug(f"Inserted clause {clause_id} for document {clause.document_id}")
                 return clause_id
         except Exception as e:
-            logger.error(f"Failed to insert clause: {e}")
+            logger.error(f"Failed to insert clause: {error_summary(e)}")
             raise
 
     def insert_batch(self, clauses: list[Clause]) -> list[int]:
@@ -343,13 +432,13 @@ class ClauseRepository:
         ]
 
         try:
-            with get_cursor() as cur:
+            with self._cursor() as cur:
                 ids = execute_values(cur, query, values, fetch=True)
                 clause_ids = [row[0] for row in ids]
                 logger.info(f"Inserted {len(clause_ids)} clauses")
                 return clause_ids
         except Exception as e:
-            logger.error(f"Failed to batch insert clauses: {e}")
+            logger.error(f"Failed to batch insert clauses: {error_summary(e)}")
             raise
 
     def get_by_id(self, clause_id: int) -> Clause | None:
@@ -363,14 +452,14 @@ class ClauseRepository:
         """
 
         try:
-            with get_cursor() as cur:
+            with self._cursor() as cur:
                 cur.execute(query, (clause_id,))
                 row = cur.fetchone()
                 if row:
                     return Clause.from_db_row(row)
                 return None
         except Exception as e:
-            logger.error(f"Failed to retrieve clause: {e}")
+            logger.error(f"Failed to retrieve clause: {error_summary(e)}")
             raise
 
     def get_by_document(self, document_id: int) -> list[Clause]:
@@ -385,12 +474,12 @@ class ClauseRepository:
         """
 
         try:
-            with get_cursor() as cur:
+            with self._cursor() as cur:
                 cur.execute(query, (document_id,))
                 rows = cur.fetchall()
                 return [Clause.from_db_row(row) for row in rows]
         except Exception as e:
-            logger.error(f"Failed to retrieve clauses for document: {e}")
+            logger.error(f"Failed to retrieve clauses for document: {error_summary(e)}")
             raise
 
     def search_by_type(self, clause_type: str, limit: int | None = None) -> list[Clause]:
@@ -405,15 +494,15 @@ class ClauseRepository:
         """
 
         try:
-            with get_cursor() as cur:
-                if limit:
+            with self._cursor() as cur:
+                if limit is not None:
                     cur.execute(query + " LIMIT %s", (clause_type, limit))
                 else:
                     cur.execute(query, (clause_type,))
                 rows = cur.fetchall()
                 return [Clause.from_db_row(row) for row in rows]
         except Exception as e:
-            logger.error(f"Failed to search clauses by type: {e}")
+            logger.error(f"Failed to search clauses by type: {error_summary(e)}")
             raise
 
     def delete_by_document(self, document_id: int) -> None:
@@ -421,28 +510,28 @@ class ClauseRepository:
         query = "DELETE FROM clauses WHERE document_id = %s"
 
         try:
-            with get_cursor() as cur:
+            with self._cursor() as cur:
                 cur.execute(query, (document_id,))
                 logger.info(f"Deleted clauses for document {document_id}")
         except Exception as e:
-            logger.error(f"Failed to delete clauses: {e}")
+            logger.error(f"Failed to delete clauses: {error_summary(e)}")
             raise
 
     def count_by_document(self, document_id: int) -> int:
         """Count clauses for a document."""
         query = "SELECT COUNT(*) FROM clauses WHERE document_id = %s"
         try:
-            with get_cursor() as cur:
+            with self._cursor() as cur:
                 cur.execute(query, (document_id,))
                 result = cur.fetchone()
                 return result[0] if result else 0
         except Exception as e:
-            logger.error(f"Failed to count clauses: {e}")
+            logger.error(f"Failed to count clauses: {error_summary(e)}")
             raise
 
     def update_embedding(self, clause_id: int, embedding: list[float]) -> None:
         """Store a vector embedding for a single clause."""
-        with get_vector_cursor() as cur:
+        with self._embedding_cursor() as cur:
             cur.execute(
                 "UPDATE clauses SET embedding = %s WHERE id = %s",
                 (embedding, clause_id),
@@ -450,7 +539,7 @@ class ClauseRepository:
 
     def update_embeddings_batch(self, pairs: list[tuple[int, list[float]]]) -> None:
         """Bulk-update embeddings. pairs = [(clause_id, embedding), ...]"""
-        with get_vector_cursor() as cur:
+        with self._embedding_cursor() as cur:
             cur.executemany(
                 "UPDATE clauses SET embedding = %s WHERE id = %s",
                 [(emb, cid) for cid, emb in pairs],
@@ -466,23 +555,19 @@ class ClauseRepository:
             WHERE embedding IS NULL
         """
         try:
-            with get_cursor() as cur:
+            with self._embedding_cursor(vector=False) as cur:
                 if document_id is not None:
                     cur.execute(base + " AND document_id = %s ORDER BY id", (document_id,))
                 else:
                     cur.execute(base + " ORDER BY id")
                 return [Clause.from_db_row(row) for row in cur.fetchall()]
         except Exception as e:
-            logger.error(f"Failed to retrieve unembedded clauses: {e}")
+            logger.error(f"Failed to retrieve unembedded clauses: {error_summary(e)}")
             raise
 
 
-class ProcessingLogRepository:
+class ProcessingLogRepository(_Repository):
     """Repository for ProcessingLog database operations."""
-
-    def __init__(self, connection=None):
-        """Initialize repository."""
-        self.connection = connection
 
     def insert(self, log: ProcessingLog) -> int:
         """Insert a processing log entry."""
@@ -495,7 +580,7 @@ class ProcessingLogRepository:
         """
 
         try:
-            with get_cursor() as cur:
+            with self._cursor() as cur:
                 cur.execute(
                     query, (log.document_id, log.processing_stage, log.status, log.error_message)
                 )
@@ -504,7 +589,7 @@ class ProcessingLogRepository:
                 logger.debug(f"Inserted processing log {log_id}")
                 return log_id
         except Exception as e:
-            logger.error(f"Failed to insert processing log: {e}")
+            logger.error(f"Failed to insert processing log: {error_summary(e)}")
             raise
 
     def get_by_document(self, document_id: int) -> list[ProcessingLog]:
@@ -517,12 +602,12 @@ class ProcessingLogRepository:
         """
 
         try:
-            with get_cursor() as cur:
+            with self._cursor() as cur:
                 cur.execute(query, (document_id,))
                 rows = cur.fetchall()
                 return [ProcessingLog.from_db_row(row) for row in rows]
         except Exception as e:
-            logger.error(f"Failed to retrieve processing logs: {e}")
+            logger.error(f"Failed to retrieve processing logs: {error_summary(e)}")
             raise
 
     def get_failed_documents(self) -> list[int]:
@@ -535,12 +620,12 @@ class ProcessingLogRepository:
         """
 
         try:
-            with get_cursor() as cur:
+            with self._cursor() as cur:
                 cur.execute(query)
                 rows = cur.fetchall()
                 return [row[0] for row in rows]
         except Exception as e:
-            logger.error(f"Failed to retrieve failed documents: {e}")
+            logger.error(f"Failed to retrieve failed documents: {error_summary(e)}")
             raise
 
     def get_latest_by_stage(self, document_id: int, stage: str) -> ProcessingLog | None:
@@ -554,12 +639,12 @@ class ProcessingLogRepository:
         """
 
         try:
-            with get_cursor() as cur:
+            with self._cursor() as cur:
                 cur.execute(query, (document_id, stage))
                 row = cur.fetchone()
                 if row:
                     return ProcessingLog.from_db_row(row)
                 return None
         except Exception as e:
-            logger.error(f"Failed to retrieve latest log: {e}")
+            logger.error(f"Failed to retrieve latest log: {error_summary(e)}")
             raise

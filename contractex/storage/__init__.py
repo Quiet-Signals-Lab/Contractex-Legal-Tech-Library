@@ -28,18 +28,25 @@ Usage:
 
 from __future__ import annotations
 
+try:
+    import psycopg2  # noqa: F401
+except ImportError as e:
+    raise ImportError(
+        "contractex.storage needs psycopg2. Install with: pip install 'contractex[storage]'"
+    ) from e
+
 # Models
 # Configuration
-from contractex.storage.config import get_db_config
+from contractex.storage.config import get_db_config  # noqa: E402
 
 # Connection utilities
-from contractex.storage.connection import (
+from contractex.storage.connection import (  # noqa: E402
     DatabaseConnection,
     get_connection,
     get_cursor,
     test_connection,
 )
-from contractex.storage.models import (
+from contractex.storage.models import (  # noqa: E402
     Clause,
     ClauseType,
     Document,
@@ -49,9 +56,11 @@ from contractex.storage.models import (
 )
 
 # Repositories
-from contractex.storage.repository import (
+from contractex.storage.repository import (  # noqa: E402
     ClauseRepository,
+    DocumentNotFoundError,
     DocumentRepository,
+    DuplicateDocumentError,
     ProcessingLogRepository,
 )
 
@@ -67,6 +76,8 @@ __all__ = [
     "DocumentRepository",
     "ClauseRepository",
     "ProcessingLogRepository",
+    "DuplicateDocumentError",
+    "DocumentNotFoundError",
     # Connection
     "DatabaseConnection",
     "get_connection",

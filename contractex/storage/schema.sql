@@ -109,9 +109,8 @@ CREATE INDEX IF NOT EXISTS idx_processing_log_status ON processing_log(status, p
 -- ==============================================================================
 -- FUTURE TABLES (NOT YET IMPLEMENTED)
 -- ==============================================================================
--- When ready for embeddings, add:
--- - text_embedding VECTOR(1536) to clauses table OR
--- - separate embeddings table with clause_id, embedding_type, model_version, vector
+-- Embeddings: apply migrations/add_embeddings.sql, which adds
+-- clauses.embedding VECTOR(384) and full-text search (needs pgvector).
 --
 -- When ready for multimodal vision:
 -- - document_images table with page_number, image_data, ocr_text, layout_type

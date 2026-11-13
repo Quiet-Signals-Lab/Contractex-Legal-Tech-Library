@@ -10,7 +10,7 @@
 --   3. Migrate existing clauses data → extracted_fields
 --   4. Rename old tables to _v1_archive (do not drop — allows rollback)
 --   5. Create clauses VIEW over extracted_fields
---   6. Create audit_log table
+--   6. Create document_audit_log table
 --   7. Create pgvector extension and document_chunks table
 -- =============================================================================
 
@@ -81,7 +81,7 @@ CREATE TABLE document_chunks (
     created_at      TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE audit_log (
+CREATE TABLE document_audit_log (
     id              BIGSERIAL PRIMARY KEY,
     doc_id          VARCHAR(200),
     event_type      VARCHAR(50) NOT NULL,
@@ -126,14 +126,15 @@ SELECT
         'text',           c.clause_text,
         'clause_type',    c.clause_type,
         'page_number',    c.page_number,
-        'section_number', c.section_number
+        'section_number', c.metadata->>'section_number'
     ),
     c.confidence_score,
     c.created_at
 FROM clauses c
 JOIN documents d ON d.id = c.document_id
-JOIN legal_docs ld ON ld.content_hash = d.file_hash
-    OR ld.title = COALESCE(d.metadata->>'contract_type', d.filename);
+-- filename is unique in v1; hash and title are not (text files have no hash,
+-- and every NDA has the title "NDA")
+JOIN legal_docs ld ON ld.metadata->>'filename' = d.filename;
 
 -- ---------------------------------------------------------------------------
 -- Step 5 — Archive old tables
@@ -177,8 +178,8 @@ CREATE INDEX idx_legal_docs_privacy       ON legal_docs USING GIN (privacy_profi
 CREATE INDEX idx_extracted_fields_doc_id  ON extracted_fields (doc_id);
 CREATE INDEX idx_extracted_fields_name    ON extracted_fields (field_name);
 CREATE INDEX idx_chunks_doc_id            ON document_chunks (doc_id);
-CREATE INDEX idx_audit_doc_id             ON audit_log (doc_id);
-CREATE INDEX idx_audit_event_type         ON audit_log (event_type);
+CREATE INDEX idx_audit_doc_id             ON document_audit_log (doc_id);
+CREATE INDEX idx_audit_event_type         ON document_audit_log (event_type);
 
 -- IVFFlat vector index (adjust lists based on expected row count)
 CREATE INDEX idx_chunks_embedding
@@ -212,9 +213,9 @@ DECLARE
     hashed_id TEXT;
 BEGIN
     hashed_id := encode(hmac(p_doc_id::TEXT, p_hmac_key, 'sha256'), 'hex');
-    UPDATE audit_log SET doc_id = hashed_id WHERE doc_id = p_doc_id::TEXT;
+    UPDATE document_audit_log SET doc_id = hashed_id WHERE doc_id = p_doc_id::TEXT;
     DELETE FROM legal_docs WHERE doc_id = p_doc_id;
-    INSERT INTO audit_log (doc_id, event_type, event_data)
+    INSERT INTO document_audit_log (doc_id, event_type, event_data)
     VALUES (hashed_id, 'gdpr_erasure_completed',
             jsonb_build_object('original_doc_id_hash', hashed_id, 'erased_at', NOW()));
 END;

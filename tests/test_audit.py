@@ -256,3 +256,95 @@ class TestAuditLogger:
             audit.log_ingestion("doc-42", pipeline_version="1.2.3")
         events = JSONLAuditBackend.read_all(path)
         assert events[0].metadata.get("pipeline_version") == "1.2.3"
+
+    def test_invalid_event_field_does_not_propagate(self, tmp_path):
+        """A bad value (confidence given as a percentage) must not break the pipeline."""
+        path = tmp_path / "a.jsonl"
+        with AuditLogger.from_jsonl(path) as audit:
+            audit.log_extraction("doc-1", ["party"], overall_confidence=92)
+            audit.log_ingestion("doc-2")
+        assert [e.document_id for e in JSONLAuditBackend.read_all(path)] == ["doc-2"]
+
+
+# ---------------------------------------------------------------------------
+# PostgresAuditBackend
+# ---------------------------------------------------------------------------
+
+
+def test_storage_sql_does_not_create_the_audit_backend_table():
+    """schema v2 had its own, different ``audit_log``; every audit insert then failed."""
+    import re
+    from pathlib import Path
+
+    import contractex.storage
+    from contractex.utils.audit import PostgresAuditBackend
+
+    def created_tables(sql: str) -> set[str]:
+        return set(re.findall(r"CREATE TABLE (?:IF NOT EXISTS )?(\w+)", sql))
+
+    (audit_table,) = created_tables(PostgresAuditBackend._DDL)
+    storage_dir = Path(contractex.storage.__file__).parent
+    for sql_file in sorted(storage_dir.rglob("*.sql")):
+        assert audit_table not in created_tables(sql_file.read_text()), sql_file.name
+
+
+@pytest.mark.integration
+class TestPostgresAuditBackend:
+    @pytest.fixture
+    def dsn(self, test_database):
+        import psycopg2
+
+        dsn = psycopg2.extensions.make_dsn(
+            dbname=test_database["db_name"],
+            user=test_database["user"],
+            password=test_database["password"],
+            host=test_database["host"],
+            port=test_database["port"],
+        )
+        yield dsn
+        conn = psycopg2.connect(dsn)
+        conn.autocommit = True
+        conn.cursor().execute("DROP TABLE IF EXISTS audit_log")
+        conn.close()
+
+    @staticmethod
+    def _query(dsn, sql):
+        import psycopg2
+
+        conn = psycopg2.connect(dsn)
+        conn.autocommit = True
+        cur = conn.cursor()
+        cur.execute(sql)
+        rows = cur.fetchall() if cur.description else []
+        conn.close()
+        return rows
+
+    def test_events_are_written(self, dsn):
+        with AuditLogger.from_postgres(dsn) as audit:
+            audit.log_ingestion("doc-1", source_url="https://docs.test/a.pdf")
+            audit.log_deletion("doc-1", user_id="dpo")
+        rows = self._query(dsn, "SELECT event_type FROM audit_log ORDER BY timestamp")
+        assert rows == [("document_ingested",), ("document_deleted",)]
+
+    def test_reconnects_after_a_dropped_connection(self, dsn):
+        audit = AuditLogger.from_postgres(dsn)
+        audit.log_ingestion("doc-1")
+        self._query(
+            dsn,
+            "SELECT pg_terminate_backend(pid) FROM pg_stat_activity "
+            "WHERE datname = current_database() AND pid <> pg_backend_pid()",
+        )
+        audit.log_ingestion("doc-2")
+        audit.log_ingestion("doc-3")
+        audit.close()
+        rows = self._query(dsn, "SELECT document_id FROM audit_log ORDER BY document_id")
+        assert rows == [("doc-1",), ("doc-2",), ("doc-3",)]
+
+    def test_incompatible_existing_table_is_an_error_at_setup(self, dsn):
+        """A table of the same name with other columns must not swallow every event."""
+        from contractex.exceptions import ContractExError
+        from contractex.utils.audit import PostgresAuditBackend
+
+        self._query(dsn, "CREATE TABLE audit_log (id BIGSERIAL PRIMARY KEY, doc_id TEXT)")
+        with pytest.raises(ContractExError, match="audit_log"):
+            PostgresAuditBackend(dsn)

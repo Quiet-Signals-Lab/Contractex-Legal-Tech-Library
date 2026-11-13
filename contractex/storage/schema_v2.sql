@@ -10,7 +10,7 @@
 -- * extracted_fields replaces the contract-specific clauses table;
 --   it stores any field from any document type
 -- * clauses is retained as a VIEW over extracted_fields for backward compat
--- * audit_log supports GDPR Art. 17 erasure — doc_id is hashed on deletion
+-- * document_audit_log supports GDPR Art. 17 erasure — doc_id is hashed on deletion
 -- * pgvector extension powers semantic search for RAG
 -- =============================================================================
 
@@ -147,10 +147,12 @@ CREATE INDEX IF NOT EXISTS idx_chunks_embedding_ivfflat
     WITH (lists = 100);
 
 -- ---------------------------------------------------------------------------
--- 4. audit_log  — GDPR-grade event log
+-- 4. document_audit_log  — GDPR-grade event log
 -- ---------------------------------------------------------------------------
 
-CREATE TABLE IF NOT EXISTS audit_log (
+-- Not named audit_log: that is the table PostgresAuditBackend
+-- (contractex.utils.audit) creates, with different columns.
+CREATE TABLE IF NOT EXISTS document_audit_log (
     id              BIGSERIAL PRIMARY KEY,
     doc_id          VARCHAR(200),
                     -- VARCHAR (not FK) because the doc may have been deleted.
@@ -173,13 +175,13 @@ CREATE TABLE IF NOT EXISTS audit_log (
 
 -- Index for GDPR erasure queries and doc-level audit trails
 CREATE INDEX IF NOT EXISTS idx_audit_doc_id
-    ON audit_log (doc_id);
+    ON document_audit_log (doc_id);
 
 CREATE INDEX IF NOT EXISTS idx_audit_event_type
-    ON audit_log (event_type);
+    ON document_audit_log (event_type);
 
 CREATE INDEX IF NOT EXISTS idx_audit_created_at
-    ON audit_log (created_at);
+    ON document_audit_log (created_at);
 
 -- ---------------------------------------------------------------------------
 -- 5. clauses  — backward-compatible VIEW over extracted_fields
@@ -228,7 +230,7 @@ CREATE TRIGGER trg_legal_docs_updated_at
 -- 7. GDPR right-to-erasure helper function
 --
 -- Cascades delete through extracted_fields and document_chunks.
--- Replaces doc_id in audit_log with HMAC-SHA256 hash to preserve the
+-- Replaces doc_id in document_audit_log with HMAC-SHA256 hash to preserve the
 -- audit trail without retaining the original identifier.
 -- ---------------------------------------------------------------------------
 
@@ -244,7 +246,7 @@ BEGIN
     );
 
     -- Update audit log before deletion (retain event history, anonymise ID)
-    UPDATE audit_log
+    UPDATE document_audit_log
     SET doc_id = hashed_id
     WHERE doc_id = p_doc_id::TEXT;
 
@@ -252,7 +254,7 @@ BEGIN
     DELETE FROM legal_docs WHERE doc_id = p_doc_id;
 
     -- Record the erasure itself
-    INSERT INTO audit_log (doc_id, event_type, event_data)
+    INSERT INTO document_audit_log (doc_id, event_type, event_data)
     VALUES (
         hashed_id,
         'gdpr_erasure_completed',
