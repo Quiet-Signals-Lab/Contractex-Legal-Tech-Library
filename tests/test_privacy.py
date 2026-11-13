@@ -46,6 +46,9 @@ def router(detector) -> PrivacyAwareLLMRouter:
     return PrivacyAwareLLMRouter(detector=detector)
 
 
+PII_PROMPT = "SSN 536-90-4399, mail jan@example.com"
+
+
 def redact_all(detector: PIIDetector, text: str) -> str:
     return PIIRedactor().redact(text, detector.detect(text)).text
 
@@ -82,6 +85,32 @@ class TestPrivacyProfile:
     def test_unknown_sensitivity_rejected(self):
         with pytest.raises(ValueError):
             PrivacyProfile(sensitivity="top-secret")
+
+    @pytest.mark.parametrize(
+        ("sensitivity", "routing"), [("restricted", "local_only"), ("secret", "blocked")]
+    )
+    def test_override_cannot_loosen_routing(self, sensitivity, routing):
+        p = PrivacyProfile(sensitivity=sensitivity, llm_routing="any")
+        assert p.effective_routing == routing
+        assert p.llm_routing == routing
+
+    @pytest.mark.parametrize(
+        ("sensitivity", "routing"), [("restricted", "local_only"), ("secret", "blocked")]
+    )
+    def test_sensitivity_raised_after_construction_tightens_routing(self, sensitivity, routing):
+        p = PrivacyProfile()
+        p.sensitivity = sensitivity
+        assert p.effective_routing == routing
+        copied = PrivacyProfile().model_copy(update={"sensitivity": sensitivity})
+        assert copied.effective_routing == routing
+
+    def test_unrecognised_values_set_after_construction_block(self):
+        p = PrivacyProfile()
+        p.sensitivity = "Secret"  # type: ignore[assignment]
+        assert p.is_blocked
+        q = PrivacyProfile()
+        q.llm_routing = "cloud"  # type: ignore[assignment]
+        assert q.is_blocked
 
 
 # ---------------------------------------------------------------------------
@@ -402,6 +431,36 @@ class TestRouterRouting:
             router.route_completion(Doc(PrivacyProfile(sensitivity="secret")), "p", local)
         assert local.prompts == []
 
+    @pytest.mark.parametrize(
+        "profile",
+        [
+            lambda: PrivacyProfile(sensitivity="secret", llm_routing="any"),
+            lambda: PrivacyProfile().model_copy(update={"sensitivity": "secret"}),
+            lambda: {**PrivacyProfile().model_dump(), "sensitivity": "secret"},
+        ],
+        ids=["loosening-override", "model_copy", "edited-dict"],
+    )
+    def test_secret_blocked_however_the_profile_was_built(self, router, profile):
+        spy = SpyProvider()
+        with pytest.raises(PrivacyBlockedError):
+            router.guard(spy, Doc(profile())).complete(PII_PROMPT)
+        assert spy.prompts == []
+
+    def test_secret_set_after_construction_is_blocked(self, router):
+        spy = SpyProvider()
+        profile = PrivacyProfile()
+        profile.sensitivity = "secret"
+        with pytest.raises(PrivacyBlockedError):
+            router.guard(spy, Doc(profile)).complete(PII_PROMPT)
+        assert spy.prompts == []
+
+    def test_restricted_with_loosening_override_rejects_cloud(self, router):
+        spy = SpyProvider()
+        doc = Doc(PrivacyProfile(sensitivity="restricted", llm_routing="any"))
+        with pytest.raises(PrivacyRoutingError):
+            router.guard(spy, doc).complete(PII_PROMPT)
+        assert spy.prompts == []
+
     def test_blocked_override_on_public_doc(self, router):
         spy = SpyProvider()
         doc = Doc(PrivacyProfile(sensitivity="public", llm_routing="blocked"))
@@ -580,6 +639,9 @@ class _FakeAnalyzer:
     def __init__(self) -> None:
         self.calls: list[tuple[str, list[str], str]] = []
 
+    def get_supported_entities(self, language: str) -> list[str]:
+        return ["PERSON", "LOCATION", "US_SSN", "PHONE_NUMBER"]
+
     def analyze(self, text: str, entities: list[str], language: str) -> list[_FakeResult]:
         self.calls.append((text, entities, language))
         i = text.find("Jane Doe")
@@ -608,6 +670,25 @@ class TestDetectorPresidioPath:
         (s,) = detector.detect(text)
         assert fake.calls[0][0] == "Call Jane Doe today"
         assert text[s.start : s.end] == "Ja\u200bne Doe"
+
+    def test_builtin_patterns_still_run_with_presidio(self, presidio):
+        detector, _ = presidio
+        spans = detector.detect("Jane Doe, number 536-90-4399, call 415-555-0132")
+        assert [(s.entity_type, s.text) for s in spans] == [
+            ("PERSON", "Jane Doe"),
+            ("US_SSN", "536-90-4399"),
+            ("PHONE_NUMBER", "415-555-0132"),
+        ]
+
+    def test_presidio_is_asked_only_for_entities_it_supports(self, presidio):
+        detector, fake = presidio
+        detector.detect("Call Jane Doe today")
+        assert fake.calls[0][1] == ["PERSON", "PHONE_NUMBER", "LOCATION", "US_SSN"]
+
+    def test_use_presidio_true_without_presidio_raises(self, monkeypatch):
+        monkeypatch.setattr(PIIDetector, "_check_presidio", staticmethod(lambda: False))
+        with pytest.raises(ImportError, match=r"contractex\[privacy\]"):
+            PIIDetector(use_presidio=True)
 
     def test_use_presidio_false_forces_regex(self, monkeypatch):
         monkeypatch.setattr(PIIDetector, "_check_presidio", staticmethod(lambda: True))

@@ -90,6 +90,57 @@ class TestTaskEnforcement:
         assert out.extracted["citations"]
         assert out.privacy_profile.sensitivity == "secret"
 
+    def test_profile_survives_json_round_trip_as_a_profile(self):
+        reloaded = LegalDoc.model_validate_json(make_doc("secret").model_dump_json())
+        assert isinstance(reloaded.privacy_profile, PrivacyProfile)
+        assert reloaded.privacy_profile.is_blocked
+        assert reloaded.is_privacy_restricted
+
+    @pytest.mark.parametrize(
+        ("sensitivity", "error"),
+        [("secret", PrivacyBlockedError), ("restricted", PrivacyRoutingError)],
+    )
+    def test_pii_detection_keeps_a_reloaded_documents_profile(self, sensitivity, error):
+        spy = SpyProvider()
+        reloaded = LegalDoc.model_validate_json(make_doc(sensitivity).model_dump_json())
+        pipeline = TaskRegistry.default().build_pipeline(
+            ["pii_detection", "summarization"],
+            task_kwargs={"summarization": {"llm_provider": spy}},
+        )
+        with pytest.raises(error):
+            pipeline.run(reloaded)
+        assert spy.prompts == []
+
+    def test_pii_detection_keeps_a_dict_profile(self):
+        doc = make_doc("public").model_copy(update={"privacy_profile": {"sensitivity": "secret"}})
+        out = TaskRegistry.default().build_pipeline(["pii_detection"]).run(doc)
+        assert out.privacy_profile.sensitivity == "secret"
+        assert out.privacy_profile.is_blocked
+
+    @pytest.mark.parametrize(
+        ("sensitivity", "error"),
+        [("secret", PrivacyBlockedError), ("restricted", PrivacyRoutingError)],
+    )
+    def test_pii_detection_sensitivity_option_is_enforced(self, sensitivity, error):
+        spy = SpyProvider()
+        doc = LegalDoc(doc_type=DocType.CONTRACT, full_text=SECRET_TEXT)
+        pipeline = TaskRegistry.default().build_pipeline(
+            ["pii_detection", "summarization"],
+            task_kwargs={
+                "pii_detection": {"sensitivity": sensitivity},
+                "summarization": {"llm_provider": spy},
+            },
+        )
+        with pytest.raises(error):
+            pipeline.run(doc)
+        assert spy.prompts == []
+
+    def test_pii_detection_never_lowers_sensitivity(self):
+        pipeline = TaskRegistry.default().build_pipeline(
+            ["pii_detection"], task_kwargs={"pii_detection": {"sensitivity": "confidential"}}
+        )
+        assert pipeline.run(make_doc("restricted")).privacy_profile.sensitivity == "restricted"
+
 
 # ---------------------------------------------------------------------------
 # TaskPipeline — custom tasks

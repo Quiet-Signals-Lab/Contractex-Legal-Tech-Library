@@ -216,20 +216,12 @@ class AnthropicProvider(LLMProvider):
 
     def count_tokens(self, text: str) -> int:
         """
-        Count tokens using Anthropic's count method.
+        Estimate tokens as characters ÷ 4.
 
-        Falls back to character-based estimation if API unavailable.
+        Anthropic's exact count is an API request that carries the text, so it
+        is not used: counting must never send a document anywhere.
         """
-        try:
-            # Use Anthropic's token counting
-            response = self.client.messages.count_tokens(
-                model=self._model, messages=[{"role": "user", "content": text}]
-            )
-            return int(response.input_tokens)
-        except Exception:
-            # Fallback: Claude uses similar tokenization to GPT
-            # Rough estimate: 1 token ≈ 4 characters
-            return len(text) // 4
+        return len(text) // 4
 
     @property
     def context_window(self) -> int:

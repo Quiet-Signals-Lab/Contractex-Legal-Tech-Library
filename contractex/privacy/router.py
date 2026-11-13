@@ -47,7 +47,7 @@ from __future__ import annotations
 import functools
 import logging
 from collections.abc import Iterator
-from typing import Any, Literal, cast
+from typing import Any, cast
 
 from pydantic import BaseModel
 
@@ -55,14 +55,13 @@ from contractex.exceptions import ContractExError
 from contractex.llm.base import LLMProvider
 from contractex.llm.local_provider import LocalProvider
 from contractex.privacy.detector import PIIDetector
-from contractex.privacy.profile import PrivacyProfile
+from contractex.privacy.profile import ROUTING_ORDER, PrivacyProfile
 from contractex.privacy.redactor import PIIRedactor, RedactionMap
 
 logger = logging.getLogger(__name__)
 
 # Ascending restriction
 _SENSITIVITY_ORDER = ["public", "confidential", "restricted", "secret"]
-_ROUTING_ORDER = ["any", "local_only", "blocked"]
 
 
 # ---------------------------------------------------------------------------
@@ -110,10 +109,9 @@ def strictest(profiles: list[PrivacyProfile]) -> PrivacyProfile:
     """Combine profiles, keeping the most restrictive sensitivity and routing."""
     if len(profiles) == 1:
         return profiles[0]
-    routing = max((p.llm_routing or "any" for p in profiles), key=_ROUTING_ORDER.index)
     return PrivacyProfile(
         sensitivity=max((p.sensitivity for p in profiles), key=_SENSITIVITY_ORDER.index),
-        llm_routing=cast(Literal["any", "local_only", "blocked"], routing),
+        llm_routing=max((p.effective_routing for p in profiles), key=ROUTING_ORDER.index),
     )
 
 
@@ -275,7 +273,7 @@ class PrivacyAwareLLMRouter:
             raise PrivacyBlockedError(
                 f"LLM processing is blocked for this document "
                 f"(sensitivity={profile.sensitivity!r}, "
-                f"llm_routing={profile.llm_routing!r})."
+                f"llm_routing={profile.effective_routing!r})."
             )
 
         if profile.is_local_only and not isinstance(provider, LocalProvider):
@@ -376,11 +374,15 @@ class PrivacyGuardedProvider(LLMProvider):
             clean, temperature=temperature, max_tokens=max_tokens, **kwargs
         )
 
+    # A provider may count tokens with an API request, so the text it is given
+    # to count is enforced and redacted exactly like a prompt.
     def estimate_cost(self, text: str) -> float:
-        return self.wrapped.estimate_cost(text)
+        clean, _ = self._router._prepare(self._profile, self._language, text, self.wrapped)
+        return self.wrapped.estimate_cost(clean)
 
     def count_tokens(self, text: str) -> int:
-        return self.wrapped.count_tokens(text)
+        clean, _ = self._router._prepare(self._profile, self._language, text, self.wrapped)
+        return self.wrapped.count_tokens(clean)
 
     @property
     def context_window(self) -> int:

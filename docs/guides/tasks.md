@@ -10,7 +10,7 @@ The pipeline uses it to refuse model-calling tasks on
 
 | `task_id` | Calls a model | Output key | How it works | When the output is poor |
 |---|---|---|---|---|
-| `pii_detection` | no | `pii_spans` | Presidio, or the regex fallback; also sets `doc.privacy_profile` | Missed PII stays in the text.  See [Limitations](../limitations.md). |
+| `pii_detection` | no | `pii_spans` | Built-in patterns, plus Presidio when installed; also sets `doc.privacy_profile` | Missed PII stays in the text.  See [Limitations](../limitations.md). |
 | `citation` | no | `citations` | Regular expressions for US case citations, U.S.C., C.F.R., EU regulations and directives, and acronyms such as GDPR | Other citation formats are silently absent. |
 | `classification` | no | `cuad_labels` | Keyword matching against CUAD clause types | A label means an indicative phrase occurs, not that the clause exists. |
 | `ner` | no | `ner_entities` | spaCy (`contractex[spacy]` plus a spaCy model) | As good as the spaCy model. |

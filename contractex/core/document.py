@@ -157,6 +157,16 @@ class LegalDoc(BaseModel):
     # Validators
     # ------------------------------------------------------------------
 
+    @field_validator("privacy_profile", mode="before")
+    @classmethod
+    def _load_privacy_profile(cls, v: Any) -> Any:
+        """A profile reloaded from JSON arrives as a dict; make it a profile again."""
+        if isinstance(v, dict):
+            from contractex.privacy.profile import PrivacyProfile
+
+            return PrivacyProfile.model_validate(v)
+        return v
+
     @field_validator("jurisdiction")
     @classmethod
     def _normalise_jurisdiction(cls, v: str | None) -> str | None:
@@ -219,8 +229,9 @@ class LegalDoc(BaseModel):
         """True if a PrivacyProfile is attached and routing is not 'any'."""
         if self.privacy_profile is None:
             return False
-        routing = getattr(self.privacy_profile, "llm_routing", "any")
-        return routing != "any"
+        from contractex.privacy.router import resolve_profile
+
+        return resolve_profile(self, self.privacy_profile).effective_routing != "any"
 
     # ------------------------------------------------------------------
     # Mutation helpers
