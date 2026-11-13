@@ -82,6 +82,9 @@ class PDFLoader(DocumentLoader):
 
         Returns:
             OCR'd text
+
+        Raises:
+            DocumentLoadError: If OCR is not installed or fails
         """
         try:
             import pytesseract
@@ -94,9 +97,9 @@ class PDFLoader(DocumentLoader):
             raise DocumentLoadError(
                 "OCR dependencies not installed. Install with: pip install 'contractex[ocr]'"
             ) from e
-        except Exception:
-            # Silently fail and return empty string
-            return ""
+        except Exception as e:
+            # e.g. the Tesseract program is missing: an empty page would hide that
+            raise DocumentLoadError(f"OCR failed: {e}") from e
 
     def get_metadata(self, source: str) -> dict[str, Any]:
         """Get PDF metadata."""
@@ -128,7 +131,9 @@ def page_text(page: Any, preserve_layout: bool = False) -> str:
             rects.sort(key=lambda r: (-r[3], r[0]))
             text = "\n".join(textpage.get_text_bounded(*r) for r in rects)
         else:
-            text = textpage.get_text_range()
+            # get_text_bounded() with no arguments is the whole page; pypdfium2 4.x
+            # warns when get_text_range() is called that way
+            text = textpage.get_text_bounded()
     finally:
         textpage.close()
     return str(text).replace("\r\n", "\n").replace("\r", "\n")
