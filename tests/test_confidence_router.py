@@ -274,3 +274,34 @@ class TestReviewItem:
         )
         assert item.field_name == "surname"
         assert item.decision == RoutingDecision.HUMAN_REVIEW
+
+
+# ---------------------------------------------------------------------------
+# LegalDoc and per-field threshold validation
+# ---------------------------------------------------------------------------
+
+
+class TestLegalDocAndFieldThresholds:
+    def test_route_document_accepts_legal_doc(self):
+        from contractex.core.document import LegalDoc
+
+        doc = LegalDoc()
+        doc.set_field("surname", "SMITH", 0.93, chunk_id="chunk-1")
+        doc.set_field("dob", "1990-01-01", 0.60)
+        doc.set_field("mrz", "P<GBR", 0.10)
+
+        result = ConfidenceRouter().route_document(doc)
+
+        assert result.document_id == doc.doc_id
+        assert result.accepted == {"surname": "SMITH"}
+        assert result.review_field_names == ["dob"]
+        assert result.rejected_field_names == ["mrz"]
+
+    def test_swapped_field_thresholds_raise(self):
+        # (accept, reject) given as (reject, accept) used to auto-accept at 0.8
+        with pytest.raises(ValueError, match="passport_number"):
+            ConfidenceRouter(field_thresholds={"passport_number": (0.70, 0.95)})
+
+    def test_out_of_range_field_thresholds_raise(self):
+        with pytest.raises(ValueError, match="dob"):
+            ConfidenceRouter(field_thresholds={"dob": (1.5, 0.5)})
