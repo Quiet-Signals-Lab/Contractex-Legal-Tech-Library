@@ -23,7 +23,7 @@ Quick start::
     structure = parse_structure(open("nda.txt").read())
 
     # Layer 2: schema-constrained LLM extraction
-    extractor = ContractExtractor(llm_provider_name="claude-sonnet-4", temperature=0.0)
+    extractor = ContractExtractor(llm_provider_name="llama3.1:8b")
     result = extractor.extract("nda.pdf")
 
     # Layer 3: playbook-based analysis (no LLM)
@@ -35,10 +35,12 @@ Quick start::
     print(result.metadata.prompt_versions)
 
 Privacy-first: the full pipeline runs locally with Llama 3.1.
-Benchmarked against CUAD: use contractex.eval.CUADBenchmark.
+Measured on CUAD: see ``benchmarks/`` in the repository.
 """
 
 from __future__ import annotations
+
+import logging
 
 from contractex.__version__ import __version__
 
@@ -67,6 +69,12 @@ from contractex.core.models import (
 
 # Eval
 from contractex.eval import CalibrationAnalyzer, CUADBenchmark
+from contractex.exceptions import (
+    ContractExError,
+    DocumentLoadError,
+    ExtractionError,
+    LLMProviderError,
+)
 from contractex.llm.base import LLMProvider
 
 # Playbooks
@@ -75,6 +83,8 @@ from contractex.playbooks import (
     SaaSPlaybook,
     StandardNDAPlaybook,
 )
+from contractex.privacy.profile import PrivacyProfile
+from contractex.rag.pipeline import LegalRAGPipeline
 
 # Layer 1: structural parse (deterministic, no LLM)
 from contractex.structure import (
@@ -83,33 +93,13 @@ from contractex.structure import (
     Section,
     parse_structure,
 )
+from contractex.tasks.registry import TaskRegistry
 from contractex.utils.audit import AuditLogger
 from contractex.utils.provenance import ProvenanceTracker
 from contractex.utils.routing import ConfidenceRouter
 
-
-# New architectural components (lazy-imported to avoid hard deps)
-def _lazy(module: str, attr: str):
-    """Return a lazy accessor to avoid importing optional deps at package load time."""
-    import importlib
-
-    return getattr(importlib.import_module(module), attr)
-
-
-try:
-    from contractex.privacy.profile import PrivacyProfile
-except ImportError:  # presidio not installed
-    PrivacyProfile = None  # type: ignore[assignment,misc]
-
-try:
-    from contractex.tasks.registry import TaskRegistry
-except ImportError:
-    TaskRegistry = None  # type: ignore[assignment,misc]
-
-try:
-    from contractex.rag.pipeline import LegalRAGPipeline
-except ImportError:
-    LegalRAGPipeline = None  # type: ignore[assignment,misc]
+# A library must not print log records unless the application asks for them.
+logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 
 # Simple API for 80% use case
@@ -195,6 +185,16 @@ __all__ = [
     "ProvenanceTracker",
     "ConfidenceRouter",
     "AuditLogger",
+    # Privacy, tasks and retrieval
+    "PrivacyProfile",
+    "TaskRegistry",
+    "LegalRAGPipeline",
+    # Providers and errors
+    "LLMProvider",
+    "ContractExError",
+    "DocumentLoadError",
+    "ExtractionError",
+    "LLMProviderError",
 ]
 
 # Optional modules (require additional dependencies):

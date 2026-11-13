@@ -1,4 +1,4 @@
-# Makefile for Contract Clause Extractor Tests
+# Makefile for Contractex tests
 # Provides convenient shortcuts for running tests
 
 .PHONY: help test test-unit test-integration test-smoke test-cov test-fast test-all clean install-test
@@ -10,7 +10,7 @@ RED := \033[0;31m
 NC := \033[0m # No Color
 
 help: ## Show this help message
-	@echo '$(BLUE)Contract Clause Extractor - Test Commands$(NC)'
+	@echo '$(BLUE)Contractex - Test Commands$(NC)'
 	@echo ''
 	@echo 'Usage:'
 	@echo '  make $(GREEN)<target>$(NC)'
@@ -41,12 +41,12 @@ test-smoke: ## Run quick smoke tests
 
 test-cov: ## Run tests with coverage report
 	@echo '$(BLUE)Running tests with coverage...$(NC)'
-	pytest --cov=dbase --cov-report=html --cov-report=term
+	pytest --cov=contractex --cov-report=html --cov-report=term
 	@echo '$(GREEN)Coverage report generated in htmlcov/index.html$(NC)'
 
 test-cov-term: ## Run tests with terminal coverage report
 	@echo '$(BLUE)Running tests with coverage...$(NC)'
-	pytest --cov=dbase --cov-report=term-missing
+	pytest --cov=contractex --cov-report=term-missing
 
 test-fast: ## Run tests in parallel (requires pytest-xdist)
 	@echo '$(BLUE)Running tests in parallel...$(NC)'
@@ -54,7 +54,7 @@ test-fast: ## Run tests in parallel (requires pytest-xdist)
 
 test-all: ## Run comprehensive test suite with coverage
 	@echo '$(BLUE)Running comprehensive test suite...$(NC)'
-	pytest -v --cov=dbase --cov-report=html --cov-report=term-missing
+	pytest -v --cov=contractex --cov-report=html --cov-report=term-missing
 	@echo '$(GREEN)All tests complete!$(NC)'
 
 test-verbose: ## Run tests with maximum verbosity
@@ -108,17 +108,17 @@ check-db: ## Check if PostgreSQL is running
 
 lint: ## Run ruff linting
 	@echo '$(BLUE)Running ruff...$(NC)'
-	ruff check contractex/ tests/
+	ruff check contractex/ tests/ benchmarks/
 	@echo '$(GREEN)Linting passed!$(NC)'
 
 format: ## Format code with black
 	@echo '$(BLUE)Formatting with black...$(NC)'
-	black contractex/ tests/
+	black contractex/ tests/ benchmarks/
 	@echo '$(GREEN)Formatting done!$(NC)'
 
 format-check: ## Check formatting without modifying files
 	@echo '$(BLUE)Checking black formatting...$(NC)'
-	black --check contractex/ tests/
+	black --check contractex/ tests/ benchmarks/
 	@echo '$(GREEN)Format check passed!$(NC)'
 
 type-check: ## Run mypy type checking
@@ -129,7 +129,7 @@ type-check: ## Run mypy type checking
 qa: format-check lint type-check ## Run all quality checks (format + lint + types)
 	@echo '$(GREEN)All QA checks passed!$(NC)'
 
-pre-release: qa test-unit ## Full pre-release gate: QA checks + unit tests
+pre-release: qa test ## Full pre-release gate: QA checks + all tests
 	@echo '$(GREEN)Pre-release checks complete — safe to release!$(NC)'
 
 stats: ## Show test statistics

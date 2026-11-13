@@ -1,5 +1,6 @@
 [build-system]
-requires = ["setuptools>=68.0", "wheel"]
+# 77 is the first setuptools that reads the PEP 639 licence fields below
+requires = ["setuptools>=77.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,7 +9,8 @@ dynamic = ["version"]
 description = "Processing layer for legal document AI: chunking, extraction, provenance, privacy enforcement and evaluation"
 readme = "README.md"
 requires-python = ">=3.11"
-license = {text = "Apache-2.0"}
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 authors = [
     {name = "Alexander Hepburn", email = "hello@quietsignalslab.com"}
 ]
@@ -17,7 +19,6 @@ classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "Intended Audience :: Legal Industry",
-    "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -25,6 +26,7 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Text Processing :: Linguistic",
+    "Typing :: Typed",
 ]
 
 # Only what every install needs.  LLM vendor SDKs are optional extras: the
@@ -72,6 +74,8 @@ dev = [
     "pillow>=10.0.0",
     "psycopg2-binary>=2.9.9",
     "requests>=2.31.0",
+    "pandas>=2.2.0",
+    "openpyxl>=3.1.0",
 ]
 docs = [
     # MkDocs 2.0 removes the plugin system this site depends on
@@ -98,7 +102,7 @@ exclude = ["tests*", "examples*", "benchmarks*", "docs*"]
 version = {attr = "contractex.__version__.__version__"}
 
 [tool.setuptools.package-data]
-contractex = ["storage/*.sql", "storage/migrations/*.sql", "playbooks/*.yaml"]
+contractex = ["py.typed", "storage/*.sql", "storage/migrations/*.sql", "playbooks/*.yaml"]
 
 [tool.black]
 line-length = 100

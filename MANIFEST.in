@@ -2,14 +2,10 @@ include README.md
 include LICENSE
 include CHANGELOG.md
 include CONTRIBUTING.md
+include SECURITY.md
 include .env.example
-recursive-include contractex *.py *.sql *.yaml
+include mkdocs.yml
+recursive-include contractex *.py *.sql *.yaml py.typed
 recursive-include docs *.md
-recursive-include examples *.py
-recursive-exclude tests *
-recursive-exclude benchmarks *
-recursive-exclude htmlcov *
-recursive-exclude .github *
-global-exclude __pycache__
-global-exclude *.py[co]
-global-exclude .DS_Store
+recursive-include examples *.yaml *.txt
+recursive-include tests *.py
