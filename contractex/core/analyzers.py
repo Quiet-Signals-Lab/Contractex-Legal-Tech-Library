@@ -23,6 +23,10 @@ _RISK_TEXT_CHARS = 20_000
 _VALID_SEVERITIES = {s.value for s in RiskSeverity}
 
 
+# Start of the warning recorded in Contract.metadata.warnings when the model call fails
+RISK_FAILURE = "LLM risk analysis failed"
+
+
 class LLMRiskAnalyzer:
     """
     Analyzer for detecting risks in contracts using rule-based and LLM approaches.
@@ -189,7 +193,7 @@ class LLMRiskAnalyzer:
             logger.warning("LLM-based risk analysis failed: %s — skipping", e)
             # First line only: the rest of the error can quote the prompt
             first_line = (str(e).splitlines() or [type(e).__name__])[0]
-            contract.metadata.warnings.append(f"LLM risk analysis failed: {first_line}")
+            contract.metadata.warnings.append(f"{RISK_FAILURE}: {first_line}")
             return []
 
         risks: list[RiskFlag] = []

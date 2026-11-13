@@ -323,11 +323,12 @@ class ContractExtractor:
             # Build ContractMetadata
             processing_time = time.monotonic() - start_time
 
-            # Import prompt versions for provenance tracking
-            try:
-                from contractex.prompts import PROMPT_VERSIONS as _pv
-            except Exception:
-                _pv = {}
+            # Provenance: the prompts this run actually sent
+            from contractex.prompts import PROMPT_VERSIONS
+
+            prompts_used = ["contract_info", "clause_extraction"]
+            if extract_financial:
+                prompts_used.append("financial_extraction")
 
             contract_metadata = ContractMetadata(  # type: ignore[call-arg]
                 filename=extraction_meta.get("filename"),
@@ -337,7 +338,7 @@ class ContractExtractor:
                 processing_time_seconds=round(processing_time, 2),
                 token_usage=extraction_meta.get("token_usage"),
                 warnings=extraction_meta.get("warnings", []),
-                prompt_versions=dict(_pv),
+                prompt_versions={name: PROMPT_VERSIONS[name] for name in prompts_used},
             )
             contract_data["metadata"] = contract_metadata
 
@@ -350,6 +351,9 @@ class ContractExtractor:
 
                 analyzer = LLMRiskAnalyzer(llm_provider=self.llm_provider)
                 contract.risks = analyzer.analyze(contract)
+                contract.metadata.prompt_versions["risk_analysis"] = PROMPT_VERSIONS[
+                    "risk_analysis"
+                ]
 
             # Attach confidence warnings
             self._validate_confidence(contract)
