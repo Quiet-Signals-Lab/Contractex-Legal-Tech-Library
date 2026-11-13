@@ -18,6 +18,12 @@ if TYPE_CHECKING:
     import pandas as pd
 
 
+def _cell(value: str | None) -> str:
+    """Text for a spreadsheet cell: a leading ' stops it being read as a formula."""
+    value = value or ""
+    return "'" + value if value.startswith(("=", "+", "-", "@")) else value
+
+
 class ContractType(str, Enum):
     """Common contract types."""
 
@@ -89,7 +95,7 @@ class Party(BaseModel):
     confidence: float = Field(0.0, ge=0.0, le=1.0, description="Extraction confidence score")
 
     def __str__(self) -> str:
-        return f"{self.name} ({self.role})" if self.role else self.name
+        return f"{self.name} ({self.role.value})" if self.role else self.name
 
 
 class Clause(BaseModel):
@@ -331,6 +337,11 @@ class Contract(BaseModel):
             return (self.expiration_date - self.effective_date).days
         return None
 
+    @property
+    def _type_label(self) -> str:
+        """Contract type as its value ("nda"); f"{member}" prints the member name on 3.12+."""
+        return self.contract_type.value if self.contract_type else ""
+
     # Export methods
     def to_json(self, file_path: str | None = None, **kwargs: Any) -> str:
         """
@@ -375,12 +386,12 @@ class Contract(BaseModel):
         data = []
         for clause in self.clauses:
             row = {
-                "contract_type": self.contract_type,
-                "clause_type": clause.clause_type,
-                "text": clause.text,
+                "contract_type": self._type_label,
+                "clause_type": _cell(clause.clause_type),
+                "text": _cell(clause.text),
                 "page_number": clause.page_number,
                 "confidence": clause.confidence,
-                "section_number": clause.section_number,
+                "section_number": _cell(clause.section_number) or None,
             }
             data.append(row)
 
@@ -405,11 +416,11 @@ class Contract(BaseModel):
             overview_data = {
                 "Field": ["Contract Type", "Title", "Effective Date", "Expiration Date", "Parties"],
                 "Value": [
-                    str(self.contract_type),
-                    self.title or "",
+                    self._type_label,
+                    _cell(self.title),
                     str(self.effective_date) if self.effective_date else "",
                     str(self.expiration_date) if self.expiration_date else "",
-                    ", ".join([p.name for p in self.parties]),
+                    _cell(", ".join([p.name for p in self.parties])),
                 ],
             }
             pd.DataFrame(overview_data).to_excel(writer, sheet_name="Overview", index=False)
@@ -422,11 +433,11 @@ class Contract(BaseModel):
             if self.financial_terms:
                 financial_data = [
                     {
-                        "Type": ft.term_type,
-                        "Amount": str(ft.amount) if ft.amount else "",
-                        "Currency": ft.currency,
-                        "Frequency": ft.frequency or "",
-                        "Description": ft.description,
+                        "Type": _cell(ft.term_type),
+                        "Amount": str(ft.amount) if ft.amount is not None else "",
+                        "Currency": _cell(ft.currency),
+                        "Frequency": _cell(ft.frequency),
+                        "Description": _cell(ft.description),
                         "Confidence": ft.confidence,
                     }
                     for ft in self.financial_terms
@@ -439,10 +450,10 @@ class Contract(BaseModel):
             if self.risks:
                 risk_data = [
                     {
-                        "Type": r.risk_type,
-                        "Severity": r.severity,
-                        "Description": r.description,
-                        "Recommendation": r.recommendation or "",
+                        "Type": _cell(r.risk_type),
+                        "Severity": r.severity.value,
+                        "Description": _cell(r.description),
+                        "Recommendation": _cell(r.recommendation),
                         "Confidence": r.confidence,
                     }
                     for r in self.risks
@@ -466,11 +477,11 @@ class Contract(BaseModel):
 
     def __str__(self) -> str:
         parties_str = ", ".join([p.name for p in self.parties])
-        return f"Contract({self.contract_type}, parties=[{parties_str}])"
+        return f"Contract({self._type_label or None}, parties=[{parties_str}])"
 
     def __repr__(self) -> str:
         return (
-            f"Contract(type={self.contract_type}, "
+            f"Contract(type={self._type_label or None}, "
             f"parties={len(self.parties)}, "
             f"clauses={len(self.clauses)}, "
             f"risks={len(self.risks)})"

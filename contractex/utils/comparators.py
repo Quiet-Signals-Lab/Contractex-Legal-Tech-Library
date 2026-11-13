@@ -91,8 +91,8 @@ class ContractComparator:
             diffs.append(f"Clause types only in Contract 2: {', '.join(only_in_2)}")
 
         # Compare common clause types
-        common_types = types1 & types2
-        for clause_type in common_types:
+        texts1, texts2 = self._text_by_type(c1), self._text_by_type(c2)
+        for clause_type in sorted(types1 & types2):
             clauses1 = [c for c in c1.clauses if c.clause_type == clause_type]
             clauses2 = [c for c in c2.clauses if c.clause_type == clause_type]
 
@@ -101,8 +101,19 @@ class ContractComparator:
                     f"Different number of '{clause_type}' clauses: "
                     f"{len(clauses1)} vs {len(clauses2)}"
                 )
+            elif texts1[clause_type] != texts2[clause_type]:
+                ratio = compare_clause_texts(texts1[clause_type], texts2[clause_type])
+                diffs.append(f"'{clause_type}' clause text differs ({ratio:.0%} similar)")
 
         return diffs
+
+    @staticmethod
+    def _text_by_type(contract: Contract) -> dict[str, str]:
+        """Clause text per clause type; clauses of one type are joined in document order."""
+        texts: dict[str, list[str]] = {}
+        for clause in contract.clauses:
+            texts.setdefault(clause.clause_type, []).append(clause.text)
+        return {clause_type: "\n".join(parts) for clause_type, parts in texts.items()}
 
     def _compare_financial(self, c1: Contract, c2: Contract) -> list[str]:
         """Compare financial terms."""
@@ -127,6 +138,26 @@ class ContractComparator:
             if only_in_2:
                 diffs.append(f"Financial terms only in Contract 2: {', '.join(only_in_2)}")
 
+        # Same term type, different amount or currency
+        for term_type in sorted(types1 & types2):
+            amounts1, amounts2 = (
+                sorted(
+                    (
+                        (ft.currency, ft.amount)
+                        for ft in c.financial_terms
+                        if ft.term_type == term_type
+                    ),
+                    key=lambda a: (a[0], a[1] is not None, a[1] or 0),
+                )
+                for c in (c1, c2)
+            )
+            if amounts1 != amounts2:  # Decimal("50000") == Decimal("50000.00")
+                shown1, shown2 = (
+                    ", ".join(f"{currency} {amount}" for currency, amount in amounts)
+                    for amounts in (amounts1, amounts2)
+                )
+                diffs.append(f"'{term_type}' differs: {shown1} vs {shown2}")
+
         return diffs
 
     def _compare_dates(self, c1: Contract, c2: Contract) -> list[str]:
@@ -148,13 +179,13 @@ class ContractComparator:
         if not c1.clauses or not c2.clauses:
             return 0.0
 
-        types1 = {c.clause_type for c in c1.clauses}
-        types2 = {c.clause_type for c in c2.clauses}
+        # Jaccard over clause types, each shared type weighted by how alike its text is
+        texts1, texts2 = self._text_by_type(c1), self._text_by_type(c2)
+        shared = sum(
+            compare_clause_texts(texts1[t], texts2[t]) for t in texts1.keys() & texts2.keys()
+        )
 
-        intersection = len(types1 & types2)
-        union = len(types1 | types2)
-
-        return intersection / union if union > 0 else 0.0
+        return shared / len(texts1.keys() | texts2.keys())
 
     def _calculate_overall_similarity(self, comparison: ContractComparison) -> float:
         """Calculate overall similarity score."""

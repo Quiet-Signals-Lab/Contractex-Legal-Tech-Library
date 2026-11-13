@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from contractex.core.models import Contract
+from contractex.core.models import Contract, _cell
 
 
 class JSONExporter:
@@ -78,23 +78,32 @@ class CSVExporter:
                 "pandas required for CSV export. Install with: pip install 'contractex[export]'"
             ) from e
 
-        if not contract.financial_terms:
-            return
-
         data = [
             {
-                "term_type": ft.term_type,
-                "amount": str(ft.amount) if ft.amount else "",
-                "currency": ft.currency,
-                "frequency": ft.frequency or "",
+                "term_type": _cell(ft.term_type),
+                "amount": str(ft.amount) if ft.amount is not None else "",
+                "currency": _cell(ft.currency),
+                "frequency": _cell(ft.frequency),
                 "due_date": str(ft.due_date) if ft.due_date else "",
-                "description": ft.description,
+                "description": _cell(ft.description),
                 "confidence": ft.confidence,
             }
             for ft in contract.financial_terms
         ]
 
-        df = pd.DataFrame(data)
+        # Named columns: a contract with no terms still overwrites the file, header only
+        df = pd.DataFrame(
+            data,
+            columns=[
+                "term_type",
+                "amount",
+                "currency",
+                "frequency",
+                "due_date",
+                "description",
+                "confidence",
+            ],
+        )
         df.to_csv(file_path, index=False, encoding="utf-8")
 
 
@@ -135,8 +144,8 @@ class ExcelExporter:
                 summary_data.append(
                     {
                         "Contract #": i,
-                        "Type": str(contract.contract_type),
-                        "Parties": ", ".join([p.name for p in contract.parties]),
+                        "Type": contract.contract_type.value if contract.contract_type else "",
+                        "Parties": _cell(", ".join([p.name for p in contract.parties])),
                         "Effective Date": (
                             str(contract.effective_date) if contract.effective_date else ""
                         ),
@@ -150,8 +159,8 @@ class ExcelExporter:
 
             pd.DataFrame(summary_data).to_excel(writer, sheet_name="Summary", index=False)
 
-            # Individual contract sheets (limit to first 10 to avoid too many sheets)
-            for i, contract in enumerate(contracts[:10], 1):
+            # Individual contract sheets
+            for i, contract in enumerate(contracts, 1):
                 if contract.clauses:
                     df = contract.to_dataframe()
                     sheet_name = f"Contract {i}"[:31]  # Excel sheet name limit
