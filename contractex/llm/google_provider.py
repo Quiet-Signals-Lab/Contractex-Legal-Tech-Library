@@ -6,7 +6,8 @@ import json
 import logging
 import os
 import time
-from typing import Any
+from collections.abc import Callable
+from typing import Any, TypeVar
 
 from pydantic import BaseModel
 
@@ -14,6 +15,8 @@ from contractex.exceptions import LLMProviderError
 from contractex.llm.base import LLMProvider
 
 logger = logging.getLogger(__name__)
+
+_T = TypeVar("_T")
 
 
 class GoogleProvider(LLMProvider):
@@ -69,7 +72,8 @@ class GoogleProvider(LLMProvider):
 
                 self.client_type = "new"
                 client = genai.Client(api_key=self._api_key)
-                self.client = client.models.generate_content
+                # Any: a google-genai callable here, a legacy GenerativeModel below
+                self.client: Any = client.models.generate_content
                 self._model_name = model
             except (ImportError, AttributeError):
                 # Fall back to old deprecated package
@@ -97,7 +101,9 @@ class GoogleProvider(LLMProvider):
         """Get the model name."""
         return self._model
 
-    def _call_with_retry(self, fn, label: str, max_retries: int = 3, base_delay: float = 2.0):
+    def _call_with_retry(
+        self, fn: Callable[[], _T], label: str, max_retries: int = 3, base_delay: float = 2.0
+    ) -> _T:
         """Call fn() with exponential backoff on retryable errors."""
         last_error = None
 
@@ -156,7 +162,7 @@ class GoogleProvider(LLMProvider):
         """
         max_tokens = max_tokens or self._max_tokens
 
-        def _call():
+        def _call() -> BaseModel:
             # Build JSON schema prompt
             json_schema = schema.model_json_schema()
             enhanced_prompt = f"""{prompt}
@@ -226,7 +232,7 @@ Requirements:
                 )
                 raise LLMProviderError(f"Schema validation failed: {str(e)}") from e
 
-        return self._call_with_retry(_call, "Google Gemini structured extraction")  # type: ignore[no-any-return]
+        return self._call_with_retry(_call, "Google Gemini structured extraction")
 
     def complete(
         self, prompt: str, temperature: float = 0.7, max_tokens: int | None = None, **kwargs: Any
@@ -245,7 +251,7 @@ Requirements:
         """
         max_tokens = max_tokens or self._max_tokens
 
-        def _call():
+        def _call() -> str:
             generation_config = {
                 "temperature": temperature,
                 "max_output_tokens": max_tokens,
@@ -261,9 +267,10 @@ Requirements:
             if not response or not response.text:
                 raise LLMProviderError("Empty response from Gemini")
 
-            return response.text
+            text: str = response.text
+            return text
 
-        return self._call_with_retry(_call, "Google Gemini completion")  # type: ignore[no-any-return]
+        return self._call_with_retry(_call, "Google Gemini completion")
 
     def count_tokens(self, text: str) -> int:
         """
