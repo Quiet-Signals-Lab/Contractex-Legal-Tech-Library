@@ -283,24 +283,24 @@ class TestConflictPrompt:
         assert "contain conflicting positions" not in prompt
         assert "You MUST present BOTH positions" not in prompt
 
-    def test_other_conflict_types_keep_the_both_positions_instruction(self):
-        detector = ConflictDetector()
-        jurisdiction = Conflict(
-            conflict_type=ConflictType.JURISDICTION_CONFLICT,
+    @pytest.mark.parametrize("conflict_type", list(ConflictType))
+    def test_a_metadata_difference_is_never_announced_as_a_disagreement(self, conflict_type):
+        # The detector compares jurisdiction, authority and dates.  It never
+        # reads the sources, so it cannot know that they disagree.
+        conflict = Conflict(
+            conflict_type=conflict_type,
             source_a_id="a",
             source_b_id="b",
             description="Source A applies to US-CA while Source B applies to US-TX.",
         )
-        temporal = Conflict(
-            conflict_type=ConflictType.TEMPORAL_CONFLICT,
-            source_a_id="a",
-            source_b_id="b",
-            description="Source A (2016) and Source B (2024) are separated by 8 years.",
-        )
-        for conflicts in ([jurisdiction], [jurisdiction, temporal]):
-            addendum = detector.build_conflict_prompt_addendum(conflicts)
-            assert "You MUST present BOTH positions" in addendum
-            assert "US-CA" in addendum
+        addendum = ConflictDetector().build_conflict_prompt_addendum([conflict])
+        assert "US-CA" in addendum
+        assert "CONFLICTING SOURCES DETECTED" not in addendum
+        assert "contain conflicting positions" not in addendum
+        assert "You MUST present BOTH positions" not in addendum
+        # the model is still told what to do if they do disagree
+        assert "If they take different positions" in addendum
+        assert "Do not merge them into one answer" in addendum
 
     def test_no_conflicts_adds_nothing(self):
         assert ConflictDetector().build_conflict_prompt_addendum([]) == ""
