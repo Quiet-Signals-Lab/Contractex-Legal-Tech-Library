@@ -35,7 +35,8 @@ wrong before, so read "Changed" before upgrading.
 - Excel and CSV exports wrote contract text beginning with `=`, `+`, `-` or
   `@` as live formulas.
 - A failed storage insert logged the row, document text included.
-- The clause-heading pattern took exponential time on a long digit run.
+- The clause-heading pattern took exponential time on a long digit run, and
+  the email pattern quadratic time on a long dotted run.
 
 ### Changed
 

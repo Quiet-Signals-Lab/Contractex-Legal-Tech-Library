@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import re
 import sys
+import time
 
 import pytest
 from pydantic import BaseModel
@@ -186,6 +187,21 @@ class TestDetectorRegexFallback:
     def test_threshold_override_can_suppress(self, detector):
         detector.set_threshold("PHONE_NUMBER", 0.99)
         assert detector.detect("Call 415-555-0132") == []
+
+
+class TestDetectorHostileInput:
+    @pytest.mark.parametrize(
+        "text", ["a." * 40_000, "a@" + "1." * 40_000, ("x" * 70 + "@") * 1_000], ids=str.__len__
+    )
+    def test_long_runs_without_an_address_take_linear_time(self, detector, text):
+        start = time.perf_counter()
+        detector.detect(text)
+        assert time.perf_counter() - start < 2.0
+
+    def test_address_at_the_length_limits_is_still_found(self, detector):
+        email = "a" * 64 + "@" + "b" * 60 + ".example.com"
+        (s,) = detector.detect(f"Write to {email} today.")
+        assert (s.entity_type, s.text) == ("EMAIL_ADDRESS", email)
 
 
 class TestDetectorAdversarial:
