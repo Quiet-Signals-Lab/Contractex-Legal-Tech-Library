@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import socket
 from unittest.mock import patch
 
 import pytest
@@ -29,6 +30,8 @@ HOSTS = {"internal.attacker.test": "127.0.0.1", "metadata.attacker.test": "169.2
 @pytest.fixture(autouse=True)
 def fake_dns():
     def getaddrinfo(host, *args, **kwargs):
+        if host == "unresolvable.test":
+            raise socket.gaierror("Name or service not known")
         return [(None, None, None, "", (HOSTS.get(host, "93.184.216.34"), 0))]
 
     with patch("socket.getaddrinfo", getaddrinfo):
@@ -194,6 +197,27 @@ class TestRedirectsToPrivateAddresses:
             _mock_response(text="AWS_SECRET=internal-only"),
         ]
         with pytest.raises(DocumentLoadError, match="private"):
+            URLLoader().fetch("https://docs.test/a.txt")
+        assert mock_get.call_count == 1
+
+    @pytest.mark.parametrize(
+        "location",
+        [
+            # read differently by different URL parsers: is the host docs.test or 127.0.0.1?
+            "http://docs.test\\@127.0.0.1/",
+            "http://127.0.0.1\\@docs.test/",
+            "http://cdn.docs.test@127.0.0.1/",
+            # cannot be checked, so not followed
+            "https://unresolvable.test/a.txt",
+        ],
+    )
+    @patch("requests.get")
+    def test_redirect_that_cannot_be_checked_is_refused(self, mock_get, location):
+        mock_get.side_effect = [
+            _mock_response(status_code=302, headers={"Location": location}),
+            _mock_response(text="AWS_SECRET=internal-only"),
+        ]
+        with pytest.raises(DocumentLoadError):
             URLLoader().fetch("https://docs.test/a.txt")
         assert mock_get.call_count == 1
 

@@ -57,9 +57,11 @@ making the rest credible.  Where a limit is measured, the
 - `URLLoader` and `APILoader` fetch the URL you give them, private addresses
   included: if the URL comes from a user, check it first.  They refuse a
   redirect or pagination link from a public host to a private address, and
-  any redirect to another host when the request carries credentials.  The
-  host name is resolved for that check and again for the request, so a DNS
-  answer that changes in between is not caught.
+  any redirect to another host when the request carries credentials.  A
+  target whose host cannot be resolved for the check is not followed, which
+  includes names only an HTTP proxy can resolve.  The host name is resolved
+  for the check and again for the request, so a DNS answer that changes in
+  between is not caught.
 
 ## Chunking and provenance
 

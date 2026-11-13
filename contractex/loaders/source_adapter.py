@@ -257,15 +257,21 @@ def _same_host(url: str, other: str) -> bool:
 
 
 def _is_private(url: str) -> bool:
-    """True if *url*'s host is, or resolves to, an address that is not public."""
-    host = urlparse(url).hostname or ""
+    """
+    True if *url*'s host is, or resolves to, an address that is not public.
+
+    Raises ``OSError`` when the host does not resolve.
+    """
+    # The host must be read the way the HTTP client reads it: urllib and
+    # urllib3 disagree on "http://a\\@b/", and the client connects to
+    # urllib3's answer.
+    from urllib3.util import parse_url
+
+    host = (parse_url(url).host or "").strip("[]")
     try:
         addresses = [ipaddress.ip_address(host)]
     except ValueError:
-        try:
-            addresses = [ipaddress.ip_address(a[4][0]) for a in socket.getaddrinfo(host, None)]
-        except (OSError, ValueError):
-            return False  # does not resolve: the request itself will fail
+        addresses = [ipaddress.ip_address(a[4][0]) for a in socket.getaddrinfo(host, None)]
     return any(not a.is_global for a in addresses)
 
 
@@ -276,13 +282,29 @@ def _refuse_public_to_private(source: str, target: str) -> None:
     A server on the internet must not be able to point the loader at
     loopback, a private network or a cloud metadata address and have the
     answer indexed as a document.  A source that is itself private (an
-    intranet server you named) may link anywhere.
+    intranet server you named) may link anywhere.  A target that cannot be
+    checked is not followed.
     """
-    # shortcut: the name is resolved here and again by the HTTP client, so a
-    # DNS answer that changes in between (rebinding) is not caught; pin the
-    # resolved address if this must hold against a hostile DNS server.
-    if _same_host(source, target) or _is_private(source) or not _is_private(target):
+    if _same_host(source, target):
         return
+    if "\\" in target or any(c.isspace() for c in target):
+        raise DocumentLoadError(f"{source!r} points to a malformed URL ({target!r}); not followed")
+    # shortcut: the name is resolved here and again by the HTTP client, so a
+    # DNS answer that changes in between (rebinding) is not caught, and behind
+    # an HTTP proxy the proxy resolves it; pin the resolved address if this
+    # must hold against a hostile DNS server.
+    try:
+        if not _is_private(target):
+            return
+    except (OSError, ValueError) as exc:
+        raise DocumentLoadError(
+            f"{source!r} points to {target!r}, whose host could not be checked; not followed"
+        ) from exc
+    try:
+        if _is_private(source):
+            return
+    except (OSError, ValueError):
+        pass  # an unresolvable source is treated as public
     raise DocumentLoadError(f"{source!r} points to a private address ({target!r}); not followed")
 
 
