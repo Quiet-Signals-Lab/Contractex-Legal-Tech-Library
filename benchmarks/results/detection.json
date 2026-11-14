@@ -1,0 +1,74 @@
+{
+ "arms": {
+  "patterns": {
+   "false_positives": 0,
+   "tokens_left": {
+    "ADDR": [
+     5011,
+     5012
+    ],
+    "LOC": [
+     676,
+     676
+    ],
+    "ORG": [
+     9628,
+     9652
+    ],
+    "PER": [
+     17598,
+     17744
+    ],
+    "REF": [
+     488,
+     510
+    ]
+   },
+   "unlabelled_type_detections": {
+    "EMAIL_ADDRESS": 880,
+    "PASSPORT_NUMBER": 2,
+    "PHONE_NUMBER": 157
+   }
+  },
+  "presidio": {
+   "false_positives": 120,
+   "tokens_left": {
+    "ADDR": [
+     3131,
+     5012
+    ],
+    "LOC": [
+     150,
+     676
+    ],
+    "ORG": [
+     9002,
+     9652
+    ],
+    "PER": [
+     3188,
+     17744
+    ],
+    "REF": [
+     470,
+     510
+    ]
+   },
+   "unlabelled_type_detections": {
+    "EMAIL_ADDRESS": 871,
+    "IBAN_CODE": 14,
+    "PASSPORT_NUMBER": 2,
+    "PHONE_NUMBER": 181
+   }
+  }
+ },
+ "documents": 980,
+ "fixture_sha256": "330a8106b2714af41e63ba042972590dba5c6b86fe40ec48d2181155a9089b0a",
+ "source": "Hepburn, A. (2026). Solander Detection Benchmark v1.2, sealed synthetic track. Quiet Signals Lab. https://doi.org/10.5281/zenodo.23594288",
+ "versions": {
+  "en-core-web-lg": "3.8.0",
+  "presidio-analyzer": "2.2.366",
+  "spacy": "3.8.18"
+ },
+ "words": 386524
+}

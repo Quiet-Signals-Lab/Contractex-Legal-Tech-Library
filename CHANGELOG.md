@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-11-14
+
+### Security
+
+- `local_only` routing (every `restricted` document) accepted any
+  `LocalProvider`, wherever its Ollama server ran and whatever model it ran.
+  Ollama cloud models (a `:cloud` or `-cloud` tag) are served through the
+  local Ollama server but run on ollama.com.  The router now also requires
+  that the provider's Ollama host resolves only to loopback or
+  private-network addresses, and that its model is not a cloud model.  A
+  host that cannot be resolved is refused.
+
+### Added
+
+- `python -m benchmarks.detection`: personal data left after redaction on
+  980 labelled synthetic English documents (Solander Detection Benchmark
+  v1.2, CC BY 4.0), with and without Presidio.  With Presidio, 18.0% of
+  person-name tokens, 62.5% of address tokens and 92.2% of reference-number
+  tokens are left.  The README now states this next to the privacy
+  guarantees.
+- `LocalProvider.host`.
+
+### Changed
+
+- `summarization`, `timeline`, `obligations` and `comparison` read only the
+  start of a long document.  They now say so: the task is listed in
+  `doc.extracted["truncated"]` and a warning is logged.  It used to be
+  silent.
+- `risk_analysis` applies `severity_threshold`; it was accepted and ignored.
+  The default is now `"info"`, which keeps every risk, as before.
+- The README states where privacy enforcement stops, not only the
+  limitations page.
+
+### Deprecated
+
+- `CitationTask(use_llm=True)`: it never had an effect, and no longer marks
+  the task as calling a model.
+
 ## [0.6.0] - 2026-11-14
 
 Fixes from a whole-repository audit.  Several change results that were
@@ -147,7 +185,7 @@ Code that nothing in the library, its tests or its documentation used.
 ## [0.5.0] - 2026-09-12
 
 The first release since 0.3.1.  It includes the unpublished 0.4.0 work
-below, fixes privacy defects that affect every earlier version, and adds
+below, fixes privacy defects that affect 0.3.0 and 0.3.1, and adds
 reproducible benchmarks.
 
 ### Breaking changes
@@ -170,7 +208,8 @@ reproducible benchmarks.
 
 ### Security
 
-Privacy defects present in every published version:
+Privacy defects present in every published version with the privacy module
+(0.3.0 and 0.3.1):
 
 - Without Presidio, email addresses, US Social Security numbers, card
   numbers and IBANs were never redacted (regex scores fell below the
@@ -460,7 +499,8 @@ never live.
 - CI/CD with GitHub Actions (tests, type checking, linting, PyPI publish workflow)
 - `CONTRIBUTING.md` with dev setup and contribution guidelines
 
-[Unreleased]: https://github.com/Quiet-Signals-Lab/Contractex-Legal-Tech-Library/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/Quiet-Signals-Lab/Contractex-Legal-Tech-Library/compare/v0.6.1...HEAD
+[0.6.1]: https://github.com/Quiet-Signals-Lab/Contractex-Legal-Tech-Library/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/Quiet-Signals-Lab/Contractex-Legal-Tech-Library/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/Quiet-Signals-Lab/Contractex-Legal-Tech-Library/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/Quiet-Signals-Lab/Contractex-Legal-Tech-Library/compare/v0.3.1...v0.5.0

@@ -60,5 +60,17 @@ class SpyProvider(_Recorder, LLMProvider):
 class SpyLocalProvider(_Recorder, LocalProvider):
     """A LocalProvider that records prompts instead of calling Ollama."""
 
-    def __init__(self, reply: str = "ok", structured: dict[str, Any] | None = None) -> None:
+    def __init__(
+        self,
+        reply: str = "ok",
+        structured: dict[str, Any] | None = None,
+        host: str = "http://localhost:11434",
+        model: str = "spy",
+    ) -> None:
         self._init_recorder(reply, structured)
+        self._host = host
+        self._model = model
+
+    @property
+    def model(self) -> str:
+        return self._model

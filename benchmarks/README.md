@@ -1,12 +1,23 @@
 # Benchmarks
 
-Deterministic measurements of three claims the library makes, run against
-committed fixtures with one command.  No network, no API keys, no LLM calls.
+Deterministic measurements of four claims the library makes, run against
+committed fixtures.  No network, no API keys, no LLM calls.
 
 ```bash
 pip install -e ".[dev]"
 python -m benchmarks           # regenerate results/results.json and results/summary.md
 python -m benchmarks --check   # fail if the committed results differ from a fresh run
+```
+
+The detection suite needs Presidio and the spaCy model Presidio loads by
+default, so it has its own command.  Its committed results are rendered by the
+command above, not recomputed:
+
+```bash
+pip install -e ".[privacy]"
+pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.8.0/en_core_web_lg-3.8.0-py3-none-any.whl
+python -m benchmarks.detection           # regenerate results/detection.json
+python -m benchmarks.detection --check
 ```
 
 **Results: [results/summary.md](https://github.com/Quiet-Signals-Lab/Contractex-Legal-Tech-Library/blob/main/benchmarks/results/summary.md).**  Every number there is
@@ -19,11 +30,11 @@ deliberately repeats no results.
 | [chunking.py](https://github.com/Quiet-Signals-Lab/Contractex-Legal-Tech-Library/blob/main/benchmarks/chunking.py) | Clause-aware chunking keeps clauses in one chunk more often than structure-blind splitting | CUAD test split |
 | [provenance.py](https://github.com/Quiet-Signals-Lab/Contractex-Legal-Tech-Library/blob/main/benchmarks/provenance.py) | `ProvenanceTracker` resolves an extracted value to where it came from | CUAD test split |
 | [privacy.py](https://github.com/Quiet-Signals-Lab/Contractex-Legal-Tech-Library/blob/main/benchmarks/privacy.py) | The regex PII fallback catches the formats it claims; `secret` documents never reach a provider; `restricted` documents reach only a `LocalProvider` | Synthetic fixture |
+| [detection.py](https://github.com/Quiet-Signals-Lab/Contractex-Legal-Tech-Library/blob/main/benchmarks/detection.py) | How much labelled personal data is left after redaction, with and without Presidio | Solander Detection Benchmark, English |
 
 Not measured yet: extraction accuracy downstream of chunking, and accuracy
 per LLM provider (cloud versus local).  Both need model calls and are
-postponed.  Presidio-backed PII detection is not measured either: the privacy
-suite runs the regex fallback only.
+postponed.
 
 ## Data
 
@@ -39,6 +50,18 @@ the zip's SHA-256 and the output is byte-for-byte reproducible.
 distractors.  Values are fictitious (`.test` domains, 555-01xx phone numbers,
 published test card and IBAN numbers).  Rebuild with
 `python -m benchmarks.privacy build`.
+
+**Solander Detection Benchmark v1.2, English** — [fixtures/solander_en.json.gz](https://github.com/Quiet-Signals-Lab/Contractex-Legal-Tech-Library/blob/main/benchmarks/fixtures/solander_en.json.gz):
+the 980 English documents of the benchmark's synthetic track, written by
+Mistral Small 3.2 to briefs in eleven genres (letters, HR email, contracts,
+judgments, invoices and others), with person, address, place, organisation,
+reference-number and other spans labelled by construction.  Every person and
+address is fictitious.  The dataset was built by this library's maintainer
+for another product, Solander; it was pre-registered and published before it
+was used here.  Rebuild the fixture from the published bundle with
+`python -m benchmarks.build_solander_fixture path/to/solander-benchmark-v1.2.zip`;
+the builder checks the zip's SHA-256 and the output is byte-for-byte
+reproducible.
 
 ## Method
 
@@ -80,6 +103,17 @@ dates of birth in words), included so the limits appear in the results.  A
 distractor is a false positive when any detected span overlaps it.
 `EvalHarness.run_privacy()` also reports entity-type recall and precision.
 
+*Detection on labelled documents*: each document is redacted as the router
+redacts a `confidential` prompt — `PIIDetector()` with its defaults, every
+detected span replaced — once with the built-in patterns alone and once with
+Presidio as well.  For every labelled span, its identifying tokens
+(capitalised words and words with a digit, without titles such as "Mr", the
+rule of the dataset's own scorer) are checked; a token is *left* when any of
+its characters is not redacted.  A *false positive* is a detected person or
+place that overlaps no labelled span.  The dataset does not label email
+addresses or phone numbers, so those detections count neither way; the
+summary lists them.
+
 *Routing*: every sensitivity level × {cloud provider, `LocalProvider`} × entry
 point (`PrivacyAwareLLMRouter`, `TaskPipeline`, the comparison task's second
 document, `LegalRAGPipeline`).  Providers are stubs that record every prompt.
@@ -109,10 +143,16 @@ accuracy on the same policy.
   occurrence.
 - **The privacy fixture is small, synthetic and written for this suite.**
   Its results show which formats the fallback handles; they are not an
-  estimate of recall on real documents.  Only the regex fallback is measured.
+  estimate of recall on real documents.
+- **The detection documents are synthetic and English only.**  They were
+  written by a language model, so real documents (OCR noise, unusual layouts,
+  names the generator would not produce) are likely to leave more.  Presidio
+  is measured with its default English model; the library's detector does not
+  configure Presidio for other languages.  The dataset's builder and this
+  library's maintainer are the same person.
 - **The routing matrix uses stub providers.**  It verifies the library's
-  enforcement logic, not network behaviour, and it trusts any `LocalProvider`
-  regardless of the host it points at, as the router does.
+  enforcement logic, not network behaviour.  Its `LocalProvider` stub points
+  at `localhost`.
 
 ## Licensing and attribution
 
@@ -124,6 +164,14 @@ Changes: only the test split is kept, reduced to contract text and answer-span
 offsets.  Dataset: <https://www.atticusprojectai.org/cuad>.  Paper: Hendrycks,
 Burns, Chen and Ball, *CUAD: An Expert-Annotated NLP Dataset for Legal
 Contract Review*, [arXiv:2103.06268](https://arxiv.org/abs/2103.06268).
+
+The Solander fixture is derived from Hepburn, A. (2026), *Solander Detection
+Benchmark v1.2*, Quiet Signals Lab,
+[doi:10.5281/zenodo.23594288](https://doi.org/10.5281/zenodo.23594288),
+licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+Changes: only the English documents of the synthetic track are kept, reduced
+to text, genre, locale and labelled spans, with offsets converted to Python
+string indices.  The dataset's notice and canary string are kept with it.
 
 The synthetic privacy fixture and all benchmark code are part of this
 repository and licensed Apache-2.0.

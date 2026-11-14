@@ -5,6 +5,10 @@ Run every deterministic benchmark and write the results.
     python -m benchmarks --check   # exit 1 if the committed results differ from a fresh run
 
 No network, no API keys, no LLM calls.  See benchmarks/README.md.
+
+The detection suite needs Presidio and a spaCy model, so it has its own
+command (``python -m benchmarks.detection``); its committed results are
+rendered here, not recomputed.
 """
 
 from __future__ import annotations
@@ -22,6 +26,7 @@ from benchmarks import chunking, privacy, provenance
 HERE = Path(__file__).parent
 CUAD = HERE / "fixtures" / "cuad_test.json.gz"
 RESULTS = HERE / "results" / "results.json"
+DETECTION = HERE / "results" / "detection.json"
 SUMMARY = HERE / "results" / "summary.md"
 GITHUB = "https://github.com/Quiet-Signals-Lab/Contractex-Legal-Tech-Library"
 README = HERE.parent / "README.md"
@@ -60,7 +65,59 @@ def table(header: list[str], rows: list[list[Any]]) -> str:
     return "\n".join(lines)
 
 
-def render(r: dict[str, Any]) -> str:
+DETECTION_LABELS = {
+    "PER": "Person names",
+    "ADDR": "Postal addresses",
+    "REF": "Reference numbers (accounts, policies, cases)",
+    "LOC": "Places",
+    "ORG": "Organisations (not in the default entity set)",
+}
+
+
+def detection_left(d: dict[str, Any], arm: str, label: str) -> str:
+    return pct(*d["arms"][arm]["tokens_left"][label])
+
+
+def render_detection(d: dict[str, Any]) -> list[str]:
+    v = d["versions"]
+    unlabelled = d["arms"]["presidio"]["unlabelled_type_detections"]
+    return [
+        "### Personal data left after redaction",
+        "",
+        f"{d['documents']} synthetic English documents ({d['words']:,} words) with labelled "
+        f"personal data, redacted as the router redacts a `confidential` prompt.  A token is "
+        "left when any of its characters is not redacted; lower is better.  Data: "
+        f"{d['source']}, CC BY 4.0.  Measured with presidio-analyzer {v['presidio-analyzer']}, "
+        f"spaCy {v['spacy']} and en_core_web_lg {v['en-core-web-lg']} by "
+        "`python -m benchmarks.detection`.",
+        "",
+        table(
+            ["Labelled", "Tokens", "Left: built-in patterns", "Left: with Presidio"],
+            [
+                [
+                    name,
+                    d["arms"]["presidio"]["tokens_left"][label][1],
+                    detection_left(d, "patterns", label),
+                    detection_left(d, "presidio", label),
+                ]
+                for label, name in DETECTION_LABELS.items()
+            ],
+        ),
+        "",
+        "False positives (a person or place detected where nothing is labelled): "
+        + " · ".join(
+            f"{arm.replace('patterns', 'built-in patterns').replace('presidio', 'with Presidio')} "
+            f"{1000 * a['false_positives'] / d['words']:.2f} per 1,000 words"
+            for arm, a in d["arms"].items()
+        )
+        + ".  The dataset does not label email addresses or phone numbers; with Presidio, "
+        + ", ".join(f"{n} {t}" for t, n in sorted(unlabelled.items()))
+        + " detections fall outside its labels and are counted neither way.",
+        "",
+    ]
+
+
+def render(r: dict[str, Any], d: dict[str, Any]) -> str:
     ch, pv, pr = r["chunking"], r["provenance"], r["privacy"]
     size = ch["breakdown_size"]
     names = list(ch["by_length"])
@@ -213,11 +270,12 @@ def render(r: dict[str, Any]) -> str:
             ],
         ),
         "",
+        *render_detection(d),
     ]
     return "\n".join(out)
 
 
-def readme_block(r: dict[str, Any]) -> str:
+def readme_block(r: dict[str, Any], d: dict[str, Any]) -> str:
     """The generated results table embedded in the top-level README."""
     ch, pv, pr = r["chunking"], r["provenance"], r["privacy"]
     size = ch["breakdown_size"]
@@ -246,6 +304,17 @@ def readme_block(r: dict[str, Any]) -> str:
                         "Privacy routing checks (4 sensitivity levels × 2 providers × 4 entry points)",
                         f"{pr['routing']['passed']} of {pr['routing']['total']} pass",
                     ],
+                    [
+                        f"Person-name tokens left after redaction ({d['documents']} synthetic "
+                        "English documents)",
+                        f"built-in patterns {detection_left(d, 'patterns', 'PER')} · "
+                        f"with Presidio {detection_left(d, 'presidio', 'PER')}",
+                    ],
+                    [
+                        "Address and reference-number tokens left, with Presidio",
+                        f"addresses {detection_left(d, 'presidio', 'ADDR')} · "
+                        f"reference numbers {detection_left(d, 'presidio', 'REF')}",
+                    ],
                 ],
             ),
             README_END,
@@ -261,10 +330,11 @@ def with_readme_block(readme: str, block: str) -> str:
 def main() -> int:
     logging.disable(logging.WARNING)
     results = collect()
+    detection = json.loads(DETECTION.read_text(encoding="utf-8"))
     rendered_json = json.dumps(results, indent=1, sort_keys=True) + "\n"
-    rendered_md = render(results)
+    rendered_md = render(results, detection)
     readme = README.read_text(encoding="utf-8")
-    rendered_readme = with_readme_block(readme, readme_block(results))
+    rendered_readme = with_readme_block(readme, readme_block(results, detection))
     if "--check" in sys.argv:
         stale = [
             p.name

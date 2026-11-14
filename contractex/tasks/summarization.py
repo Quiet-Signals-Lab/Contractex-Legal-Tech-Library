@@ -32,6 +32,8 @@ class SummarizationTask(LegalTask):
         LLM provider instance or name string.
     max_input_chars:
         Maximum characters sent to the LLM.  Defaults to 12 000 (~3 k tokens).
+        A longer document is cut there and ``"summarization"`` is added to
+        ``doc.extracted["truncated"]``.
     """
 
     task_id = "summarization"
@@ -58,7 +60,11 @@ class SummarizationTask(LegalTask):
 
         doc = doc.model_copy(
             update={
-                "extracted": {**doc.extracted, "summary": summary.strip()},
+                "extracted": {
+                    **doc.extracted,
+                    "summary": summary.strip(),
+                    **self._truncation(doc, self._max_input_chars),
+                },
             }
         )
         return doc

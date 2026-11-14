@@ -60,6 +60,7 @@ def stub_llms(monkeypatch):
     def init(self, model: str, *args: Any, **kwargs: Any) -> None:
         self._model = model
         self._model_name = model
+        self._host = "http://localhost:11434"  # LocalProvider's default
 
     def complete(self, prompt: str, *args: Any, **kwargs: Any) -> str:
         return ""

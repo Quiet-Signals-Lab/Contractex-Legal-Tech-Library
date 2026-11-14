@@ -58,7 +58,7 @@ class LocalProvider(LLMProvider):
         self._max_tokens = max_tokens
 
         # Get Ollama host
-        self._host = host or os.getenv("OLLAMA_HOST", "http://localhost:11434")
+        self._host = host or os.getenv("OLLAMA_HOST") or "http://localhost:11434"
 
         # Initialize Ollama client
         try:
@@ -193,6 +193,11 @@ class LocalProvider(LLMProvider):
 
         # Default to conservative 8K
         return 8192
+
+    @property
+    def host(self) -> str:
+        """The Ollama server this provider sends requests to."""
+        return self._host
 
     @property
     def model(self) -> str:

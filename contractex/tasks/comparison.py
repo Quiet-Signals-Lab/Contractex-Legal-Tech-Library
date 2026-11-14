@@ -104,7 +104,11 @@ class ComparisonTask(LegalTask):
 
         doc = doc.model_copy(
             update={
-                "extracted": {**doc.extracted, "comparison": result.model_dump()},
+                "extracted": {
+                    **doc.extracted,
+                    "comparison": result.model_dump(),
+                    **self._truncation(doc, self._max_input_chars, doc_b),
+                },
             }
         )
         return doc

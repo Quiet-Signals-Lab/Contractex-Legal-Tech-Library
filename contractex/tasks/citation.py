@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import warnings
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -55,16 +56,14 @@ class CitationTask(LegalTask):
     Results are written to ``doc.extracted["citations"]`` as a list of
     ``LegalCitation`` dicts.
 
-    This task is LLM-free (regex only).  For full Bluebook normalisation,
-    set ``use_llm=True`` and supply an LLM provider — the LLM will normalise
-    raw citation strings to proper Bluebook format.
+    This task is LLM-free (regex only).
 
     Parameters
     ----------
     use_llm:
-        If ``True``, use an LLM to normalise citations to Bluebook format.
+        Deprecated: has no effect.  Citations are not normalised by a model.
     llm_provider:
-        LLM provider instance or name string (only used when ``use_llm=True``).
+        Unused.
     """
 
     task_id = "citation"
@@ -83,9 +82,15 @@ class CitationTask(LegalTask):
         use_llm: bool = False,
         llm_provider: Any | None = None,
     ) -> None:
+        if use_llm:
+            warnings.warn(
+                "CitationTask(use_llm=True) has no effect: citations are found with "
+                "regular expressions only.  The option will be removed.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
         self._use_llm = use_llm
         self._llm_provider = llm_provider
-        self.requires_llm = use_llm
 
     def run(self, doc: LegalDoc, **kwargs: Any) -> LegalDoc:
         if not doc.full_text:

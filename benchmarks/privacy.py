@@ -250,6 +250,7 @@ class CloudStub(_Spy, LLMProvider):
 class LocalStub(_Spy, LocalProvider):
     def __init__(self) -> None:
         self._init()
+        self._host = "http://localhost:11434"
 
 
 def _doc(sensitivity: str, text: str = BODY) -> LegalDoc:

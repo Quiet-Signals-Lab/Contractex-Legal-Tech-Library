@@ -79,6 +79,7 @@ class ObligationsTask(LegalTask):
                 "extracted": {
                     **doc.extracted,
                     "obligations": [o.model_dump() for o in result.obligations],
+                    **self._truncation(doc, 12_000),
                 },
             }
         )

@@ -122,6 +122,21 @@ jobs:
       - run: python -m spacy download en_core_web_sm
       - run: pytest tests/test_privacy_presidio.py -rs
 
+  # Personal data left after redaction (benchmarks/detection.py).  Versions
+  # are pinned so the committed results stay reproducible; raise them together
+  # with a fresh run of python -m benchmarks.detection.
+  detection:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: pip install -e ".[privacy]" "presidio-analyzer==2.2.366" "spacy==3.8.18"
+      - run: pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.8.0/en_core_web_lg-3.8.0-py3-none-any.whl
+      - run: python -m benchmarks.detection --check
+
   # What users install: the built wheel, in a clean environment, outside the
   # source tree.
   package:

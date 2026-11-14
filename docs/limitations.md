@@ -25,16 +25,22 @@ making the rest credible.  Where a limit is measured, the
 - **Labels can be wrong.**  A value that fits several patterns gets one label.
   A two-letter passport number, for example, is labelled `IBAN_CODE`.  It is
   still redacted.
-- **Presidio itself is not benchmarked here**, and its detection depends on
-  the spaCy model installed.  The test suite checks, against the real engine,
-  that identifiers the patterns catch are still caught with Presidio on.
+- **With Presidio, about one in five person-name tokens is left**, most postal
+  addresses are only partly redacted, and account, policy and case numbers
+  are mostly not detected.  The [benchmarks](benchmarks.md) measure this on
+  980 synthetic English documents; real documents are likely to leave more.
+  Detection depends on the spaCy model installed, and Presidio is used in
+  English only.
 
 ## Privacy enforcement
 
 - The router trusts the document's profile.  Deciding sensitivity is up to
   you.
-- `local_only` means "a `LocalProvider` instance".  The router does not check
-  whether its Ollama host is actually on your machine.
+- `local_only` accepts a `LocalProvider` whose Ollama host resolves only to
+  loopback or private-network addresses and whose model is not an Ollama cloud
+  model (a `:cloud` or `-cloud` tag).  A server on your own network counts as
+  local.  The host name is resolved for the check and again by the Ollama
+  client, so a DNS answer that changes in between is not caught.
 - Only calls that go through the router are protected: the built-in tasks,
   `TaskPipeline`, `LegalRAGPipeline`, and code that uses `router.route()` or
   `router.guard()`.  Calling `ContractExtractor`, the analysers or a provider
@@ -79,13 +85,13 @@ making the rest credible.  Where a limit is measured, the
 ## Tasks
 
 - `summarization`, `timeline` and `obligations` read only the first 12,000
-  characters of a document, and `comparison` the first 8,000 of each.  Longer
-  documents are truncated silently.
+  characters of a document, and `comparison` the first 8,000 of each.  When a
+  document is longer, the task is listed in `doc.extracted["truncated"]` and a
+  warning is logged; the rest of the document is not read.
 - `classification` is keyword matching.
 - Citation extraction covers US case citations, U.S.C., C.F.R., EU
-  regulations and directives, and a few acronyms.  `CitationTask(use_llm=True)`
-  currently has no effect.
-- `risk_analysis` accepts a `severity_threshold` but does not apply it.
+  regulations and directives, and a few acronyms.  Citations are not
+  normalised; `CitationTask(use_llm=True)` is deprecated and does nothing.
 - `ObligationTimeline` resolves only deadlines counted from the effective
   date.  Business days, and periods counted from another event ("after
   termination"), are left unresolved.

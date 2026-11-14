@@ -116,6 +116,26 @@ class LegalTask(ABC):
         """
         return (self.router or default_router()).guard(self._resolve_provider(), *docs)
 
+    def _truncation(self, doc: LegalDoc, limit: int, *others: LegalDoc) -> dict[str, Any]:
+        """
+        What to merge into ``doc.extracted`` when this task reads only the
+        first *limit* characters of *doc* (and of *others*): nothing if every
+        text fits, otherwise this task's id added to ``extracted["truncated"]``,
+        so a result that covers part of a document says so.
+        """
+        lengths = [len(d.full_text or "") for d in (doc, *others)]
+        if max(lengths) <= limit:
+            return {}
+        logger.warning(
+            "Task %r read the first %d of %d characters of document %s",
+            self.task_id,
+            limit,
+            max(lengths),
+            doc.doc_id,
+        )
+        seen = list(doc.extracted.get("truncated", []))
+        return {"truncated": seen if self.task_id in seen else [*seen, self.task_id]}
+
     def _resolve_provider(self) -> LLMProvider:
         """Resolve ``self._llm_provider`` (instance or name string) once."""
         provider = self._llm_provider

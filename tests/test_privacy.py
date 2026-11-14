@@ -10,12 +10,14 @@ suite is deterministic and runs without the ``privacy`` extra.  Tests marked
 from __future__ import annotations
 
 import re
+import socket
 import sys
 import time
 
 import pytest
 from pydantic import BaseModel
 
+from contractex.llm.local_provider import LocalProvider
 from contractex.privacy import (
     PIIDetector,
     PIIRedactor,
@@ -584,6 +586,137 @@ class TestRouterRouting:
         with pytest.raises((TypeError, ValueError, PrivacyBlockedError)):
             router.route_completion(Doc(object()), "p", spy)
         assert spy.prompts == []
+
+
+class TestLocalMeansLocal:
+    """
+    local_only routing accepts a LocalProvider only when its Ollama server runs
+    on this machine or a private network, and its model is not an Ollama cloud
+    model (which the local server forwards to ollama.com).
+    """
+
+    HOSTS = {
+        "localhost": "127.0.0.1",
+        "gpu-box.lan": "192.168.1.20",
+        "ollama.example.com": "93.184.216.34",
+    }
+
+    @pytest.fixture(autouse=True)
+    def fake_dns(self, monkeypatch):
+        def getaddrinfo(host, *args, **kwargs):
+            if host not in self.HOSTS:
+                raise socket.gaierror("Name or service not known")
+            return [(None, None, None, "", (self.HOSTS[host], 0))]
+
+        monkeypatch.setattr(socket, "getaddrinfo", getaddrinfo)
+
+    @pytest.mark.parametrize(
+        "host",
+        [
+            "http://localhost:11434",
+            "localhost:11434",
+            "http://127.0.0.1:11434",
+            "http://[::1]:11434",
+            "http://0.0.0.0:11434",
+            "http://192.168.1.20:11434",
+            "http://gpu-box.lan:11434",
+            "http://100.101.102.103:11434",  # a Tailscale address
+            "http://[fd7a:115c:a1e0::1]:11434",  # a unique local IPv6 address
+            "http://[::ffff:192.168.1.20]:11434",
+        ],
+    )
+    def test_ollama_on_this_machine_or_a_private_network_is_local(self, router, host):
+        local = SpyLocalProvider(host=host, model="llama3.1:8b")
+        router.guard(local, Doc(PrivacyProfile(sensitivity="restricted"))).complete(PII_PROMPT)
+        (prompt,) = local.prompts
+        assert "536-90-4399" not in prompt
+
+    @pytest.mark.parametrize(
+        ("host", "reason"),
+        [
+            ("http://ollama.example.com:11434", "public address"),
+            ("http://93.184.216.34:11434", "public address"),
+            ("https://8.8.8.8", "public address"),
+            ("http://unresolvable.test:11434", "could not be resolved"),
+            # IPv6 forms that carry a public IPv4 address or tunnel to the internet
+            ("http://[::ffff:8.8.8.8]:11434", "public address"),
+            ("http://[2002:808:808::1]:11434", "public address"),  # 6to4
+            ("http://[2001:0:4136:e378:8000:63bf:3fff:fdd2]:11434", "public address"),  # Teredo
+        ],
+    )
+    def test_ollama_on_a_public_address_is_not_local(self, router, host, reason):
+        local = SpyLocalProvider(host=host, model="llama3.1:8b")
+        with pytest.raises(PrivacyRoutingError, match=reason):
+            router.guard(local, Doc(PrivacyProfile(sensitivity="restricted")))
+        assert local.prompts == []
+
+    def test_local_provider_without_a_host_is_refused(self, router):
+        class NoInit(LocalProvider):
+            def __init__(self) -> None:
+                pass  # skips LocalProvider.__init__, which sets the host
+
+        with pytest.raises(PrivacyRoutingError, match="host is not set"):
+            router.guard(NoInit(), Doc(PrivacyProfile(sensitivity="restricted")))
+
+    @pytest.mark.parametrize(
+        "model",
+        [
+            "gemma4:cloud",
+            "gpt-oss:120b-cloud",
+            "qwen3-coder:480b-cloud",
+            "gemma4:CLOUD",
+            "Qwen3-Coder:480B-Cloud",
+            "gemma4:cloud@sha256:0123abcd",
+            "registry.ollama.ai/library/gemma4:cloud",
+        ],
+    )
+    def test_ollama_cloud_model_is_not_local(self, router, model):
+        local = SpyLocalProvider(model=model)
+        with pytest.raises(PrivacyRoutingError, match="cloud model"):
+            router.guard(local, Doc(PrivacyProfile(sensitivity="restricted")))
+        assert local.prompts == []
+
+    @pytest.mark.parametrize("model", ["llama3.1:8b", "cloudy:7b", "wordcloud:latest", "mistral"])
+    def test_model_name_containing_cloud_is_not_a_cloud_model(self, router, model):
+        local = SpyLocalProvider(model=model)
+        router.guard(local, Doc(PrivacyProfile(sensitivity="restricted"))).complete("p")
+        assert local.prompts == ["p"]
+
+    @pytest.mark.parametrize(
+        "local",
+        [
+            lambda: SpyLocalProvider(model="gemma4:cloud"),
+            lambda: SpyLocalProvider(host="http://ollama.example.com:11434"),
+        ],
+    )
+    def test_documents_that_may_leave_the_machine_still_go(self, router, local):
+        provider = local()
+        router.guard(provider, Doc(PrivacyProfile(sensitivity="confidential"))).complete("p")
+        assert provider.prompts == ["p"]
+
+    def test_rag_leaves_restricted_chunks_out_for_a_cloud_model(self, monkeypatch):
+        from contractex.core.document import LegalDoc
+        from contractex.rag import LegalRAGPipeline
+
+        class Embedder:
+            def encode(self, text):
+                return [1.0, 0.0]
+
+        local = SpyLocalProvider(model="gemma4:cloud")
+        rag = LegalRAGPipeline(llm_provider=local, conflict_detector=None)
+        monkeypatch.setattr(rag, "_get_embedder", lambda: Embedder())
+        rag.ingest(
+            [
+                LegalDoc(full_text="PUBLIC-CLAUSE text.", privacy_profile=PrivacyProfile()),
+                LegalDoc(
+                    full_text="RESTRICTED-CLAUSE text.",
+                    privacy_profile=PrivacyProfile(sensitivity="restricted"),
+                ),
+            ]
+        )
+        rag.query("Summarise.", top_k=10)
+        (prompt,) = local.prompts
+        assert "PUBLIC-CLAUSE" in prompt and "RESTRICTED-CLAUSE" not in prompt
 
 
 class TestRouterRedaction:
