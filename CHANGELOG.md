@@ -7,8 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-14
+
 Fixes from a whole-repository audit.  Several change results that were
-wrong before, so read "Changed" before upgrading.
+wrong before, and unused code is removed, so read "Changed" and "Removed"
+before upgrading.
 
 ### Security
 
@@ -457,7 +460,11 @@ never live.
 - CI/CD with GitHub Actions (tests, type checking, linting, PyPI publish workflow)
 - `CONTRIBUTING.md` with dev setup and contribution guidelines
 
-[Unreleased]: https://github.com/Quiet-Signals-Lab/Contractex-Legal-Tech-Library/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/Quiet-Signals-Lab/Contractex-Legal-Tech-Library/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/Quiet-Signals-Lab/Contractex-Legal-Tech-Library/compare/v0.5.1...v0.6.0
+[0.5.1]: https://github.com/Quiet-Signals-Lab/Contractex-Legal-Tech-Library/compare/v0.5.0...v0.5.1
+[0.5.0]: https://github.com/Quiet-Signals-Lab/Contractex-Legal-Tech-Library/compare/v0.3.1...v0.5.0
+[0.3.1]: https://github.com/Quiet-Signals-Lab/Contractex-Legal-Tech-Library/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/Quiet-Signals-Lab/Contractex-Legal-Tech-Library/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/Quiet-Signals-Lab/Contractex-Legal-Tech-Library/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/Quiet-Signals-Lab/Contractex-Legal-Tech-Library/compare/v0.1.0...v0.1.1

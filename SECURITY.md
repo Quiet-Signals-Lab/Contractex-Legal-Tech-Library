@@ -17,7 +17,7 @@ the changelog unless you ask otherwise.
   `PrivacyProfile`: a `secret` document reaching any provider, a `restricted`
   document reaching a provider other than `LocalProvider`, or unredacted
   `confidential` text.
-- Personal data in a format the regex fallback claims to handle surviving
+- Personal data in a format the built-in patterns claim to handle surviving
   redaction.
 - Weaknesses in `HASH` or `ENCRYPT` redaction, or in how redaction maps are
   handled.
