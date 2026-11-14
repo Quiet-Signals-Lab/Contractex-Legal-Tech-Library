@@ -286,33 +286,3 @@ class LegalDoc(BaseModel):
             char_end=char_end,
             snippet=snippet,
         )
-
-    def merge(self, other: LegalDoc) -> LegalDoc:
-        """
-        Return a new ``LegalDoc`` that merges *other*'s extracted fields and
-        provenance into ``self``.  Fields in *other* overwrite ``self`` on
-        collision.  Immutable identity fields (``doc_id``, ``doc_type``,
-        ``full_text``) are taken from ``self``.  The result carries the
-        stricter of the two privacy profiles: values extracted from a
-        ``secret`` document stay ``secret``.
-        """
-        from contractex.privacy.router import resolve_profile, strictest
-
-        merged_extracted = {**self.extracted, **other.extracted}
-        merged_confidences = {**self.confidences, **other.confidences}
-        merged_provenance = {**self.provenance, **other.provenance}
-        merged_tags = list(dict.fromkeys(self.tags + other.tags))
-        profiles = [
-            resolve_profile(d, d.privacy_profile)
-            for d in (self, other)
-            if d.privacy_profile is not None
-        ]
-        return self.model_copy(
-            update={
-                "extracted": merged_extracted,
-                "confidences": merged_confidences,
-                "provenance": merged_provenance,
-                "tags": merged_tags,
-                "privacy_profile": strictest(profiles) if profiles else None,
-            }
-        )
