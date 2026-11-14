@@ -309,6 +309,32 @@ def default_router() -> PrivacyAwareLLMRouter:
     return PrivacyAwareLLMRouter()
 
 
+# On this machine or a private network.  An allowlist: an address form not
+# listed (6to4 or Teredo, which tunnel to the internet) counts as public.
+_LOCAL_NETWORKS = [
+    ipaddress.ip_network(n)
+    for n in (
+        "127.0.0.0/8",  # loopback
+        "::1/128",
+        "0.0.0.0/32",  # unspecified: the client connects to this machine
+        "::/128",
+        "10.0.0.0/8",  # private
+        "172.16.0.0/12",
+        "192.168.0.0/16",
+        "fc00::/7",
+        "100.64.0.0/10",  # shared address space (carrier NAT, Tailscale)
+        "169.254.0.0/16",  # link-local
+        "fe80::/10",
+    )
+]
+
+
+def _is_local_address(address: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
+    if isinstance(address, ipaddress.IPv6Address) and address.ipv4_mapped:
+        address = address.ipv4_mapped
+    return any(address in network for network in _LOCAL_NETWORKS)
+
+
 def _not_local(provider: LLMProvider) -> str | None:
     """Why *provider* may not see a local-only document, or ``None`` if it may."""
     if not isinstance(provider, LocalProvider):
@@ -316,9 +342,10 @@ def _not_local(provider: LLMProvider) -> str | None:
             f"provider is '{type(provider).__name__}'.  Use contractex.llm.LocalProvider (Ollama)."
         )
     # Ollama names its cloud models with a ":cloud" tag (formerly "-cloud");
-    # a local Ollama server forwards them to ollama.com.
+    # a local Ollama server forwards them to ollama.com.  Names are matched
+    # case-insensitively and may carry a registry prefix or an "@digest".
     model = getattr(provider, "model", "")
-    tag = model.rpartition(":")[2]
+    tag = model.split("@", 1)[0].lower().rsplit("/", 1)[-1].rpartition(":")[2]
     if tag == "cloud" or tag.endswith("-cloud"):
         return f"model {model!r} is an Ollama cloud model, which runs on ollama.com."
     # A subclass that skips LocalProvider.__init__ has no host to check
@@ -336,7 +363,7 @@ def _not_local(provider: LLMProvider) -> str | None:
             addresses = [ipaddress.ip_address(a[4][0]) for a in socket.getaddrinfo(hostname, None)]
         except (OSError, ValueError):
             return f"its Ollama host {host!r} could not be resolved to check that it is local."
-    public = [str(a) for a in addresses if a.is_global]
+    public = [str(a) for a in addresses if not _is_local_address(a)]
     if public:
         return f"its Ollama host {host!r} is at a public address ({public[0]})."
     return None

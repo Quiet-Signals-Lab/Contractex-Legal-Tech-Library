@@ -621,6 +621,8 @@ class TestLocalMeansLocal:
             "http://192.168.1.20:11434",
             "http://gpu-box.lan:11434",
             "http://100.101.102.103:11434",  # a Tailscale address
+            "http://[fd7a:115c:a1e0::1]:11434",  # a unique local IPv6 address
+            "http://[::ffff:192.168.1.20]:11434",
         ],
     )
     def test_ollama_on_this_machine_or_a_private_network_is_local(self, router, host):
@@ -636,6 +638,10 @@ class TestLocalMeansLocal:
             ("http://93.184.216.34:11434", "public address"),
             ("https://8.8.8.8", "public address"),
             ("http://unresolvable.test:11434", "could not be resolved"),
+            # IPv6 forms that carry a public IPv4 address or tunnel to the internet
+            ("http://[::ffff:8.8.8.8]:11434", "public address"),
+            ("http://[2002:808:808::1]:11434", "public address"),  # 6to4
+            ("http://[2001:0:4136:e378:8000:63bf:3fff:fdd2]:11434", "public address"),  # Teredo
         ],
     )
     def test_ollama_on_a_public_address_is_not_local(self, router, host, reason):
@@ -653,7 +659,16 @@ class TestLocalMeansLocal:
             router.guard(NoInit(), Doc(PrivacyProfile(sensitivity="restricted")))
 
     @pytest.mark.parametrize(
-        "model", ["gemma4:cloud", "gpt-oss:120b-cloud", "qwen3-coder:480b-cloud"]
+        "model",
+        [
+            "gemma4:cloud",
+            "gpt-oss:120b-cloud",
+            "qwen3-coder:480b-cloud",
+            "gemma4:CLOUD",
+            "Qwen3-Coder:480B-Cloud",
+            "gemma4:cloud@sha256:0123abcd",
+            "registry.ollama.ai/library/gemma4:cloud",
+        ],
     )
     def test_ollama_cloud_model_is_not_local(self, router, model):
         local = SpyLocalProvider(model=model)
