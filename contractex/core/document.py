@@ -130,9 +130,9 @@ class LegalDoc(BaseModel):
     privacy_profile: Any | None = Field(
         None,
         description=(
-            "PrivacyProfile attached to this document.  Controls LLM routing, "
-            "redaction strategy, and GDPR retention.  None means no explicit "
-            "controls — pipelines may apply defaults."
+            "PrivacyProfile attached to this document.  Controls LLM routing and "
+            "redaction.  None means no explicit controls — the router's default "
+            "profile applies."
         ),
     )
 
@@ -156,6 +156,16 @@ class LegalDoc(BaseModel):
     # ------------------------------------------------------------------
     # Validators
     # ------------------------------------------------------------------
+
+    @field_validator("privacy_profile", mode="before")
+    @classmethod
+    def _load_privacy_profile(cls, v: Any) -> Any:
+        """A profile reloaded from JSON arrives as a dict; make it a profile again."""
+        if isinstance(v, dict):
+            from contractex.privacy.profile import PrivacyProfile
+
+            return PrivacyProfile.model_validate(v)
+        return v
 
     @field_validator("jurisdiction")
     @classmethod
@@ -219,8 +229,9 @@ class LegalDoc(BaseModel):
         """True if a PrivacyProfile is attached and routing is not 'any'."""
         if self.privacy_profile is None:
             return False
-        routing = getattr(self.privacy_profile, "llm_routing", "any")
-        return routing != "any"
+        from contractex.privacy.router import resolve_profile
+
+        return resolve_profile(self, self.privacy_profile).effective_routing != "any"
 
     # ------------------------------------------------------------------
     # Mutation helpers
@@ -274,24 +285,4 @@ class LegalDoc(BaseModel):
             char_start=char_start,
             char_end=char_end,
             snippet=snippet,
-        )
-
-    def merge(self, other: LegalDoc) -> LegalDoc:
-        """
-        Return a new ``LegalDoc`` that merges *other*'s extracted fields and
-        provenance into ``self``.  Fields in *other* overwrite ``self`` on
-        collision.  Immutable identity fields (``doc_id``, ``doc_type``,
-        ``full_text``) are taken from ``self``.
-        """
-        merged_extracted = {**self.extracted, **other.extracted}
-        merged_confidences = {**self.confidences, **other.confidences}
-        merged_provenance = {**self.provenance, **other.provenance}
-        merged_tags = list(dict.fromkeys(self.tags + other.tags))
-        return self.model_copy(
-            update={
-                "extracted": merged_extracted,
-                "confidences": merged_confidences,
-                "provenance": merged_provenance,
-                "tags": merged_tags,
-            }
         )

@@ -59,11 +59,11 @@ class Document:
         """Compute SHA-256 hash for deduplication."""
         return hashlib.sha256(file_data).hexdigest()
 
-    def update_metadata(self, **kwargs) -> None:
+    def update_metadata(self, **kwargs: Any) -> None:
         """Update metadata fields while preserving existing values."""
         self.metadata.update(kwargs)
 
-    def get_metadata_field(self, key: str, default=None):
+    def get_metadata_field(self, key: str, default: Any = None) -> Any:
         """Safely retrieve metadata field with default."""
         return self.metadata.get(key, default)
 

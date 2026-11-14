@@ -6,6 +6,7 @@ from contractex.core.document import LegalDoc
 from contractex.core.legal_document import DocType
 from contractex.privacy.detector import PIIDetector
 from contractex.privacy.profile import PrivacyProfile
+from contractex.privacy.router import resolve_profile, strictest
 from contractex.tasks.base import LegalTask
 from contractex.tasks.registry import TaskRegistry
 
@@ -25,8 +26,9 @@ class PIIDetectionTask(LegalTask):
     entities:
         Entity types to detect.  ``None`` uses the detector's defaults.
     sensitivity:
-        Sensitivity level to set on the document's PrivacyProfile when PII
-        is detected.  Defaults to ``"confidential"``.
+        Minimum sensitivity of the document's PrivacyProfile when PII is
+        detected.  A document that is already stricter keeps its level.
+        Defaults to ``"confidential"``.
     """
 
     task_id = "pii_detection"
@@ -49,23 +51,19 @@ class PIIDetectionTask(LegalTask):
         spans = self._detector.detect(doc.full_text, language=language)
 
         # Attach / update PrivacyProfile
-        profile = doc.privacy_profile
-        if not isinstance(profile, PrivacyProfile):
-            profile = PrivacyProfile(sensitivity="public")
+        profile = resolve_profile(doc, PrivacyProfile())
 
         if spans:
             entity_types = list(dict.fromkeys(s.entity_type for s in spans))
+            raised = strictest([profile, PrivacyProfile(sensitivity=self._sensitivity)])
             profile = profile.model_copy(
                 update={
                     "contains_pii": True,
                     "pii_entities_found": list(
                         dict.fromkeys(profile.pii_entities_found + entity_types)
                     ),
-                    "sensitivity": (
-                        self._sensitivity
-                        if profile.sensitivity == "public"
-                        else profile.sensitivity
-                    ),
+                    "sensitivity": raised.sensitivity,
+                    "llm_routing": raised.llm_routing,
                 }
             )
         else:

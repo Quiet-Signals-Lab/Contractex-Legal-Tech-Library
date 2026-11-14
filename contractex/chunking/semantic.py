@@ -21,7 +21,7 @@ class SemanticChunker(ChunkingStrategy):
         max_chunk_size: int = 4000,
         overlap: int = 200,
         split_on: str = "paragraph",  # 'paragraph' or 'sentence'
-    ):
+    ) -> None:
         """
         Initialize semantic chunker.
 

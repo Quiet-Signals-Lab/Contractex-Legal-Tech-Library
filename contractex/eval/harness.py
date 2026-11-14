@@ -78,9 +78,10 @@ class EvalHarness:
 
     Args:
         extractor_fn: Callable that accepts an ``EvalCase`` and returns a
-                      ``dict`` of extracted values.  May raise; errors are
-                      caught and counted as ``error_cases`` unless
-                      ``fail_fast=True``.
+                      ``dict`` of extracted values.  May raise; errors (and
+                      a return value that is not a dict) are caught and
+                      counted as ``error_cases``, with every expected field
+                      of that case scored as missed.
         fail_fast:    Stop at the first extractor error instead of continuing.
 
     Example::
@@ -237,22 +238,18 @@ class EvalHarness:
         logger.debug("Running eval case %r", case.id)
         start = time.monotonic()
 
+        error: str | None = None
         try:
             actual_fields = self.extractor_fn(case)
+            if not isinstance(actual_fields, dict):
+                raise TypeError(
+                    f"extractor_fn must return a dict, got {type(actual_fields).__name__}"
+                )
         except Exception as exc:
-            elapsed = time.monotonic() - start
-            logger.warning(
-                "Eval case %r raised %s: %s (%.2fs)",
-                case.id,
-                type(exc).__name__,
-                exc,
-                elapsed,
-            )
-            return CaseResult(
-                case_id=case.id,
-                error=f"{type(exc).__name__}: {exc}",
-                elapsed_seconds=round(elapsed, 3),
-            )
+            # Scored below with nothing extracted, so every expected field is a miss
+            actual_fields = {}
+            error = f"{type(exc).__name__}: {exc}"
+            logger.warning("Eval case %r raised %s", case.id, error)
 
         elapsed = time.monotonic() - start
         logger.debug("Case %r completed in %.2fs", case.id, elapsed)
@@ -274,6 +271,7 @@ class EvalHarness:
         return CaseResult(
             case_id=case.id,
             field_results=field_results,
+            error=error,
             elapsed_seconds=round(elapsed, 3),
         )
 
@@ -282,9 +280,7 @@ class EvalHarness:
         """Merge one CaseResult into the aggregate ExtractionMetrics."""
         if result.error is not None:
             metrics.error_cases += 1
-            return
-
-        if result.passed:
+        elif result.passed:
             metrics.passed_cases += 1
 
         metrics.total_weighted_score += result.weighted_score

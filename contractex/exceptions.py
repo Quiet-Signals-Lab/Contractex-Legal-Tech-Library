@@ -39,19 +39,7 @@ class ChunkingError(ContractExError):
     pass
 
 
-class ClassificationError(ContractExError):
-    """Raised when clause classification fails."""
-
-    pass
-
-
 class UnsupportedFileTypeError(DocumentLoadError):
     """Raised when attempting to load an unsupported file type."""
-
-    pass
-
-
-class ConfidenceThresholdError(ValidationError):
-    """Raised when extraction confidence is below threshold."""
 
     pass

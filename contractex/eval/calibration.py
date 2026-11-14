@@ -37,10 +37,14 @@ class CalibrationBin:
     upper: float
     count: int = 0
     correct: int = 0
+    confidence_sum: float = 0.0
 
     @property
     def mean_confidence(self) -> float:
-        return (self.lower + self.upper) / 2
+        """Mean confidence of the samples in this bin (the bin midpoint if it is empty)."""
+        if self.count == 0:
+            return (self.lower + self.upper) / 2
+        return self.confidence_sum / self.count
 
     @property
     def accuracy(self) -> float:
@@ -93,12 +97,20 @@ class CalibrationAnalyzer:
         self._pairs: list[tuple[float, bool]] = []
 
     def add(self, confidence: float, correct: bool) -> None:
-        """Add a single (confidence, correctness) observation."""
+        """
+        Add a single (confidence, correctness) observation.
+
+        Raises:
+            ValueError: If confidence is not within [0, 1].
+        """
+        if not 0.0 <= confidence <= 1.0:
+            raise ValueError(f"confidence must be between 0 and 1, got {confidence}")
         self._pairs.append((confidence, correct))
 
     def add_batch(self, pairs: list[tuple[float, bool]]) -> None:
         """Add multiple (confidence, correctness) pairs."""
-        self._pairs.extend(pairs)
+        for confidence, correct in pairs:
+            self.add(confidence, correct)
 
     def analyze(self) -> CalibrationResult:
         """Compute calibration bins and ECE."""
@@ -108,6 +120,7 @@ class CalibrationAnalyzer:
         for conf, correct in self._pairs:
             bin_idx = min(int(conf * self._n_bins), self._n_bins - 1)
             bins[bin_idx].count += 1
+            bins[bin_idx].confidence_sum += conf
             if correct:
                 bins[bin_idx].correct += 1
 

@@ -20,7 +20,6 @@ from __future__ import annotations
 
 CLAUSE_EXTRACTION_PROMPT_VERSION = "2.0"
 CONTRACT_INFO_PROMPT_VERSION = "1.3"
-CLAUSE_CLASSIFICATION_PROMPT_VERSION = "1.2"
 
 # Full CUAD taxonomy with one-line descriptions embedded in the prompt so
 # that any LLM — including small local models — can pick the right category
@@ -125,39 +124,4 @@ INSTRUCTIONS:
 
 CONTRACT TEXT:
 {contract_text}
-"""
-
-
-CLAUSE_CLASSIFICATION_PROMPT = (
-    "You are a legal AI assistant specialising in contract clause classification.\n\n"
-    "Classify the following contract clause according to the CUAD taxonomy.\n\n"
-    + _CUAD_TAXONOMY
-    + """
-Clause Text:
-{clause_text}
-
-Provide:
-1. The most appropriate clause_type (use the exact value in parentheses above)
-2. Confidence score (0.0–1.0)
-3. Brief reasoning (one sentence)
-4. Up to 2 alternative types if the clause could fit multiple categories
-
-Return as JSON.
-"""
-)
-
-
-CLAUSE_SUMMARIZATION_PROMPT = """You are a legal document analyst. Summarise the key points of the following contract clause.
-
-Clause Type: {clause_type}
-
-Clause Text:
-{clause_text}
-
-Provide a concise summary (2–3 sentences) that captures:
-- The main obligation or right
-- Key conditions or limitations
-- Any important dates, amounts, or parties mentioned
-
-Focus on what matters most for business and legal understanding.
 """

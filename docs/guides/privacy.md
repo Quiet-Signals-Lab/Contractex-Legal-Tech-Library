@@ -15,8 +15,11 @@ application remembering to check a setting.
 | `restricted` | `LocalProvider` only | PII detected and redacted in the prompt | `PrivacyRoutingError`, raised before the provider is called |
 | `secret` | none | — | `PrivacyBlockedError`, raised before any prompt is built for a provider |
 
-Routing is derived from sensitivity.  It can be overridden explicitly, for
-example `PrivacyProfile(sensitivity="public", llm_routing="local_only")`.  A
+Routing is derived from sensitivity.  `llm_routing` can make it stricter, for
+example `PrivacyProfile(sensitivity="public", llm_routing="local_only")`, but
+never looser: `PrivacyProfile(sensitivity="secret", llm_routing="any")` is still
+blocked.  The rule is read on every call, so raising `sensitivity` on an
+existing profile takes effect at once.  A
 document without a profile is treated as `public`; pass
 `default_profile=` to the router to change that.
 
@@ -30,7 +33,9 @@ document without a profile is treated as `public`; pass
   blocked document.  This also covers custom tasks that declare it.
 - **`LegalRAGPipeline`** stores each chunk's profile.  At query time it drops
   chunks the provider may never see, then sends the prompt through the router
-  with the strictest profile among the chunks that remain.
+  with the strictest profile among the chunks that remain.  A `LegalDoc`
+  ingested without a profile follows the router's `default_profile`; files
+  and URLs are ingested as `public`.
 - **Your own code** can call `router.route()` / `router.route_completion()`,
   or wrap a provider with `router.guard(provider, *docs)`.
 
@@ -88,7 +93,9 @@ ANSWER: Send notices to priya.raman@harbourline.test.
 
 The model sees placeholders.  The reply is restored locally, so the answer
 contains the real address.  Streaming calls (`stream_complete`) are redacted
-but not restored, because a placeholder can be split across tokens.
+but not restored, because a placeholder can be split across tokens.  Text
+passed to `count_tokens` and `estimate_cost` is redacted the same way, since a
+provider may count tokens with an API request.
 
 The same document marked `restricted` cannot go to a provider that is not a
 `LocalProvider`:
@@ -109,20 +116,27 @@ Document requires local-only routing but provider is 'ShowPrompt'.  Use contract
 
 ## Detection
 
-`PIIDetector` uses [Presidio](https://microsoft.github.io/presidio/) when the
-`privacy` extra is installed, with Presidio's default spaCy model (download it
-with `python -m spacy download en_core_web_lg`).  Otherwise it falls back to
-regular expressions.
+`PIIDetector` always runs its built-in regular expressions.  When the
+`privacy` extra is installed it also runs
+[Presidio](https://microsoft.github.io/presidio/), with Presidio's default
+spaCy model (download it with `python -m spacy download en_core_web_lg`), and
+merges the two sets of spans.  Presidio adds names and places.  The patterns
+stay on because Presidio scores an identifier with no context word nearby (a
+bare SSN or phone number) below the detector's thresholds.
 
-| Entity | Regex fallback | Presidio |
+| Entity | Built-in patterns | Added by Presidio |
 |---|---|---|
-| `EMAIL_ADDRESS`, `PHONE_NUMBER` (US formats), `US_SSN`, `CREDIT_CARD`, `IBAN_CODE`, `PASSPORT_NUMBER`, `DRIVERS_LICENSE` (US) | yes | yes |
-| `DATE_OF_BIRTH` | only after "born", "DOB" or "date of birth" | per Presidio's recognisers |
-| `PERSON`, `LOCATION`, `NATIONAL_ID` | **no** | yes |
+| `EMAIL_ADDRESS`, `PHONE_NUMBER` (US formats), `US_SSN`, `CREDIT_CARD`, `IBAN_CODE`, `PASSPORT_NUMBER`, `DRIVERS_LICENSE` (US) | yes | check-digit validation of cards and IBANs |
+| `DATE_OF_BIRTH` | only after "born", "DOB" or "date of birth" | — |
+| `PERSON`, `LOCATION` | **no** | yes |
+| `NATIONAL_ID` | **no** | **no**: add a recogniser (below) |
 
-The fallback tolerates zero-width characters, Unicode dashes, fullwidth
-digits and non-Latin letters in email addresses.  What it catches, and what it
-misses, is measured in the [benchmarks](../benchmarks.md).
+`PIIDetector(use_presidio=True)` raises `ImportError` when Presidio is not
+installed; `use_presidio=False` uses the patterns only.
+
+The patterns tolerate zero-width characters, Unicode dashes, fullwidth
+digits and non-Latin letters in email addresses.  What they catch, and what
+they miss, is measured in the [benchmarks](../benchmarks.md).
 
 Add patterns for your own identifiers.  To make a task redact them too, give
 it a router built on your detector:

@@ -5,8 +5,10 @@
 -- macOS: brew install pgvector
 CREATE EXTENSION IF NOT EXISTS vector;
 
--- Add embedding column (nomic-embed-text produces 768-dimensional vectors)
-ALTER TABLE clauses ADD COLUMN IF NOT EXISTS embedding VECTOR(768);
+-- Add embedding column: 384 dimensions, as produced by all-MiniLM-L6-v2 (the
+-- LegalRAGPipeline default) and used by document_chunks in schema_v2.sql.
+-- Change both for a larger embedding model.
+ALTER TABLE clauses ADD COLUMN IF NOT EXISTS embedding VECTOR(384);
 
 -- Add full-text search column
 ALTER TABLE clauses ADD COLUMN IF NOT EXISTS search_vector TSVECTOR;

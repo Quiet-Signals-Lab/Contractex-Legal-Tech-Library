@@ -11,3 +11,5 @@ See the [evaluation guide](../guides/evaluation.md).
 ::: contractex.eval.ExtractionMetrics
 
 ::: contractex.eval.PrivacyMetrics
+
+::: contractex.eval.CalibrationAnalyzer

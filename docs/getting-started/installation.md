@@ -46,9 +46,8 @@ provider.
 | `network` | `requests` | loading documents from URLs and JSON APIs |
 | `export` | `pandas`, `openpyxl` | DataFrame, CSV and Excel export |
 | `spacy` | `spacy` | the `ner` task.  Also download a spaCy model. |
-| `storage` | `psycopg2-binary`, `pgvector` | PostgreSQL persistence.  Needs PostgreSQL with the `pgvector` extension. |
+| `storage` | `psycopg2-binary`, `pgvector` | PostgreSQL persistence.  Embedding columns (`add_embeddings.sql`, schema v2) need the `pgvector` extension. |
 | `rag` | `sentence-transformers` | `LegalRAGPipeline` embeddings (downloads a model on first use) |
-| `graph` | `networkx`, `neo4j`, `rdflib` | the knowledge graph |
 | `all` | every extra above | |
 
 ## From source

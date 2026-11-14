@@ -199,3 +199,38 @@ class TestInvariantsFuzz:
             assert i == 0 or text[i - 1].isspace() or not text[i - 1].isalnum()
         if overlap == 0:
             assert squash("".join(chunks)) == squash(text)
+
+
+# ---------------------------------------------------------------------------
+# Hostile input
+# ---------------------------------------------------------------------------
+
+
+class TestHostileInput:
+    def test_long_digit_run_after_a_heading_number_is_linear(self):
+        import time
+
+        # "1." + digits + lower case: the numbered-heading pattern used to
+        # backtrack exponentially in the number of digits
+        text = "1." + "1" * 26 + " lower case text\n"
+        start = time.perf_counter()
+        assert ClauseAwareChunker(max_chunk_size=100, overlap=0).chunk(text) == [text.strip()]
+        assert time.perf_counter() - start < 0.5
+
+    @pytest.mark.parametrize(
+        "line",
+        ["1. Term", "2.1 Term", '1.1 "Affiliate"', "1.1. Term", "1.2.3. (a) sub", "10.4.2 Fees"],
+    )
+    def test_numbered_headings_still_start_a_section(self, line):
+        assert ClauseAwareChunker().section_regex.match(line)
+
+    @pytest.mark.parametrize(
+        "line", ["12 Angry Men", "1.x Term", "1.5 times the fee", "3.50 per unit"]
+    )
+    def test_numbers_that_are_not_headings(self, line):
+        assert not ClauseAwareChunker().section_regex.match(line)
+
+    @pytest.mark.parametrize("size", [0, -1])
+    def test_non_positive_max_chunk_size_is_rejected(self, size):
+        with pytest.raises(ValueError, match="max_chunk_size"):
+            ClauseAwareChunker(max_chunk_size=size)

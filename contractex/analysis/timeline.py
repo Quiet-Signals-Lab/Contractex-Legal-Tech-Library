@@ -23,6 +23,7 @@ Usage::
 
 from __future__ import annotations
 
+import calendar
 import re
 import uuid
 from dataclasses import dataclass
@@ -33,8 +34,6 @@ from datetime import UTC, date, datetime, timedelta
 # ---------------------------------------------------------------------------
 
 _RELATIVE_PATTERNS: list[tuple[re.Pattern[str], str]] = [
-    (re.compile(r"(\d+)\s+day", re.IGNORECASE), "days"),
-    (re.compile(r"(\d+)\s+(?:business\s+)?day", re.IGNORECASE), "days"),
     (re.compile(r"(\d+)\s+(?:calendar\s+)?day", re.IGNORECASE), "days"),
     (re.compile(r"(\d+)\s+(?:week|wk)", re.IGNORECASE), "weeks"),
     (re.compile(r"(\d+)\s+month", re.IGNORECASE), "months"),
@@ -43,6 +42,16 @@ _RELATIVE_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"sixty\s*\(60\)\s*day", re.IGNORECASE), "days:60"),
     (re.compile(r"ninety\s*\(90\)\s*day", re.IGNORECASE), "days:90"),
 ]
+
+# Business days depend on a holiday calendar this module does not have
+_BUSINESS_DAYS = re.compile(r"(?:business|working|banking)\s+day", re.IGNORECASE)
+
+# A relative deadline counts from the effective date only when it names no
+# other starting point ("30 days after termination", "10 days of receipt")
+_COUNTED_FROM = re.compile(r"\b(?:after|of|following|from|upon|before|prior\s+to)\b", re.IGNORECASE)
+_EFFECTIVE_DATE = re.compile(
+    r"effective\s+date|date\s+of\s+this\s+agreement|date\s+hereof", re.IGNORECASE
+)
 
 _ISO_DATE = re.compile(r"(\d{4})-(\d{2})-(\d{2})")
 _US_DATE = re.compile(r"(\w+)\s+(\d{1,2}),?\s+(\d{4})")
@@ -74,11 +83,17 @@ _MONTH_MAP = {
 }
 
 
+def _ical_text(value: str) -> str:
+    """Escape a value for an iCalendar TEXT property (RFC 5545 section 3.3.11)."""
+    value = value.replace("\\", "\\\\").replace(";", "\\;").replace(",", "\\,")
+    return value.replace("\r\n", "\\n").replace("\n", "\\n").replace("\r", "\\n")
+
+
 def _add_months(d: date, months: int) -> date:
     month = d.month + months
     year = d.year + (month - 1) // 12
     month = (month - 1) % 12 + 1
-    day = min(d.day, [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1])
+    day = min(d.day, calendar.monthrange(year, month)[1])
     return date(year, month, day)
 
 
@@ -91,6 +106,8 @@ def _parse_deadline(deadline_text: str, effective_date: date) -> date | None:
       - US dates: "June 30, 2024"
       - Relative: "within 30 days", "60 days after the Effective Date"
       - "upon termination", "on demand" → None (no absolute date)
+      - Counted from another event ("30 days after termination") or in
+        business days → None (not computable from the effective date)
     """
     if not deadline_text or not deadline_text.strip():
         return None
@@ -114,6 +131,10 @@ def _parse_deadline(deadline_text: str, effective_date: date) -> date | None:
                 pass
 
     # Relative deadlines from effective date
+    if _BUSINESS_DAYS.search(deadline_text):
+        return None
+    if _COUNTED_FROM.search(deadline_text) and not _EFFECTIVE_DATE.search(deadline_text):
+        return None
     for pattern, unit in _RELATIVE_PATTERNS:
         m3 = pattern.search(deadline_text)
         if m3:
@@ -205,12 +226,8 @@ class ObligationTimeline:
 
     @staticmethod
     def _attr(obj: object, name: str, default: str) -> str:
-        if hasattr(obj, name):
-            val = getattr(obj, name)
-            return str(val) if val is not None else default
-        if isinstance(obj, dict):
-            return str(obj.get(name, default))
-        return default
+        val = obj.get(name) if isinstance(obj, dict) else getattr(obj, name, None)
+        return default if val is None else str(val)
 
     # ------------------------------------------------------------------
     # Query methods
@@ -261,7 +278,7 @@ class ObligationTimeline:
             "BEGIN:VCALENDAR",
             "VERSION:2.0",
             "PRODID:-//Contractex//Contractex 1.0//EN",
-            f"X-WR-CALNAME:{calendar_name}",
+            f"X-WR-CALNAME:{_ical_text(calendar_name)}",
             "CALSCALE:GREGORIAN",
             "METHOD:PUBLISH",
         ]
@@ -272,12 +289,13 @@ class ObligationTimeline:
             assert entry.resolved_date is not None
             date_str = entry.resolved_date.strftime("%Y%m%d")
             uid = str(uuid.uuid4())
-            summary = f"{entry.obligor}: {entry.action[:60]}"
+            summary = _ical_text(f"{entry.obligor}: {entry.action[:60]}")
             description = (
-                f"Section: {entry.source_section}\\n" f"Deadline: {entry.deadline_text}\\n"
+                f"Section: {_ical_text(entry.source_section)}\\n"
+                f"Deadline: {_ical_text(entry.deadline_text)}\\n"
             )
             if entry.condition:
-                description += f"Condition: {entry.condition}\\n"
+                description += f"Condition: {_ical_text(entry.condition)}\\n"
 
             lines.extend(
                 [

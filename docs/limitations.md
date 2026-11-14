@@ -6,22 +6,28 @@ making the rest credible.  Where a limit is measured, the
 
 ## Personal data detection
 
-- **No names without Presidio.**  The regex fallback detects email addresses,
-  US-format phone numbers, US Social Security numbers, card numbers (by shape;
-  no Luhn check), IBANs without internal spaces, passport-style numbers, US
-  driver's licence numbers, and dates of birth after "born", "DOB" or "date of
-  birth".  It does not detect people, places, organisations or national
-  identifiers.  In a `confidential` document those reach the model
-  unredacted.  Install `contractex[privacy]` and a spaCy model to detect them.
+- **No names without Presidio.**  The built-in patterns detect email
+  addresses, US-format phone numbers, US Social Security numbers, card numbers
+  (by shape; no Luhn check), IBANs without internal spaces, passport-style
+  numbers, US driver's licence numbers, and dates of birth after "born", "DOB"
+  or "date of birth".  They do not detect people, places, organisations or
+  national identifiers.  In a `confidential` document those reach the model
+  unredacted.  Install `contractex[privacy]` and a spaCy model to detect
+  people and places.
+- **No national identifiers with either backend** (BSN, NINO, SIN and so on).
+  Add a `RegexPIIRecognizer` for the ones you handle.
 - **Formats.**  International phone numbers, spaced IBANs and dates of birth
-  written in words are not caught by the fallback.  Zero-width characters,
-  Unicode dashes, fullwidth digits and non-Latin letters in email addresses
-  are handled.
+  written in words are not caught.  Presidio finds some international phone
+  numbers but scores them below the detector's threshold; lowering it also
+  lets through false matches such as four-digit numbers.  Zero-width
+  characters, Unicode dashes, fullwidth digits and non-Latin letters in email
+  addresses are handled.
 - **Labels can be wrong.**  A value that fits several patterns gets one label.
   A two-letter passport number, for example, is labelled `IBAN_CODE`.  It is
   still redacted.
 - **Presidio itself is not benchmarked here**, and its detection depends on
-  the spaCy model installed.
+  the spaCy model installed.  The test suite checks, against the real engine,
+  that identifiers the patterns catch are still caught with Presidio on.
 
 ## Privacy enforcement
 
@@ -35,6 +41,8 @@ making the rest credible.  Where a limit is measured, the
   directly bypasses it.
 - Streamed responses are redacted on the way out but not restored.
 - A `REPLACE` redaction map contains the original values in plaintext.
+- Contractex does not manage retention, erasure requests or consent records.
+  How PII is replaced is set on the router's `PIIRedactor`, not per document.
 
 ## Documents
 
@@ -43,6 +51,14 @@ making the rest credible.  Where a limit is measured, the
   quality limits everything after it.
 - DOCX is read with python-docx.  Legacy `.doc` files are not supported.
 - Layout (columns, tables) is flattened to text in reading order.
+- `URLLoader` and `APILoader` fetch the URL you give them, private addresses
+  included: if the URL comes from a user, check it first.  They refuse a
+  redirect or pagination link from a public host to a private address, and
+  any redirect to another host when the request carries credentials.  A
+  target whose host cannot be resolved for the check is not followed, which
+  includes names only an HTTP proxy can resolve.  The host name is resolved
+  for the check and again for the request, so a DNS answer that changes in
+  between is not caught.
 
 ## Chunking and provenance
 
@@ -56,6 +72,9 @@ making the rest credible.  Where a limit is measured, the
   resolves to its first occurrence.
 - `ContractExtractor` output does not carry source spans; run
   `ProvenanceTracker` over it.
+- Dates and amounts the model returns are normalised only when unambiguous.
+  An all-numeric date that could be day-first or month-first (`05/03/2024`),
+  a two-digit year, or text with several unmarked numbers gives `None`.
 
 ## Tasks
 
@@ -67,9 +86,9 @@ making the rest credible.  Where a limit is measured, the
   regulations and directives, and a few acronyms.  `CitationTask(use_llm=True)`
   currently has no effect.
 - `risk_analysis` accepts a `severity_threshold` but does not apply it.
-- `CUADBenchmark` in `contractex.eval` does not load the current CUAD release
-  and is deprecated.  The maintained CUAD measurements are in
-  [`benchmarks/`](benchmarks.md).
+- `ObligationTimeline` resolves only deadlines counted from the effective
+  date.  Business days, and periods counted from another event ("after
+  termination"), are left unresolved.
 
 ## Models and providers
 
@@ -77,6 +96,13 @@ making the rest credible.  Where a limit is measured, the
   [LLM providers](guides/providers.md#known-issues).
 - The Google provider is not tested against the live API in this repository.
 - Cost estimates use price tables from 2024.
+- `AnthropicProvider` estimates tokens as characters ÷ 4: the exact count is an
+  API request that would carry the text.
+- `LocalProvider` does not set Ollama's context size (`num_ctx`).  A prompt
+  longer than the model's configured window is truncated by Ollama without an
+  error.
+- Provider constructors accept `temperature=` and do not use it; pass it per
+  call.
 - Model output varies between runs.  Accuracy per provider, and downstream
   extraction accuracy, are not yet measured in the benchmarks.
 
@@ -92,6 +118,10 @@ making the rest credible.  Where a limit is measured, the
 
 - `LegalRAGPipeline` keeps its vectors in memory and embeds with
   sentence-transformers (`contractex[rag]`).
+- `sync_sources()` re-fetches every URL in full; it does not use conditional
+  requests.
+- Conflict detection compares metadata (dates, jurisdiction, authority), not
+  what the sources say.  The model is told how the sources differ and asked to
+  present each position if they disagree; nothing checks whether they do.
 - The Postgres repository (`contractex[storage]`) writes the original
   `documents`/`clauses` schema.  `schema_v2.sql` has no Python API yet.
-- The knowledge graph (`contractex[graph]`) has no tests.

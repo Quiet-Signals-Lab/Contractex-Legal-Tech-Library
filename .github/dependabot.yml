@@ -1,0 +1,11 @@
+version: 2
+updates:
+  # Keeps the commit hashes the workflows pin to current.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly

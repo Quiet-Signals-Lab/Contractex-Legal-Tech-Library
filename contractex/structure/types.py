@@ -55,7 +55,8 @@ class Section:
     parent_number: str = ""  # empty string for top-level sections
     children: list[Section] = field(default_factory=list)
 
-    # Source offsets in the original document text (char positions)
+    # Source offsets in the original document text (char positions): from the
+    # heading to the end of this section's own body, child sections excluded
     start_char: int = 0
     end_char: int = 0
 

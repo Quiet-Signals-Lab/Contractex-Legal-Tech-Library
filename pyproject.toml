@@ -1,5 +1,6 @@
 [build-system]
-requires = ["setuptools>=68.0", "wheel"]
+# 77 is the first setuptools that reads the PEP 639 licence fields below
+requires = ["setuptools>=77.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,7 +9,8 @@ dynamic = ["version"]
 description = "Processing layer for legal document AI: chunking, extraction, provenance, privacy enforcement and evaluation"
 readme = "README.md"
 requires-python = ">=3.11"
-license = {text = "Apache-2.0"}
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 authors = [
     {name = "Alexander Hepburn", email = "hello@quietsignalslab.com"}
 ]
@@ -17,7 +19,6 @@ classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "Intended Audience :: Legal Industry",
-    "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -25,6 +26,7 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Text Processing :: Linguistic",
+    "Typing :: Typed",
 ]
 
 # Only what every install needs.  LLM vendor SDKs are optional extras: the
@@ -54,9 +56,8 @@ spacy = ["spacy>=3.7.0"]
 # Storage and retrieval
 storage = ["psycopg2-binary>=2.9.9", "pgvector>=0.3.0"]
 rag = ["sentence-transformers>=2.0.0"]
-graph = ["networkx>=3.0.0", "neo4j>=5.0.0", "rdflib>=7.0.0"]
 all = [
-    "contractex[openai,anthropic,google,ollama,langchain,privacy,ocr,network,export,spacy,storage,rag,graph]",
+    "contractex[openai,anthropic,google,ollama,langchain,privacy,ocr,network,export,spacy,storage,rag]",
 ]
 dev = [
     "pytest>=8.0.0",
@@ -72,6 +73,8 @@ dev = [
     "pillow>=10.0.0",
     "psycopg2-binary>=2.9.9",
     "requests>=2.31.0",
+    "pandas>=2.2.0",
+    "openpyxl>=3.1.0",
 ]
 docs = [
     # MkDocs 2.0 removes the plugin system this site depends on
@@ -98,7 +101,7 @@ exclude = ["tests*", "examples*", "benchmarks*", "docs*"]
 version = {attr = "contractex.__version__.__version__"}
 
 [tool.setuptools.package-data]
-contractex = ["storage/*.sql", "storage/migrations/*.sql", "playbooks/*.yaml"]
+contractex = ["py.typed", "storage/*.sql", "storage/migrations/*.sql", "playbooks/*.yaml"]
 
 [tool.black]
 line-length = 100
@@ -154,17 +157,18 @@ markers = [
     "smoke: quick smoke tests",
 ]
 filterwarnings = [
-    "ignore::DeprecationWarning",
     "error::UserWarning",
+    # the library's own deprecations must be deliberate: tests that use a
+    # deprecated name say so with pytest.warns
+    "error::DeprecationWarning:contractex",
 ]
 
 [tool.mypy]
 python_version = "3.11"
 warn_return_any = true
 warn_unused_configs = true
-disallow_untyped_defs = false
-# Also check the bodies of unannotated functions (provider calls live in
-# nested helpers; unchecked, an SDK signature change went unnoticed).
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
 check_untyped_defs = true
 ignore_missing_imports = true
 plugins = ["pydantic.mypy"]
@@ -184,6 +188,9 @@ omit = [
 ]
 
 [tool.coverage.report]
+# Measured 79% without PostgreSQL (the integration tests are skipped there);
+# raise this as coverage grows, never lower it to make a change pass.
+fail_under = 77
 exclude_lines = [
     "pragma: no cover",
     "def __repr__",

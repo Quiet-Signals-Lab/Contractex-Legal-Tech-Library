@@ -6,12 +6,15 @@ import json
 import logging
 import os
 import time
-from typing import cast
+from collections.abc import Callable, Iterator
+from typing import Any, TypeVar, cast
 
 from pydantic import BaseModel
 
 from contractex.exceptions import LLMProviderError
 from contractex.llm.base import LLMProvider
+
+_T = TypeVar("_T")
 
 logger = logging.getLogger(__name__)
 
@@ -96,7 +99,9 @@ class AnthropicProvider(LLMProvider):
             )
         self.client = Anthropic(api_key=api_key)
 
-    def _call_with_retry(self, fn, label: str, max_retries: int = 3, base_delay: float = 1.0):
+    def _call_with_retry(
+        self, fn: Callable[[], _T], label: str, max_retries: int = 3, base_delay: float = 1.0
+    ) -> _T:
         """Call fn() with exponential backoff on transient Anthropic errors."""
         last_exc: Exception = Exception("unreachable")
         for attempt in range(max_retries):
@@ -142,7 +147,7 @@ class AnthropicProvider(LLMProvider):
             f"{json.dumps(json_schema, indent=2)}\n\nRespond ONLY with the JSON object, no additional text."
         )
 
-        def _call():
+        def _call() -> BaseModel:
             response = self.client.messages.create(
                 model=self._model,
                 max_tokens=max_tokens or self._max_tokens,
@@ -161,13 +166,12 @@ class AnthropicProvider(LLMProvider):
             data = json.loads(content)
             return schema(**data)
 
-        return self._call_with_retry(_call, "Anthropic structured extraction")  # type: ignore[no-any-return]
+        return self._call_with_retry(_call, "Anthropic structured extraction")
 
     def stream_complete(
-        self, prompt: str, temperature: float = 0.7, max_tokens: int | None = None, **kwargs
-    ):
+        self, prompt: str, temperature: float = 0.7, max_tokens: int | None = None, **kwargs: Any
+    ) -> Iterator[str]:
         """Stream a text completion from Anthropic token-by-token."""
-        from collections.abc import Iterator
 
         def _generate() -> Iterator[str]:
             with self.client.messages.stream(
@@ -182,11 +186,11 @@ class AnthropicProvider(LLMProvider):
         return _generate()
 
     def complete(
-        self, prompt: str, temperature: float = 0.7, max_tokens: int | None = None, **kwargs
+        self, prompt: str, temperature: float = 0.7, max_tokens: int | None = None, **kwargs: Any
     ) -> str:
         """Get text completion from Anthropic."""
 
-        def _call():
+        def _call() -> str:
             response = self.client.messages.create(
                 model=self._model,
                 max_tokens=max_tokens or self._max_tokens,
@@ -199,7 +203,7 @@ class AnthropicProvider(LLMProvider):
                 raise LLMProviderError(f"Unexpected response block type: {type(block).__name__}")
             return cast(str, block.text)
 
-        return self._call_with_retry(_call, "Anthropic completion")  # type: ignore[no-any-return]
+        return self._call_with_retry(_call, "Anthropic completion")
 
     def estimate_cost(self, text: str) -> float:
         """Estimate cost for processing text."""
@@ -216,20 +220,12 @@ class AnthropicProvider(LLMProvider):
 
     def count_tokens(self, text: str) -> int:
         """
-        Count tokens using Anthropic's count method.
+        Estimate tokens as characters ÷ 4.
 
-        Falls back to character-based estimation if API unavailable.
+        Anthropic's exact count is an API request that carries the text, so it
+        is not used: counting must never send a document anywhere.
         """
-        try:
-            # Use Anthropic's token counting
-            response = self.client.messages.count_tokens(
-                model=self._model, messages=[{"role": "user", "content": text}]
-            )
-            return int(response.input_tokens)
-        except Exception:
-            # Fallback: Claude uses similar tokenization to GPT
-            # Rough estimate: 1 token ≈ 4 characters
-            return len(text) // 4
+        return len(text) // 4
 
     @property
     def context_window(self) -> int:

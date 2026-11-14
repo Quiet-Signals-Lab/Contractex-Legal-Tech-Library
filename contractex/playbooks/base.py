@@ -20,8 +20,10 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from enum import Enum
 from typing import Any
+
+from contractex.core.models import RiskSeverity
+from contractex.exceptions import ValidationError
 
 # Optional YAML support (pyyaml); only required for load/save operations
 try:
@@ -30,14 +32,6 @@ try:
     _YAML_AVAILABLE = True
 except ImportError:
     _YAML_AVAILABLE = False
-
-
-class RiskSeverity(str, Enum):
-    CRITICAL = "critical"
-    HIGH = "high"
-    MEDIUM = "medium"
-    LOW = "low"
-    INFO = "info"
 
 
 @dataclass
@@ -76,7 +70,7 @@ class PlaybookRule:
 
         # Required keywords: if all are absent → flag
         if self.required_keywords:
-            if not all(kw.lower() in text_lower for kw in self.required_keywords):
+            if not any(kw.lower() in text_lower for kw in self.required_keywords):
                 return True
 
         # Required pattern: if absent → flag
@@ -162,41 +156,53 @@ class Playbook:
 
     @classmethod
     def from_yaml(cls, yaml_text: str) -> Playbook:
-        """Deserialize a Playbook from a YAML string."""
+        """
+        Deserialize a Playbook from a YAML string.
+
+        Raises:
+            ValidationError: If the text is not YAML or not a valid playbook.
+        """
         if not _YAML_AVAILABLE:
             raise ImportError("pyyaml is required. pip install pyyaml")
 
-        data = _yaml.safe_load(yaml_text)
-        rules = [
-            PlaybookRule(
-                id=r["id"],
-                clause_type=r["clause_type"],
-                description=r["description"],
-                severity=RiskSeverity(r["severity"]),
-                recommended_language=r.get("recommended_language", ""),
-                required_keywords=r.get("required_keywords", []),
-                forbidden_keywords=r.get("forbidden_keywords", []),
-                required_pattern=r.get("required_pattern", ""),
-                forbidden_pattern=r.get("forbidden_pattern", ""),
-                flag_if_missing=r.get("flag_if_missing", False),
+        try:
+            data = _yaml.safe_load(yaml_text)
+            rules = [
+                PlaybookRule(
+                    id=r["id"],
+                    clause_type=r["clause_type"],
+                    description=r["description"],
+                    severity=RiskSeverity(r["severity"]),
+                    recommended_language=r.get("recommended_language") or "",
+                    required_keywords=r.get("required_keywords") or [],
+                    forbidden_keywords=r.get("forbidden_keywords") or [],
+                    required_pattern=r.get("required_pattern") or "",
+                    forbidden_pattern=r.get("forbidden_pattern") or "",
+                    flag_if_missing=bool(r.get("flag_if_missing")),
+                )
+                for r in data.get("rules") or []
+            ]
+            # Not cls(...): a subclass may define its own __init__ (the built-in ones do)
+            playbook = cls.__new__(cls)
+            Playbook.__init__(
+                playbook,
+                name=data["name"],
+                version=data["version"],
+                description=data.get("description") or "",
+                required_clauses=data.get("required_clauses") or [],
+                rules=rules,
             )
-            for r in data.get("rules", [])
-        ]
-        return cls(
-            name=data["name"],
-            version=data["version"],
-            description=data.get("description", ""),
-            required_clauses=data.get("required_clauses", []),
-            rules=rules,
-        )
+        except (_yaml.YAMLError, KeyError, TypeError, AttributeError, ValueError) as exc:
+            raise ValidationError(f"Invalid playbook YAML: {exc!r}") from exc
+        return playbook
 
     @classmethod
     def from_yaml_file(cls, path: str) -> Playbook:
-        """Load a playbook from a YAML file."""
-        with open(path) as f:
+        """Load a playbook from a YAML file (UTF-8)."""
+        with open(path, encoding="utf-8") as f:
             return cls.from_yaml(f.read())
 
     def to_yaml_file(self, path: str) -> None:
-        """Save this playbook to a YAML file."""
-        with open(path, "w") as f:
+        """Save this playbook to a YAML file (UTF-8)."""
+        with open(path, "w", encoding="utf-8") as f:
             f.write(self.to_yaml())

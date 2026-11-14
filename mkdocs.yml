@@ -83,6 +83,11 @@ nav:
       - Chunking and provenance: api/chunking.md
       - Evaluation: api/eval.md
       - LLM providers: api/llm.md
+      - Loaders: api/loaders.md
+      - Playbooks: api/playbooks.md
+      - Retrieval: api/rag.md
+      - Taxonomy: api/taxonomy.md
+      - Review routing and audit: api/utilities.md
   - Project:
       - Changelog: project/changelog.md
       - Contributing: project/contributing.md

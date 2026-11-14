@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import inspect
 from pathlib import Path
+from typing import Any
 
 from contractex.exceptions import UnsupportedFileTypeError
 from contractex.loaders.base import DocumentLoader
@@ -17,20 +19,39 @@ class AutoLoader(DocumentLoader):
     based on file extension.
     """
 
-    def __init__(self, **loader_kwargs):
+    def __init__(self, **loader_kwargs: Any) -> None:
         """
         Initialize auto loader.
 
         Args:
-            **loader_kwargs: Keyword arguments passed to specific loaders
+            **loader_kwargs: Keyword arguments for the specific loaders; each
+                loader receives the ones its constructor accepts
+                (e.g. ``ocr_enabled`` goes to the PDF loader only)
+
+        Raises:
+            TypeError: If no loader accepts one of the keyword arguments
         """
         self.loader_kwargs = loader_kwargs
 
+        loader_types: dict[str, type[DocumentLoader]] = {
+            ".pdf": PDFLoader,
+            ".docx": DOCXLoader,
+            ".txt": TextLoader,
+        }
+        accepted = {
+            ext: set(inspect.signature(cls.__init__).parameters) & set(loader_kwargs)
+            for ext, cls in loader_types.items()
+        }
+        unknown = set(loader_kwargs) - set().union(*accepted.values())
+        if unknown:
+            raise TypeError(
+                f"AutoLoader got unexpected keyword argument(s): {', '.join(sorted(unknown))}"
+            )
+
         # Initialize specific loaders
-        self.loaders = {
-            ".pdf": PDFLoader(**loader_kwargs),
-            ".docx": DOCXLoader(**loader_kwargs),
-            ".txt": TextLoader(**loader_kwargs),
+        self.loaders: dict[str, DocumentLoader] = {
+            ext: cls(**{name: loader_kwargs[name] for name in accepted[ext]})
+            for ext, cls in loader_types.items()
         }
 
     def load(self, source: str) -> str:
@@ -62,7 +83,7 @@ class AutoLoader(DocumentLoader):
         result: str = loader.load(source)
         return result
 
-    def get_metadata(self, source: str):
+    def get_metadata(self, source: str) -> dict[str, Any]:
         """Get metadata using appropriate loader."""
         path = Path(source)
         extension = path.suffix.lower()

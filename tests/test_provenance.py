@@ -180,6 +180,14 @@ class TestFindSpanJaccard:
         span = tracker.find_span("completely different words that share almost nothing")
         assert span is None
 
+    def test_snippet_is_source_text_not_the_query(self):
+        source = "The contract shall be governed by the laws of New York."
+        tracker = ProvenanceTracker(similarity_threshold=0.5)
+        tracker.register_chunks([source], source_text=source)
+        span = tracker.find_span("governed by laws of New York contract")
+        assert span.snippet == source
+        assert source[span.char_start : span.char_end] == source
+
 
 # ---------------------------------------------------------------------------
 # ProvenanceTracker — annotate helpers
@@ -316,6 +324,17 @@ class TestOffsetsIntoSourceText:
     def test_chunk_not_in_source_raises(self):
         with pytest.raises(ValueError, match="chunk 1"):
             ProvenanceTracker().register_chunks(["abc", "zzz"], source_text="abc def")
+
+    def test_failed_registration_registers_nothing(self):
+        tracker = ProvenanceTracker()
+        tracker.register_chunks(["first"])
+        with pytest.raises(ValueError, match="chunk 1"):
+            tracker.register_chunks(["abc", "zzz"], source_text="abc def")
+        assert [r.text for r in tracker.chunks] == ["first"]
+        # ids and legacy offsets continue as if the failed call never happened
+        (record,) = tracker.register_chunks(["second"])
+        assert record.chunk_id.startswith("chunk-0001-")
+        assert record.char_start == len("first") + 1
 
     def test_repeated_chunk_text_is_located_in_order(self):
         tracker = ProvenanceTracker()

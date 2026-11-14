@@ -168,19 +168,22 @@ class ConflictDetector:
         """
         Return text to append to the RAG prompt when conflicts are present.
 
-        The addendum instructs the LLM to present both positions explicitly
-        and never flatten them into a single answer.
+        The detector compares jurisdiction, authority and dates; it does not
+        read the sources.  So the addendum states how they differ and tells
+        the model what to do if they turn out to disagree, without asserting
+        that they do.
         """
         if not conflicts:
             return ""
 
         lines = [
-            "\n\nIMPORTANT — CONFLICTING SOURCES DETECTED:",
-            "The retrieved sources contain conflicting positions on this question.",
-            "You MUST present BOTH positions clearly and indicate that the law is",
-            "unsettled or varies by jurisdiction.  Do NOT present false consensus.",
+            "\n\nNOTE — THE SOURCES DIFFER IN JURISDICTION, AUTHORITY OR DATE:",
+            "That alone is not a disagreement.  If they take different positions on",
+            "this question, present each position with its source and say which one",
+            "governs or is more recent.  Do not merge them into one answer.  If they",
+            "agree, answer normally.",
             "",
-            "Conflicts:",
+            "Differences:",
         ]
         for c in conflicts:
             lines.append(

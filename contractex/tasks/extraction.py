@@ -73,7 +73,8 @@ class ContractExtractionTask(LegalTask):
         if not doc.full_text:
             return 0.0
         try:
-            extractor = self._extractor(self._resolve_provider())
+            # llm_for() refuses a provider the document may not reach
+            extractor = self._extractor(self.llm_for(doc))
             est = extractor.estimate_extraction_cost_from_text(doc.full_text)
             return float(est.get("estimated_cost", 0.0))
         except Exception:

@@ -15,7 +15,9 @@ After extraction the caller is responsible for:
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from typing import Any
+
+from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
 # ---------------------------------------------------------------------------
 # Contract info + parties  (Phase 1 — preamble extraction)
@@ -179,6 +181,14 @@ class LLMFinancialResult(BaseModel):
         le=1.0,
         description="Confidence in the extraction accuracy (0.0–1.0)",
     )
+
+    @field_validator("currency", "description", "conditions", mode="before")
+    @classmethod
+    def _null_means_default(cls, value: Any, info: ValidationInfo) -> Any:
+        """Models often write ``null`` for "none"; one such field must not void the chunk."""
+        if value is None and info.field_name is not None:
+            return cls.model_fields[info.field_name].get_default(call_default_factory=True)
+        return value
 
 
 class LLMFinancialResponse(BaseModel):

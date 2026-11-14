@@ -6,13 +6,17 @@ import json
 import logging
 import os
 import time
+from collections.abc import Callable
+from typing import Any, TypeVar
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from contractex.exceptions import LLMProviderError
 from contractex.llm.base import LLMProvider
 
 logger = logging.getLogger(__name__)
+
+_T = TypeVar("_T")
 
 
 class LocalProvider(LLMProvider):
@@ -75,9 +79,12 @@ class LocalProvider(LLMProvider):
                 f"Pull it first with: ollama pull {self._model}"
             ) from e
 
-    def _call_with_retry(self, fn, label: str, max_retries: int = 3, base_delay: float = 2.0):
+    def _call_with_retry(
+        self, fn: Callable[[], _T], label: str, max_retries: int = 3, base_delay: float = 2.0
+    ) -> _T:
         """
-        Call fn() with exponential backoff on any exception.
+        Call fn() with exponential backoff on any exception except a reply
+        that is not valid JSON for the schema.
 
         Local models may be slow to load or temporarily unavailable, so we use a
         longer base_delay (2 s) compared to cloud providers.
@@ -88,6 +95,9 @@ class LocalProvider(LLMProvider):
                 return fn()
             except LLMProviderError:
                 raise
+            except (json.JSONDecodeError, ValidationError) as exc:
+                # The model answered; the same request would get the same answer
+                raise LLMProviderError(f"{label} failed: {exc}") from exc
             except Exception as exc:
                 last_exc = exc
                 if attempt < max_retries - 1:
@@ -119,7 +129,7 @@ class LocalProvider(LLMProvider):
             f"{json.dumps(json_schema, indent=2)}\n\nRespond ONLY with the JSON object, no additional text."
         )
 
-        def _call():
+        def _call() -> BaseModel:
             response = self.client.generate(
                 model=self._model,
                 prompt=enhanced_prompt,
@@ -133,14 +143,14 @@ class LocalProvider(LLMProvider):
             data = json.loads(content)
             return schema(**data)
 
-        return self._call_with_retry(_call, "Local LLM structured extraction")  # type: ignore[no-any-return]
+        return self._call_with_retry(_call, "Local LLM structured extraction")
 
     def complete(
-        self, prompt: str, temperature: float = 0.7, max_tokens: int | None = None, **kwargs
+        self, prompt: str, temperature: float = 0.7, max_tokens: int | None = None, **kwargs: Any
     ) -> str:
         """Get text completion from local LLM."""
 
-        def _call():
+        def _call() -> str:
             response = self.client.generate(
                 model=self._model,
                 prompt=prompt,
@@ -152,7 +162,7 @@ class LocalProvider(LLMProvider):
             result: str = response["response"]
             return result
 
-        return self._call_with_retry(_call, "Local LLM completion")  # type: ignore[no-any-return]
+        return self._call_with_retry(_call, "Local LLM completion")
 
     def estimate_cost(self, text: str) -> float:
         """

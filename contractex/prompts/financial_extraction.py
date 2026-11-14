@@ -32,19 +32,3 @@ INSTRUCTIONS:
 
 Return as structured JSON with amounts as plain numeric strings.
 """
-
-
-PRICING_STRUCTURE_PROMPT = """Analyse the pricing structure and payment terms in this contract.
-
-Contract Text:
-{contract_text}
-
-Provide analysis on:
-1. Overall pricing model (fixed, variable, tiered, per-unit, etc.)
-2. Total contract value (if determinable)
-3. Payment schedule summary
-4. Any cost escalation or adjustment clauses
-5. Financial risks or unusual terms
-
-Give a brief summary (4–5 sentences) suitable for business review.
-"""

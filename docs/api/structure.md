@@ -20,4 +20,6 @@ Types produced by `parse_structure()`: deterministic parsing, no model calls.
 
 ## parse_structure
 
+::: contractex.structure.parse_structure
+
 ::: contractex.structure.parser.ContractStructureParser

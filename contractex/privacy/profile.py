@@ -17,22 +17,33 @@ LLM routing values
 * ``"local_only"``   — route to ``LocalProvider`` (Ollama) only.
 * ``"blocked"``      — do not send to any LLM; raise ``PrivacyBlockedError``.
 
-The ``llm_routing`` field is normally derived from ``sensitivity``, but
-callers may override it explicitly for edge cases.
+The ``llm_routing`` field is normally derived from ``sensitivity``.  Callers
+may set it explicitly to make routing stricter (for example ``"local_only"`` on
+a ``public`` document), never looser: the routing enforced is always the
+stricter of the two (``effective_routing``).
 
-GDPR fields
------------
-* ``retention_days``      — ``None`` means no expiry; set to fulfil Art. 5(1)(e).
-* ``data_subject_ids``    — IDs of natural persons for Art. 17 erasure requests.
-* ``consent_reference``   — links to a consent record for Art. 7 compliance.
+A profile holds only what the router enforces or reports.  How PII is
+replaced is configured on ``PIIRedactor``; retention periods and consent
+records belong to your own records, where something acts on them.
 """
 
 from __future__ import annotations
 
 from enum import Enum
-from typing import Literal, cast
+from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
+
+Routing = Literal["any", "local_only", "blocked"]
+
+# Ascending restriction
+ROUTING_ORDER: tuple[Routing, ...] = ("any", "local_only", "blocked")
+_ROUTING_FOR_SENSITIVITY: dict[str, Routing] = {
+    "public": "any",
+    "confidential": "any",
+    "restricted": "local_only",
+    "secret": "blocked",
+}
 
 
 class RedactionStrategy(str, Enum):
@@ -68,55 +79,49 @@ class PrivacyProfile(BaseModel):
     redaction_applied:
         ``True`` once ``PIIRedactor.redact()`` has been applied to the text
         that will reach an LLM.
-    redaction_strategy:
-        How PII is replaced.  Defaults to ``REPLACE`` (typed placeholders).
     llm_routing:
-        Override for LLM provider selection.  If ``None``, routing is derived
-        from ``sensitivity`` automatically.
-    retention_days:
-        GDPR Art. 5(1)(e) — ``None`` means no expiry.
-    data_subject_ids:
-        Natural-person IDs for GDPR Art. 17 right-to-erasure requests.
-    consent_reference:
-        Identifier linking to a consent record for GDPR Art. 7 compliance.
+        Stricter routing than ``sensitivity`` implies.  If ``None``, routing
+        is derived from ``sensitivity``.  A looser value is ignored.
     """
 
     sensitivity: Literal["public", "confidential", "restricted", "secret"] = "public"
     contains_pii: bool = False
     pii_entities_found: list[str] = Field(default_factory=list)
     redaction_applied: bool = False
-    redaction_strategy: RedactionStrategy = RedactionStrategy.REPLACE
 
-    # Optional explicit routing override; if None, derived from sensitivity
-    llm_routing: Literal["any", "local_only", "blocked"] | None = None
-
-    # GDPR fields
-    retention_days: int | None = None
-    data_subject_ids: list[str] = Field(default_factory=list)
-    consent_reference: str | None = None
+    # Optional stricter routing; if None, derived from sensitivity
+    llm_routing: Routing | None = None
 
     @model_validator(mode="after")
     def _derive_routing(self) -> PrivacyProfile:
         """
-        If ``llm_routing`` is not explicitly set, derive it from
-        ``sensitivity``:
+        Store the routing that will be enforced, so ``llm_routing`` reads as:
 
         * public        → any
         * confidential  → any  (but auto-redaction will be applied)
         * restricted    → local_only
         * secret        → blocked
+
+        or the explicit value when that is stricter.
         """
-        if self.llm_routing is None:
-            self.llm_routing = cast(
-                Literal["any", "local_only", "blocked"],
-                {
-                    "public": "any",
-                    "confidential": "any",
-                    "restricted": "local_only",
-                    "secret": "blocked",
-                }[self.sensitivity],
-            )
+        self.llm_routing = self.effective_routing
         return self
+
+    @property
+    def effective_routing(self) -> Routing:
+        """
+        The routing enforced: the stricter of ``sensitivity``'s own routing and
+        ``llm_routing``.
+
+        Computed on every read, so raising ``sensitivity`` after construction
+        (by assignment, ``model_copy(update=...)`` or an edited dict) tightens
+        routing at once.  A value this model does not recognise blocks.
+        """
+        derived = _ROUTING_FOR_SENSITIVITY.get(self.sensitivity, "blocked")
+        explicit: Routing = "any" if self.llm_routing is None else self.llm_routing
+        if explicit not in ROUTING_ORDER:
+            return "blocked"
+        return max(derived, explicit, key=ROUTING_ORDER.index)
 
     @property
     def requires_redaction(self) -> bool:
@@ -132,9 +137,9 @@ class PrivacyProfile(BaseModel):
     @property
     def is_blocked(self) -> bool:
         """True when no LLM may process this document."""
-        return self.llm_routing == "blocked"
+        return self.effective_routing == "blocked"
 
     @property
     def is_local_only(self) -> bool:
         """True when only local (Ollama) providers are permitted."""
-        return self.llm_routing == "local_only"
+        return self.effective_routing == "local_only"

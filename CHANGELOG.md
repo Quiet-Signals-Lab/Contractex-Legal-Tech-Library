@@ -7,6 +7,135 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-14
+
+Fixes from a whole-repository audit.  Several change results that were
+wrong before, and unused code is removed, so read "Changed" and "Removed"
+before upgrading.
+
+### Security
+
+- A `secret` document could reach a provider.  Routing was derived once,
+  when a `PrivacyProfile` was created, so raising `sensitivity` afterwards,
+  passing `llm_routing="any"`, or running `PIIDetectionTask` on a document
+  reloaded from JSON left it routable, unredacted.  Routing is now
+  `PrivacyProfile.effective_routing`, computed on every read; `llm_routing`
+  can make it stricter, never looser.
+- `AnthropicProvider.count_tokens` sent the text to the API, and the privacy
+  guard passed `count_tokens` and `estimate_cost` straight through.
+  Counting is local, and the guard redacts what it hands to both.
+- With Presidio installed, a bare SSN or phone number, passport-style and
+  licence numbers and dates of birth were no longer redacted: the built-in
+  patterns did not run, and Presidio scores those below the thresholds.  The
+  patterns now always run alongside Presidio.
+- `LegalRAGPipeline.query(filters=...)` was ignored by the built-in store, and
+  a `LegalDoc` without a profile was ingested as `public` whatever the
+  router's `default_profile`.
+- `APILoader` sent its `Authorization` header to any host a response named
+  in `next`.  `URLLoader` and `APILoader` now check every redirect and
+  pagination link, and refuse one that leads from a public host to a private
+  address (loopback, a private network, a cloud metadata endpoint).
+- Excel and CSV exports wrote contract text beginning with `=`, `+`, `-` or
+  `@` as live formulas.
+- A failed storage insert logged the row, document text included.
+- The clause-heading pattern took exponential time on a long digit run, and
+  the email pattern quadratic time on a long dotted run.
+
+### Changed
+
+- `ContractExtractor` raises `ExtractionError` when every model call fails,
+  and lists partial failures in `metadata.warnings`.  It used to return an
+  empty `Contract`.
+- `compare()` reports a rewritten clause as removed plus added; it used to
+  report nothing.
+- A playbook rule with `required_keywords` fires only when all of them are
+  missing, as documented.  Expect far fewer flags.
+- `EvalHarness`: the expected fields of a case whose extractor raised count
+  as missed, and a case with no expected fields no longer counts as passed.
+  Scores that were inflated by crashes will drop.
+- Dates and amounts that cannot be read unambiguously are `None` instead of
+  a guess (`05/03/2024`, two-digit years, `€1.234,56` is now 1234.56).
+- `ObligationTimeline` leaves business-day and event-relative deadlines
+  unresolved instead of counting them from the effective date.
+- `DocumentRepository.insert` raises `DuplicateDocumentError` for a different
+  document with an existing filename; `update_metadata` merges keys and
+  raises `DocumentNotFoundError` for a missing row.
+- Schema v2's `audit_log` table is now `document_audit_log`; it collided with
+  the audit backend's table.  `add_embeddings.sql` creates 384-dimension
+  vectors, matching schema v2.
+- `PIIDetector(use_presidio=True)` raises `ImportError` without Presidio.
+- `risk_analysis` after a `contract_extraction` that already analysed risks
+  reuses those results; the risk prompt used to be sent twice.  A failed
+  model call is listed in `doc.extracted["risk_warnings"]`.
+- `Contract.metadata.prompt_versions` lists the prompts that run sent; it
+  used to list every known prompt, two of which nothing sends.
+- RAG: a difference in jurisdiction, authority or date between sources is
+  described to the model as a difference.  It used to be announced as
+  "conflicting positions" although the sources are never compared.
+- `CalibrationAnalyzer` uses mean confidence per bin and rejects values
+  outside [0, 1]; `ClauseAwareChunker` rejects a non-positive size.
+- Section `end_char` offsets cover the section's own body.
+
+### Fixed
+
+- Built-in features that failed on every use: the `ner` task,
+  `LegalRAGPipeline.sync_sources()` and URL ingest, `Citation.citation_string`,
+  `CUADClauseType.to_storage_type()`, `migrations/v1_to_v2.sql`,
+  `AutoLoader(ocr_enabled=True)`, `TaskRegistry()` other than the default, and
+  `ConfidenceRouter.route_document()` on a `LegalDoc`.
+- Structure parser: `Article I` / `Section 3` references, several schedules,
+  `Exhibit A`, words misread as references, defined terms in curly quotes.
+- `ObligationTimeline` crashed on month-end dates.
+- DOCX tables were moved to the end of the text.
+- `LocalProvider` retried answers that could not change.
+- Text extraction warned on pypdfium2 4.30, the oldest version allowed.
+- `Contract.compare_with` reported contracts with different clause texts as
+  identical.
+
+### Added
+
+- `py.typed`: the package's annotations are visible to type checkers, and
+  the whole package passes mypy with untyped definitions disallowed.
+- `ContractExError`, `DocumentLoadError`, `ExtractionError`,
+  `LLMProviderError`, `LLMProvider`, `PrivacyProfile`, `TaskRegistry`,
+  `LegalRAGPipeline` and `PlaybookFlag` at the top level.
+- API reference pages for loaders, playbooks, retrieval, taxonomy, review
+  routing and audit.
+- CI: weekly scheduled run, macOS and Windows, oldest supported dependency
+  versions, PostgreSQL integration tests, tests against the real Presidio
+  engine, an install check of the built wheel, a coverage floor.
+
+### Deprecated
+
+- `contractex.analysis.RiskFlag` is now `PlaybookFlag`, and
+  `contractex.core.analyzers.RiskAnalyzer` is now `LLMRiskAnalyzer`.  Each
+  shared its name with a different public class.  The old names still
+  import, with a `DeprecationWarning`.
+
+### Removed
+
+Code that nothing in the library, its tests or its documentation used.
+
+- `PrivacyProfile.redaction_strategy`, `retention_days`, `data_subject_ids`
+  and `consent_reference`.  They were stored and never read: the router
+  redacts with its own `PIIRedactor`, and nothing acted on the three fields
+  named after GDPR articles.  Profiles saved with them still load.
+- `contractex.storage.graph` (the knowledge graph) and the `graph` extra:
+  no tests, no callers, a Neo4j backend that returned nothing.
+- `CUADBenchmark`, deprecated in 0.5.0: it could not load the current CUAD
+  release.  The CUAD measurements are in `benchmarks/`.
+- `contractex.core.validators`, `contractex.utils.confidence`,
+  `contractex.taxonomy.schemas` (a clause-type registry nothing consulted).
+- Seven prompt templates that were never sent, and their versions.
+- `LegalDoc.merge()`: with one unprofiled document it could not know which
+  profile the result should carry.
+- `CurrencyNormalizer.extract_currency` and `format_amount`,
+  `EntityNormalizer.extract_legal_entity_type`, `TextNormalizer`.
+- `ClassificationError` and `ConfidenceThresholdError`, which were never
+  raised.
+- `contractex.core.embedder`: it imported a module that does not exist and
+  could never be imported.
+
 ## [0.5.1] - 2026-09-13
 
 ### Changed
@@ -331,7 +460,11 @@ never live.
 - CI/CD with GitHub Actions (tests, type checking, linting, PyPI publish workflow)
 - `CONTRIBUTING.md` with dev setup and contribution guidelines
 
-[Unreleased]: https://github.com/Quiet-Signals-Lab/Contractex-Legal-Tech-Library/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/Quiet-Signals-Lab/Contractex-Legal-Tech-Library/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/Quiet-Signals-Lab/Contractex-Legal-Tech-Library/compare/v0.5.1...v0.6.0
+[0.5.1]: https://github.com/Quiet-Signals-Lab/Contractex-Legal-Tech-Library/compare/v0.5.0...v0.5.1
+[0.5.0]: https://github.com/Quiet-Signals-Lab/Contractex-Legal-Tech-Library/compare/v0.3.1...v0.5.0
+[0.3.1]: https://github.com/Quiet-Signals-Lab/Contractex-Legal-Tech-Library/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/Quiet-Signals-Lab/Contractex-Legal-Tech-Library/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/Quiet-Signals-Lab/Contractex-Legal-Tech-Library/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/Quiet-Signals-Lab/Contractex-Legal-Tech-Library/compare/v0.1.0...v0.1.1

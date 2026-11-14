@@ -28,6 +28,30 @@ class TestPIIRecall:
         )
         assert m.pii_recall == 0.5 and m.pii_precision == 0.5
 
+    def test_clean_document_with_no_detections_is_a_perfect_score(self):
+        m = HARNESS.run_privacy(
+            suite(EvalCase(id="clean", input_text="x", expected_pii_entities=[])),
+            pii_detector_fn=lambda c: [],
+        )
+        assert (m.pii_precision, m.pii_recall, m.pii_f1) == (1.0, 1.0, 1.0)
+
+    def test_detection_on_a_clean_document_is_a_false_positive(self):
+        m = HARNESS.run_privacy(
+            suite(EvalCase(id="clean", input_text="x", expected_pii_entities=[])),
+            pii_detector_fn=lambda c: ["PERSON"],
+        )
+        assert (m.pii_precision, m.pii_f1) == (0.0, 0.0)
+
+    def test_crashing_detector_on_a_clean_document_is_not_a_perfect_score(self):
+        def detector(case):
+            raise RuntimeError("detector crashed")
+
+        m = HARNESS.run_privacy(
+            suite(EvalCase(id="clean", input_text="x", expected_pii_entities=[])),
+            pii_detector_fn=detector,
+        )
+        assert (m.pii_precision, m.pii_recall, m.pii_f1) == (0.0, 0.0, 0.0)
+
     def test_gate_fails_below_threshold(self):
         m = HARNESS.run_privacy(
             suite(EvalCase(id="a", input_text="x", expected_pii_entities=["PERSON"])),

@@ -3,7 +3,7 @@ Playbook-based risk analysis — Layer 3.
 
 RiskAnalyzer takes an extraction result (or a list of clauses) and a
 Playbook, evaluates every rule deterministically, and returns a list of
-RiskFlag objects.
+PlaybookFlag objects.
 
 No LLM calls.  All decisions are rule-based and auditable.
 
@@ -21,6 +21,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from contractex.analysis.compare import _clause_ref, _clause_text, _clause_type, _get_clauses
 from contractex.playbooks.base import Playbook, RiskSeverity
 
 # ---------------------------------------------------------------------------
@@ -30,7 +31,7 @@ from contractex.playbooks.base import Playbook, RiskSeverity
 
 
 @dataclass
-class RiskFlag:
+class PlaybookFlag:
     """A risk identified by a playbook rule."""
 
     clause_ref: str  # e.g. "8.1" or "" if missing-clause check
@@ -46,44 +47,6 @@ class RiskFlag:
 # ---------------------------------------------------------------------------
 # We use a structural typing approach so the analyzer works with both the
 # legacy Contract model and any future extraction result type.
-
-
-class _HasClauses:
-    """Protocol: any object with a .clauses attribute (list of Clause-like)."""
-
-
-def _get_clauses(result: object) -> list:
-    """Extract clauses from whatever result type is passed in."""
-    if hasattr(result, "clauses"):
-        return list(result.clauses)  # type: ignore[return-value]
-    if isinstance(result, list):
-        return result
-    return []
-
-
-def _clause_type(clause: object) -> str:
-    if hasattr(clause, "clause_type"):
-        return str(clause.clause_type)  # type: ignore[return-value]
-    if isinstance(clause, dict):
-        return str(clause.get("clause_type", ""))
-    return ""
-
-
-def _clause_text(clause: object) -> str:
-    if hasattr(clause, "text"):
-        return str(clause.text)  # type: ignore[return-value]
-    if isinstance(clause, dict):
-        return str(clause.get("text", ""))
-    return ""
-
-
-def _clause_ref(clause: object) -> str:
-    for attr in ("section_number", "section_ref", "id"):
-        if hasattr(clause, attr):
-            val = getattr(clause, attr)
-            if val:
-                return str(val)
-    return ""
 
 
 # ---------------------------------------------------------------------------
@@ -102,26 +65,26 @@ class RiskAnalyzer:
     def __init__(self, playbook: Playbook) -> None:
         self.playbook = playbook
 
-    def analyze(self, result: object) -> list[RiskFlag]:
+    def analyze(self, result: object) -> list[PlaybookFlag]:
         """
-        Run all playbook rules against *result* and return a list of RiskFlags.
+        Run all playbook rules against *result* and return a list of flags.
 
         Args:
             result: Any object with a .clauses attribute (Contract, ExtractionResult,
                     or a list of Clause objects).
 
         Returns:
-            list[RiskFlag] — one entry per rule that fired.
+            list[PlaybookFlag] — one entry per rule that fired.
         """
         clauses = _get_clauses(result)
         clause_types_present: set[str] = {_clause_type(c) for c in clauses}
-        flags: list[RiskFlag] = []
+        flags: list[PlaybookFlag] = []
 
         for rule in self.playbook.rules:
             # Missing-clause check
             if rule.flag_if_missing and rule.clause_type not in clause_types_present:
                 flags.append(
-                    RiskFlag(
+                    PlaybookFlag(
                         clause_ref="",
                         severity=rule.severity,
                         description=rule.description,
@@ -139,7 +102,7 @@ class RiskAnalyzer:
                 text = _clause_text(clause)
                 if rule.matches(text):
                     flags.append(
-                        RiskFlag(
+                        PlaybookFlag(
                             clause_ref=_clause_ref(clause),
                             severity=rule.severity,
                             description=rule.description,
@@ -167,3 +130,17 @@ class RiskAnalyzer:
         clauses = _get_clauses(result)
         present: set[str] = {_clause_type(c) for c in clauses}
         return [ct for ct in self.playbook.required_clauses if ct not in present]
+
+
+def __getattr__(name: str) -> object:
+    # RiskFlag was renamed: the same name also meant contractex.core.models.RiskFlag.
+    if name == "RiskFlag":
+        import warnings
+
+        warnings.warn(
+            "contractex.analysis.risk.RiskFlag is now PlaybookFlag; the old name will be removed.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return PlaybookFlag
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

@@ -1,4 +1,4 @@
-# Database Layer (`dbase`)
+# Database Layer (`contractex.storage`)
 
 The database layer provides structured access to legal document data, implementing a clean separation between storage and business logic through the repository pattern.
 
@@ -9,7 +9,7 @@ Following best practices for legal tech document analysis systems, this module i
 - **Minimal Viable Schema**: Three core tables (documents, clauses, processing_log) with room to grow
 - **Repository Pattern**: Clean API that hides SQL complexity
 - **Context Managers**: Automatic connection lifecycle management
-- **Deferred Optimization**: Embeddings tables not yet created (build when needed)
+- **Deferred Optimization**: Embeddings are a separate migration (`migrations/add_embeddings.sql`)
 - **Metadata-First**: JSONB columns for flexible legal document attributes
 
 ## Quick Start
@@ -69,6 +69,23 @@ clause_repo = ClauseRepository()
 clause_ids = clause_repo.insert_batch(clauses)
 ```
 
+`insert()` returns the stored id when the same document (same hash, or same
+text when there is no hash) is inserted again, and raises
+`DuplicateDocumentError` when a *different* document already has that filename.
+
+To make several writes one transaction, give the repositories your connection;
+they then leave commit and rollback to you:
+
+```python
+from contractex.storage import get_connection
+
+with get_connection() as conn:  # commits on success, rolls back on a database error
+    doc_id = DocumentRepository(conn).insert(doc)
+    ClauseRepository(conn).insert_batch(clauses)
+```
+
+Without a connection, each call opens its own and commits.
+
 ### 3. Querying
 
 ```python
@@ -77,6 +94,9 @@ doc = repo.get_by_id(doc_id)
 
 # Search by metadata
 ndas = repo.search_by_metadata({"contract_type": "NDA"})
+
+# Merge keys into a document's metadata (other keys are kept)
+repo.update_metadata(doc_id, {"reviewed": True})
 
 # Get all clauses from document
 doc_clauses = clause_repo.get_by_document(doc_id)
@@ -91,7 +111,7 @@ payment_clauses = clause_repo.search_by_type("payment")
 Central registry for source files with flexible metadata.
 
 **Key Fields:**
-- `filename`: Unique identifier
+- `filename`: Unique identifier (one document per filename)
 - `file_hash`: SHA-256 for deduplication
 - `file_data`: Binary storage (BYTEA)
 - `extracted_text`: Extracted content
@@ -162,8 +182,7 @@ class MockDocumentRepository:
 
 Following the principle of **building only what's needed now**, these features are deferred:
 
-- ❌ **Embeddings**: No vector columns yet - add when implementing RAG retrieval
-- ❌ **Full-text Search**: No tsvector indexes - may not need if using vector search
+- ❌ **Embeddings and full-text search**: not in `schema.sql`; `migrations/add_embeddings.sql` adds `clauses.embedding VECTOR(384)` and a tsvector column (needs pgvector)
 - ❌ **User Authentication**: No users/roles tables until multi-user requirements
 - ❌ **Audit Trails**: Processing_log sufficient for development
 - ❌ **Document Images**: No page-level image table until vision features needed
@@ -173,12 +192,8 @@ Following the principle of **building only what's needed now**, these features a
 When ready, extend with:
 
 ### Embeddings (for RAG)
-```sql
--- Add to clauses table OR create separate table
-ALTER TABLE clauses ADD COLUMN text_embedding VECTOR(1536);
-ALTER TABLE clauses ADD COLUMN vision_embedding VECTOR(512);
-
-CREATE INDEX ON clauses USING ivfflat (text_embedding vector_cosine_ops);
+```bash
+psql clause_docs < contractex/storage/migrations/add_embeddings.sql
 ```
 
 ### Document Images (for vision)
@@ -231,7 +246,10 @@ contractex/storage/
 ├── models.py            # Domain objects (Document, Clause, ProcessingLog)
 ├── repository.py        # Repository pattern implementations
 ├── schema.sql           # Database schema (idempotent)
+├── schema_v2.sql        # Next schema; no Python API yet
+├── migrations/          # add_embeddings.sql, v1_to_v2.sql
 ├── setup.py             # One-time initialization script
+├── setup.sh             # Runs setup.py
 └── README.md            # This file
 ```
 
@@ -270,4 +288,4 @@ print(f"Clauses for doc 1: {clause_repo.count_by_document(1)}")
 
 ## License
 
-Part of the Contract Clause Extractor project.
+Part of Contractex (Apache-2.0).

@@ -1,15 +1,18 @@
 """
 PIIDetector — detects personally identifiable information in text.
 
-Default backend: Microsoft Presidio (``pip install contractex[privacy]``).
-Automatic fallback: regex-based detection when Presidio is not installed.
+Built-in regex patterns always run.  Microsoft Presidio
+(``pip install contractex[privacy]``) runs as well when it is installed, and
+the two sets of spans are merged: Presidio adds names and places, the patterns
+catch identifiers that Presidio scores below the thresholds when no context
+word ("SSN", "phone") is nearby.
 
-The regex fallback is intentionally conservative — it catches the most
-common PII patterns without dependencies, so the privacy layer always
-functions even in minimal installs.
+The patterns are intentionally conservative — they catch the most common PII
+shapes without dependencies, so the privacy layer always functions even in
+minimal installs.
 
-Regex fallback limitations
---------------------------
+Limitations of the patterns alone
+---------------------------------
 * No PERSON, LOCATION, ORGANIZATION or NATIONAL_ID detection.  Names are the
   most common PII in contracts; install Presidio if names must be redacted.
 * Phone, SSN and driver's licence patterns are US formats.  Credit cards are
@@ -163,8 +166,6 @@ _DASH = r"[-\u2010-\u2015\u2212\ufe58\ufe63\uff0d]"
 _SEP = rf"(?:{_DASH}|[.\s])"
 
 _REGEX_PATTERNS: list[tuple[str, str]] = [
-    # Email (\w is Unicode-aware, so homoglyphs from other scripts are covered)
-    ("EMAIL_ADDRESS", r"\b[\w.%+\-]+@[\w.\-]+\.[^\W\d_]{2,}\b"),
     # US phone (various formats)
     ("PHONE_NUMBER", rf"\b(?:\+?1{_SEP}?)?\(?\d{{3}}\)?{_SEP}?\d{{3}}{_SEP}?\d{{4}}\b"),
     # US SSN
@@ -180,6 +181,36 @@ _REGEX_PATTERNS: list[tuple[str, str]] = [
     # US driver's licence (most states: letter + 7 digits)
     ("DRIVERS_LICENSE", r"\b[A-Z]\d{7}\b"),
 ]
+
+# Email is matched in two steps instead of one pattern.  A single pattern has
+# to try every position of a long "a.a.a." run as the start of an address,
+# which is quadratic.  Here each "@" is tried once: the domain is matched to
+# its right, then the name is read back to its left.  (\w is Unicode-aware, so
+# homoglyphs from other scripts are covered.)
+_EMAIL_DOMAIN = re.compile(r"@[\w.\-]+\.[^\W\d_]{2,}\b")
+_EMAIL_NAME_CHAR = re.compile(r"[\w.%+\-]")
+
+
+def _email_spans(text: str) -> list[tuple[int, int]]:
+    """(start, end) of every email address in *text*, in order, without overlap."""
+    spans: list[tuple[int, int]] = []
+    floor = 0  # end of the previous address: a name never reaches back past it
+    at = text.find("@")
+    while at != -1:
+        domain = _EMAIL_DOMAIN.match(text, at)
+        if domain:
+            start = at
+            while start > floor and _EMAIL_NAME_CHAR.match(text[start - 1]):
+                start -= 1
+            # like \b: the name starts at a letter, digit or underscore
+            while start < at and not (text[start].isalnum() or text[start] == "_"):
+                start += 1
+            if start < at:
+                spans.append((start, domain.end()))
+                floor = domain.end()
+        at = text.find("@", at + 1)
+    return spans
+
 
 # Regex matches carry no real confidence.  Score them at the highest default
 # threshold so every built-in pattern survives default filtering; raising an
@@ -234,8 +265,9 @@ class PIIDetector:
         will detect all listed languages; the regex fallback only supports
         ``"en"``.
     use_presidio:
-        Force-enable or force-disable Presidio.  When ``None`` (default),
-        Presidio is used if available; otherwise the regex fallback is used.
+        ``None`` (default) uses Presidio when it is installed.  ``True``
+        requires it and raises ``ImportError`` when it is missing.  ``False``
+        uses the built-in patterns only.
     """
 
     def __init__(
@@ -255,6 +287,11 @@ class PIIDetector:
             self._presidio_available = False
         else:
             self._presidio_available = self._check_presidio()
+            if use_presidio and not self._presidio_available:
+                raise ImportError(
+                    "use_presidio=True requires presidio-analyzer: "
+                    "pip install 'contractex[privacy]'"
+                )
 
         self._presidio_analyzer: Any = None
         if self._presidio_available:
@@ -291,10 +328,12 @@ class PIIDetector:
         keep = [i for i, ch in enumerate(text) if unicodedata.category(ch) != "Cf"]
         view = "".join(text[i] for i in keep) if len(keep) < len(text) else text
 
+        # The patterns always run.  Presidio scores a bare SSN or phone number
+        # below the thresholds and has no recogniser for several pattern
+        # types, so on its own it would let those through.
+        spans = self._detect_regex(view)
         if self._presidio_available and self._presidio_analyzer:
-            spans = self._detect_presidio(view, language)
-        else:
-            spans = self._detect_regex(view)
+            spans.extend(self._detect_presidio(view, language))
 
         # Apply custom recognizers on top
         for recognizer in self._custom_recognizers:
@@ -345,9 +384,13 @@ class PIIDetector:
 
     def _detect_presidio(self, text: str, language: str) -> list[PIISpan]:
         assert self._presidio_analyzer is not None, "presidio analyzer not initialised"
+        # Presidio is deprecating silent handling of entity names it has no
+        # recogniser for (PASSPORT_NUMBER, DATE_OF_BIRTH, ...); ask only for
+        # the ones it knows.
+        supported = set(self._presidio_analyzer.get_supported_entities(language))
         results = self._presidio_analyzer.analyze(
             text=text,
-            entities=self._entities,
+            entities=[e for e in self._entities if e in supported],
             language=language,
         )
         spans = []
@@ -370,6 +413,11 @@ class PIIDetector:
 
     def _detect_regex(self, text: str) -> list[PIISpan]:
         spans: list[PIISpan] = []
+        if "EMAIL_ADDRESS" in self._entities:
+            spans.extend(
+                PIISpan("EMAIL_ADDRESS", start, end, _REGEX_SCORE, text[start:end])
+                for start, end in _email_spans(text)
+            )
         for entity_type, pattern in _REGEX_PATTERNS:
             if entity_type not in self._entities:
                 continue

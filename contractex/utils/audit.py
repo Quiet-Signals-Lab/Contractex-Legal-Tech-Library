@@ -12,9 +12,10 @@ Backends are pluggable:
   * ``NullAuditBackend``     — no-op sink for testing
 
 The ``AuditLogger`` facade wraps any backend and provides convenience methods
-for the most common event types.  All writes are thread-safe.  Backend errors
-are captured and re-emitted via the standard ``logging`` module so they never
-propagate to calling code.
+for the most common event types.  All writes are thread-safe.  Errors while
+recording an event (an invalid field value, a backend failure) are captured and
+re-emitted via the standard ``logging`` module so they never propagate to
+calling code.
 
 Usage::
 
@@ -47,6 +48,8 @@ from typing import Any
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
+
+from contractex.exceptions import ContractExError
 
 logger = logging.getLogger(__name__)
 
@@ -215,7 +218,11 @@ class PostgresAuditBackend(AuditBackend):
 
     The table is created automatically on first use (``ensure_table=True``).
     Each write uses ``autocommit`` mode to guarantee durability without
-    wrapping the caller's transaction.
+    wrapping the caller's transaction.  A dropped connection (server restart,
+    idle timeout) is re-opened once per write.
+
+    Raises ``ContractExError`` when a table named ``audit_log`` with other
+    columns already exists, instead of failing on every insert.
 
     DDL::
 
@@ -272,35 +279,60 @@ class PostgresAuditBackend(AuditBackend):
             ) from exc
 
         self._psycopg2 = psycopg2
-        self._conn = psycopg2.connect(dsn)
-        self._conn.autocommit = True
+        self._dsn = dsn
+        self._conn = self._connect()
         self._lock = threading.Lock()
 
         if ensure_table:
             with self._conn.cursor() as cur:
                 cur.execute(self._DDL)
+                # IF NOT EXISTS keeps an existing audit_log, whatever its columns
+                cur.execute(
+                    "SELECT 1 FROM information_schema.columns "
+                    "WHERE table_schema = current_schema() "
+                    "AND table_name = 'audit_log' AND column_name = 'event_id'"
+                )
+                compatible = cur.fetchone() is not None
+            if not compatible:
+                self._conn.close()
+                raise ContractExError(
+                    "A table named audit_log with a different layout already exists in this "
+                    "database; PostgresAuditBackend cannot write to it."
+                )
+
+    def _connect(self) -> Any:
+        conn = self._psycopg2.connect(self._dsn)
+        conn.autocommit = True
+        return conn
+
+    def _insert(self, params: tuple[Any, ...]) -> None:
+        with self._conn.cursor() as cur:
+            cur.execute(self._INSERT, params)
 
     def write(self, event: AuditEvent) -> None:
         import psycopg2.extras  # type: ignore[import]
 
-        with self._lock, self._conn.cursor() as cur:
-            cur.execute(
-                self._INSERT,
-                (
-                    event.event_id,
-                    event.timestamp,
-                    event.event_type.value,
-                    event.document_id,
-                    event.session_id,
-                    event.user_id,
-                    event.source_url,
-                    event.fields_extracted or None,
-                    event.fields_rejected or None,
-                    event.overall_confidence,
-                    event.error_message,
-                    psycopg2.extras.Json(event.metadata),
-                ),
-            )
+        params = (
+            event.event_id,
+            event.timestamp,
+            event.event_type.value,
+            event.document_id,
+            event.session_id,
+            event.user_id,
+            event.source_url,
+            event.fields_extracted or None,
+            event.fields_rejected or None,
+            event.overall_confidence,
+            event.error_message,
+            psycopg2.extras.Json(event.metadata),
+        )
+        with self._lock:
+            try:
+                self._insert(params)
+            except (self._psycopg2.OperationalError, self._psycopg2.InterfaceError):
+                # Connection dropped: reconnect once (the insert is idempotent on event_id)
+                self._conn = self._connect()
+                self._insert(params)
 
     def close(self) -> None:
         with self._lock:
@@ -316,8 +348,9 @@ class AuditLogger:
     """
     Thread-safe facade that records AuditEvents via a pluggable backend.
 
-    Backend failures are caught and re-emitted via the standard ``logging``
-    module so they never interrupt the calling pipeline.
+    Failures (an invalid field value, a backend error) are caught and
+    re-emitted via the standard ``logging`` module so they never interrupt the
+    calling pipeline.
 
     Factories
     ---------
@@ -365,6 +398,15 @@ class AuditLogger:
         except Exception as exc:
             logger.error("AuditLogger write failed: %s", exc)
 
+    def _record(self, event_type: AuditEventType, **fields: Any) -> None:
+        """Build and write an event; an invalid field is logged, not raised."""
+        try:
+            event = AuditEvent(event_type=event_type, **fields)
+        except Exception as exc:
+            logger.error("AuditLogger could not build %s event: %s", event_type.value, exc)
+            return
+        self.log(event)
+
     # ------------------------------------------------------------------
     # Convenience helpers
     # ------------------------------------------------------------------
@@ -378,15 +420,13 @@ class AuditLogger:
         **metadata: Any,
     ) -> None:
         """Record that a document was ingested into the pipeline."""
-        self.log(
-            AuditEvent(
-                event_type=AuditEventType.DOCUMENT_INGESTED,
-                document_id=document_id,
-                source_url=source_url,
-                session_id=session_id,
-                user_id=user_id,
-                metadata=metadata,
-            )
+        self._record(
+            AuditEventType.DOCUMENT_INGESTED,
+            document_id=document_id,
+            source_url=source_url,
+            session_id=session_id,
+            user_id=user_id,
+            metadata=metadata,
         )
 
     def log_extraction(
@@ -399,16 +439,14 @@ class AuditLogger:
         **metadata: Any,
     ) -> None:
         """Record the outcome of a field-extraction step."""
-        self.log(
-            AuditEvent(
-                event_type=AuditEventType.FIELDS_EXTRACTED,
-                document_id=document_id,
-                fields_extracted=fields_extracted,
-                fields_rejected=fields_rejected or [],
-                overall_confidence=overall_confidence,
-                session_id=session_id,
-                metadata=metadata,
-            )
+        self._record(
+            AuditEventType.FIELDS_EXTRACTED,
+            document_id=document_id,
+            fields_extracted=fields_extracted,
+            fields_rejected=fields_rejected or [],
+            overall_confidence=overall_confidence,
+            session_id=session_id,
+            metadata=metadata,
         )
 
     def log_review_request(
@@ -419,14 +457,12 @@ class AuditLogger:
         **metadata: Any,
     ) -> None:
         """Record that fields were routed to the human-review queue."""
-        self.log(
-            AuditEvent(
-                event_type=AuditEventType.REVIEW_REQUESTED,
-                document_id=document_id,
-                fields_extracted=fields,
-                session_id=session_id,
-                metadata=metadata,
-            )
+        self._record(
+            AuditEventType.REVIEW_REQUESTED,
+            document_id=document_id,
+            fields_extracted=fields,
+            session_id=session_id,
+            metadata=metadata,
         )
 
     def log_review_completion(
@@ -436,13 +472,11 @@ class AuditLogger:
         **metadata: Any,
     ) -> None:
         """Record that human review was completed for a document."""
-        self.log(
-            AuditEvent(
-                event_type=AuditEventType.REVIEW_COMPLETED,
-                document_id=document_id,
-                session_id=session_id,
-                metadata=metadata,
-            )
+        self._record(
+            AuditEventType.REVIEW_COMPLETED,
+            document_id=document_id,
+            session_id=session_id,
+            metadata=metadata,
         )
 
     def log_deletion(
@@ -453,14 +487,12 @@ class AuditLogger:
         **metadata: Any,
     ) -> None:
         """Record a GDPR-right-to-erasure deletion event."""
-        self.log(
-            AuditEvent(
-                event_type=AuditEventType.DOCUMENT_DELETED,
-                document_id=document_id,
-                user_id=user_id,
-                session_id=session_id,
-                metadata=metadata,
-            )
+        self._record(
+            AuditEventType.DOCUMENT_DELETED,
+            document_id=document_id,
+            user_id=user_id,
+            session_id=session_id,
+            metadata=metadata,
         )
 
     def log_error(
@@ -471,14 +503,12 @@ class AuditLogger:
         **metadata: Any,
     ) -> None:
         """Record a pipeline error."""
-        self.log(
-            AuditEvent(
-                event_type=AuditEventType.PIPELINE_ERROR,
-                document_id=document_id,
-                error_message=error_message,
-                session_id=session_id,
-                metadata=metadata,
-            )
+        self._record(
+            AuditEventType.PIPELINE_ERROR,
+            document_id=document_id,
+            error_message=error_message,
+            session_id=session_id,
+            metadata=metadata,
         )
 
     # ------------------------------------------------------------------

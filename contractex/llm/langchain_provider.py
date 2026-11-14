@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 from typing import Any
 
 from pydantic import BaseModel
@@ -79,22 +80,19 @@ Respond with valid JSON matching this schema:
             raise LLMProviderError(f"LangChain structured extraction failed: {str(e)}") from e
 
     def complete(
-        self, prompt: str, temperature: float = 0.7, max_tokens: int | None = None, **kwargs
+        self, prompt: str, temperature: float = 0.7, max_tokens: int | None = None, **kwargs: Any
     ) -> str:
         """Get text completion from LangChain LLM."""
         try:
-            # Set temperature if possible
-            original_temp = None
-            if hasattr(self.langchain_llm, "temperature"):
-                original_temp = self.langchain_llm.temperature
-                self.langchain_llm.temperature = temperature
+            # Set temperature if possible, on a per-call copy: the model is
+            # shared, and assigning on it would leak into concurrent calls.
+            llm = self.langchain_llm
+            if hasattr(llm, "temperature"):
+                llm = copy.copy(llm)
+                llm.temperature = temperature
 
             # Invoke LLM
-            response = self.langchain_llm.invoke(prompt, **kwargs)
-
-            # Restore temperature
-            if original_temp is not None:
-                self.langchain_llm.temperature = original_temp
+            response = llm.invoke(prompt, **kwargs)
 
             # Handle different response types
             if isinstance(response, str):

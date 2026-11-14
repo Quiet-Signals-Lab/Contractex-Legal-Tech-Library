@@ -41,6 +41,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from contractex.core.document import LegalDoc
 from contractex.core.legal_document import LegalDocument, SourceSpan
 
 # ---------------------------------------------------------------------------
@@ -152,7 +153,8 @@ class ConfidenceRouter:
         field_thresholds:  Per-field overrides ``{field: (accept, reject)}``.
 
     Raises:
-        ValueError: If ``reject_threshold >= accept_threshold``.
+        ValueError: If ``reject_threshold >= accept_threshold``, globally or
+            for a field.
     """
 
     def __init__(
@@ -166,6 +168,12 @@ class ConfidenceRouter:
                 "Thresholds must satisfy 0 ≤ reject_threshold < accept_threshold ≤ 1; "
                 f"got reject={reject_threshold}, accept={accept_threshold}"
             )
+        for name, (accept, reject) in (field_thresholds or {}).items():
+            if not (0.0 <= reject < accept <= 1.0):
+                raise ValueError(
+                    f"Thresholds for {name!r} must be (accept, reject) with "
+                    f"0 ≤ reject < accept ≤ 1; got accept={accept}, reject={reject}"
+                )
         self.accept_threshold = accept_threshold
         self.reject_threshold = reject_threshold
         self.field_thresholds: dict[str, tuple[float, float]] = field_thresholds or {}
@@ -217,18 +225,23 @@ class ConfidenceRouter:
     # Document-level routing
     # ------------------------------------------------------------------
 
-    def route_document(self, document: LegalDocument) -> RoutingResult:
+    def route_document(self, document: LegalDocument | LegalDoc) -> RoutingResult:
         """
-        Route all ``extracted_fields`` in a ``LegalDocument``.
+        Route all extracted fields of a ``LegalDoc`` (``extracted``) or a
+        legacy ``LegalDocument`` (``extracted_fields``).
 
         Populates ``result.accepted``, ``result.review_queue``, and
         ``result.rejected``.  The review queue is sorted by confidence
         ascending so reviewers see the least-certain items first.
         """
         result = RoutingResult(document_id=document.doc_id)
+        if isinstance(document, LegalDoc):
+            fields, confidences = document.extracted, document.confidences
+        else:
+            fields, confidences = document.extracted_fields, document.field_confidences
 
-        for field_name, value in document.extracted_fields.items():
-            confidence = document.field_confidences.get(field_name, 0.0)
+        for field_name, value in fields.items():
+            confidence = confidences.get(field_name, 0.0)
             span = document.provenance.get(field_name)
             item = self.route_field(
                 field_name,

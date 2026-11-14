@@ -2,7 +2,9 @@
 Source adapter for URL and API-based document sources.
 
 Extends the base DocumentLoader with network fetching, ETag-based change
-detection, and exponential-backoff retry.  Two concrete subclasses cover
+detection, and exponential-backoff retry.  Only http(s) URLs are fetched, and
+credentials (auth header, extra headers) are never sent to a host other than
+the one they were given for.  Two concrete subclasses cover
 the most common patterns:
 
   - URLLoader  — arbitrary HTTP(S) URLs (HTML, PDF, plain text)
@@ -15,18 +17,25 @@ drop-in replacements anywhere the existing loaders are accepted.
 from __future__ import annotations
 
 import hashlib
+import ipaddress
 import logging
+import socket
 import time
 from abc import abstractmethod
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
+from contractex.__version__ import __version__
 from contractex.exceptions import DocumentLoadError
 from contractex.loaders.base import DocumentLoader
 
 logger = logging.getLogger(__name__)
+
+_REDIRECTS = (301, 302, 303, 307, 308)
+_MAX_REDIRECTS = 5
 
 
 # ---------------------------------------------------------------------------
@@ -93,7 +102,7 @@ class SourceAdapter(DocumentLoader):
         timeout: int = 30,
         max_retries: int = 3,
         backoff_factor: float = 1.5,
-        user_agent: str = "contractex/0.1 (legal-tech-pipeline)",
+        user_agent: str = f"contractex/{__version__} (legal-tech-pipeline)",
     ) -> None:
         self.timeout = timeout
         self.max_retries = max_retries
@@ -161,24 +170,78 @@ class SourceAdapter(DocumentLoader):
     # Retry helper
     # ------------------------------------------------------------------
 
-    def _retry(self, fn, *args, **kwargs):
-        """Execute *fn* with exponential backoff.  Raises on final failure."""
-        last_exc: Exception | None = None
+    def _retry(self, fn: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
+        """
+        Call *fn*, retrying connection errors and HTTP 429/5xx responses with
+        exponential backoff.  Other errors (a malformed URL, say) are raised at
+        once; the response of the last attempt is returned whatever its status.
+        """
+        import requests
+
+        transient = (ConnectionError, TimeoutError, requests.ConnectionError, requests.Timeout)
         for attempt in range(self.max_retries):
+            last = attempt == self.max_retries - 1
             try:
-                return fn(*args, **kwargs)
+                response = fn(*args, **kwargs)
+            except transient as exc:
+                if last:
+                    raise DocumentLoadError(
+                        f"All {self.max_retries} retry attempts failed"
+                    ) from exc
+                reason = str(exc)
             except Exception as exc:
-                last_exc = exc
-                wait = self.backoff_factor**attempt
-                logger.warning(
-                    "Attempt %d/%d failed (%s); retrying in %.1fs",
-                    attempt + 1,
-                    self.max_retries,
-                    exc,
-                    wait,
+                raise DocumentLoadError(f"Request failed: {exc}") from exc
+            else:
+                if last or not (response.status_code == 429 or response.status_code >= 500):
+                    return response
+                reason = f"HTTP {response.status_code}"
+            wait = self.backoff_factor**attempt
+            logger.warning(
+                "Attempt %d/%d failed (%s); retrying in %.1fs",
+                attempt + 1,
+                self.max_retries,
+                reason,
+                wait,
+            )
+            time.sleep(wait)
+        raise DocumentLoadError(f"All {self.max_retries} retry attempts failed")
+
+    def _get(
+        self,
+        url: str,
+        headers: dict[str, str],
+        credentialed: bool,
+        params: dict[str, str] | None = None,
+    ) -> Any:
+        """
+        GET *url* with retries, following redirects one hop at a time so each
+        can be checked: with credentials only within the same host, and never
+        from a public host to a private address.
+        """
+        import requests
+
+        for _ in range(_MAX_REDIRECTS):
+            if urlparse(url).scheme not in ("http", "https"):
+                raise DocumentLoadError(f"Only http(s) URLs can be fetched, got {url!r}")
+            response = self._retry(
+                requests.get,
+                url,
+                headers=headers,
+                params=params,
+                timeout=self.timeout,
+                allow_redirects=False,
+            )
+            if response.status_code not in _REDIRECTS:
+                return response
+            target = urljoin(url, response.headers.get("Location", ""))
+            if credentialed and not _same_host(target, url):
+                raise DocumentLoadError(
+                    f"{url!r} redirects to another host ({target!r}); "
+                    "not followed because the request carries credentials"
                 )
-                time.sleep(wait)
-        raise DocumentLoadError(f"All {self.max_retries} retry attempts failed") from last_exc
+            _refuse_public_to_private(url, target)
+            url, params = target, None
+        raise DocumentLoadError(f"Too many redirects fetching {url!r}")
 
     # ------------------------------------------------------------------
     # Utility
@@ -187,6 +250,62 @@ class SourceAdapter(DocumentLoader):
     @staticmethod
     def _hash(content: str) -> str:
         return hashlib.sha256(content.encode()).hexdigest()
+
+
+def _same_host(url: str, other: str) -> bool:
+    return urlparse(url).netloc.lower() == urlparse(other).netloc.lower()
+
+
+def _is_private(url: str) -> bool:
+    """
+    True if *url*'s host is, or resolves to, an address that is not public.
+
+    Raises ``OSError`` when the host does not resolve.
+    """
+    # The host must be read the way the HTTP client reads it: urllib and
+    # urllib3 disagree on "http://a\\@b/", and the client connects to
+    # urllib3's answer.
+    from urllib3.util import parse_url
+
+    host = (parse_url(url).host or "").strip("[]")
+    try:
+        addresses = [ipaddress.ip_address(host)]
+    except ValueError:
+        addresses = [ipaddress.ip_address(a[4][0]) for a in socket.getaddrinfo(host, None)]
+    return any(not a.is_global for a in addresses)
+
+
+def _refuse_public_to_private(source: str, target: str) -> None:
+    """
+    Refuse to follow a link or redirect from a public host to a private one.
+
+    A server on the internet must not be able to point the loader at
+    loopback, a private network or a cloud metadata address and have the
+    answer indexed as a document.  A source that is itself private (an
+    intranet server you named) may link anywhere.  A target that cannot be
+    checked is not followed.
+    """
+    if _same_host(source, target):
+        return
+    if "\\" in target or any(c.isspace() for c in target):
+        raise DocumentLoadError(f"{source!r} points to a malformed URL ({target!r}); not followed")
+    # shortcut: the name is resolved here and again by the HTTP client, so a
+    # DNS answer that changes in between (rebinding) is not caught, and behind
+    # an HTTP proxy the proxy resolves it; pin the resolved address if this
+    # must hold against a hostile DNS server.
+    try:
+        if not _is_private(target):
+            return
+    except (OSError, ValueError) as exc:
+        raise DocumentLoadError(
+            f"{source!r} points to {target!r}, whose host could not be checked; not followed"
+        ) from exc
+    try:
+        if _is_private(source):
+            return
+    except (OSError, ValueError):
+        pass  # an unresolvable source is treated as public
+    raise DocumentLoadError(f"{source!r} points to a private address ({target!r}); not followed")
 
 
 # ---------------------------------------------------------------------------
@@ -209,7 +328,9 @@ class URLLoader(SourceAdapter):
         max_retries:   Number of retry attempts on transient errors.
         backoff_factor: Base for exponential backoff between retries.
         strip_html:    Convert HTML bodies to plain text (default True).
-        headers:       Extra HTTP headers sent with every request.
+        headers:       Extra HTTP headers sent with every request.  They may
+                       hold credentials, so with them a redirect to another
+                       host is refused.
     """
 
     def __init__(
@@ -231,7 +352,7 @@ class URLLoader(SourceAdapter):
     def fetch(self, source: str, cache: FetchCache | None = None) -> FetchResult:
         """Fetch *source* URL with conditional-GET support."""
         try:
-            import requests
+            import requests  # noqa: F401
         except ImportError as exc:
             raise DocumentLoadError(
                 "requests is required for URLLoader. "
@@ -248,10 +369,7 @@ class URLLoader(SourceAdapter):
             elif cache.last_modified:
                 req_headers["If-Modified-Since"] = cache.last_modified
 
-        def _get():
-            return requests.get(source, headers=req_headers, timeout=self.timeout)
-
-        response = self._retry(_get)
+        response = self._get(source, req_headers, credentialed=bool(self.extra_headers))
 
         # 304 Not Modified — server confirmed nothing changed
         if response.status_code == 304:
@@ -313,17 +431,17 @@ class URLLoader(SourceAdapter):
                 self._parts: list[str] = []
                 self._skip_depth = 0
 
-            def handle_starttag(self, tag: str, attrs) -> None:  # type: ignore[override]
+            def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
                 if tag in self._SKIP:
                     self._skip_depth += 1
                 if tag in self._BLOCK:
                     self._parts.append("\n")
 
-            def handle_endtag(self, tag: str) -> None:  # type: ignore[override]
+            def handle_endtag(self, tag: str) -> None:
                 if tag in self._SKIP:
                     self._skip_depth = max(0, self._skip_depth - 1)
 
-            def handle_data(self, data: str) -> None:  # type: ignore[override]
+            def handle_data(self, data: str) -> None:
                 if not self._skip_depth:
                     self._parts.append(data)
 
@@ -362,7 +480,10 @@ class APILoader(SourceAdapter):
     * Bearer token / API key authentication via ``auth_header``
     * Fixed query parameters via ``params``
     * Text extraction from a dot-separated JSON field path (e.g. ``"data.opinion.text"``)
-    * Pagination via RFC 5988 Link headers or common ``next`` / ``next_url`` keys
+    * Pagination via RFC 5988 Link headers or common ``next`` / ``next_url`` keys.
+      A relative link is resolved against the current page.  A link to another
+      host is fetched without the auth header and query parameters; a page that
+      fails raises ``DocumentLoadError`` rather than returning the pages so far.
 
     Args:
         text_field:   Dot-separated path to the text value in the JSON response.
@@ -400,7 +521,7 @@ class APILoader(SourceAdapter):
     def fetch(self, source: str, cache: FetchCache | None = None) -> FetchResult:
         """Fetch JSON API endpoint and extract text content."""
         try:
-            import requests
+            import requests  # noqa: F401
         except ImportError as exc:
             raise DocumentLoadError(
                 "requests is required for APILoader. "
@@ -416,15 +537,8 @@ class APILoader(SourceAdapter):
         if cache and cache.etag:
             req_headers["If-None-Match"] = cache.etag
 
-        def _get(url: str):
-            return requests.get(
-                url,
-                headers=req_headers,
-                params=self.base_params,
-                timeout=self.timeout,
-            )
-
-        response = self._retry(_get, source)
+        credentialed = bool(self.auth_header)
+        response = self._get(source, req_headers, credentialed, self.base_params)
 
         if response.status_code == 304:
             return FetchResult(
@@ -444,18 +558,28 @@ class APILoader(SourceAdapter):
 
         if self.paginate:
             current_url = source
+            public_headers = {k: v for k, v in req_headers.items() if k != "Authorization"}
             for _ in range(self.max_pages - 1):
-                next_url = self._next_link(response, data)
-                if not next_url or next_url == current_url:
+                link = self._next_link(response, data)
+                if not link:
                     break
-                response = self._retry(_get, next_url)
-                if not response.ok:
-                    logger.warning(
-                        "Pagination stopped: HTTP %d from %r",
-                        response.status_code,
-                        next_url,
+                if not link.startswith(("http://", "https://", "/", "?")):
+                    raise DocumentLoadError(
+                        f"Cannot follow pagination value {link!r} from {current_url!r}: "
+                        "not a URL"
                     )
+                next_url = urljoin(current_url, link)
+                if next_url == current_url:
                     break
+                if _same_host(next_url, source):
+                    response = self._get(next_url, req_headers, credentialed, self.base_params)
+                else:
+                    _refuse_public_to_private(source, next_url)
+                    response = self._get(next_url, public_headers, credentialed=False)
+                if not response.ok:
+                    raise DocumentLoadError(
+                        f"API returned HTTP {response.status_code} for {next_url!r}"
+                    )
                 data = response.json()
                 page_texts.append(self._extract_text(data))
                 current_url = next_url

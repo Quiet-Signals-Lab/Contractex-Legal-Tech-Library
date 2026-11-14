@@ -15,7 +15,9 @@ class NERTask(LegalTask):
     Named entity recognition over legal text.  Requires ``pip install
     contractex[spacy]``.
 
-    Results are written to ``doc.extracted["ner_entities"]``.
+    Results are written to ``doc.extracted["ner_entities"]`` as a list of
+    ``{"text", "label", "start", "end"}`` dicts, where ``start``/``end`` are
+    character offsets into ``doc.full_text``.
     """
 
     task_id = "ner"
@@ -38,7 +40,7 @@ class NERTask(LegalTask):
             return doc
 
         ner = self._get_ner()
-        entities = ner.extract(doc.full_text)
+        entities = ner.extract_entities(doc.full_text)
 
         doc = doc.model_copy(
             update={

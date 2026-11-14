@@ -8,7 +8,10 @@ when scaling to API serving.
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterator
 from contextlib import contextmanager
+from types import TracebackType
+from typing import Any, Literal
 
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -16,6 +19,17 @@ from psycopg2.extras import RealDictCursor
 from contractex.storage.config import get_db_config
 
 logger = logging.getLogger(__name__)
+
+
+def error_summary(e: BaseException) -> str:
+    """
+    One line describing *e* that is safe to log.
+
+    A PostgreSQL error's DETAIL line quotes the failing row ("Failing row
+    contains (...)"), i.e. document text; only the first line is kept.
+    """
+    lines = str(e).strip().splitlines()
+    return lines[0] if lines else type(e).__name__
 
 
 class DatabaseConnection:
@@ -28,7 +42,7 @@ class DatabaseConnection:
             cursor.execute("SELECT * FROM documents")
     """
 
-    def __init__(self, config: dict | None = None):
+    def __init__(self, config: dict[str, Any] | None = None) -> None:
         """
         Initialize connection manager.
 
@@ -39,7 +53,7 @@ class DatabaseConnection:
         self.config = config or get_db_config()
         self.conn: psycopg2.extensions.connection | None = None
 
-    def __enter__(self):
+    def __enter__(self) -> Any:
         """Context manager entry - establish connection."""
         try:
             self.conn = psycopg2.connect(
@@ -55,7 +69,12 @@ class DatabaseConnection:
             logger.error(f"Database connection failed: {e}")
             raise
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> Literal[False]:
         """Context manager exit - close connection."""
         if self.conn:
             if exc_type:
@@ -72,7 +91,7 @@ class DatabaseConnection:
 
 
 @contextmanager
-def get_connection(config: dict | None = None):
+def get_connection(config: dict[str, Any] | None = None) -> Iterator[Any]:
     """
     Context manager for database connections.
 
@@ -100,7 +119,7 @@ def get_connection(config: dict | None = None):
     except psycopg2.Error as e:
         if conn:
             conn.rollback()
-        logger.error(f"Database error: {e}")
+        logger.error(f"Database error: {error_summary(e)}")
         raise
     finally:
         if conn:
@@ -109,7 +128,7 @@ def get_connection(config: dict | None = None):
 
 
 @contextmanager
-def get_cursor(dict_cursor: bool = False, config: dict | None = None):
+def get_cursor(dict_cursor: bool = False, config: dict[str, Any] | None = None) -> Iterator[Any]:
     """
     Context manager for database cursor with automatic connection management.
 
@@ -131,7 +150,7 @@ def get_cursor(dict_cursor: bool = False, config: dict | None = None):
             cursor.close()
 
 
-def test_connection(config: dict | None = None) -> bool:
+def test_connection(config: dict[str, Any] | None = None) -> bool:
     """
     Test database connectivity.
 
@@ -154,7 +173,7 @@ def test_connection(config: dict | None = None) -> bool:
         return False
 
 
-def connect_to_postgres_server(config: dict | None = None):
+def connect_to_postgres_server(config: dict[str, Any] | None = None) -> Any:
     """
     Connect to PostgreSQL server (not specific database).
     Used for database creation tasks.
@@ -182,19 +201,10 @@ def connect_to_postgres_server(config: dict | None = None):
         raise
 
 
-@contextmanager
-def get_vector_cursor(dict_cursor: bool = False, config: dict | None = None):
+def register_vector_types(conn: Any) -> None:
     """
-    Context manager for database cursor with pgvector types registered.
-
-    Use this instead of get_cursor() for any query that reads or writes
-    VECTOR columns. Registers the pgvector psycopg2 adapter so plain
-    Python list[float] values are accepted as query parameters.
-
-    Usage:
-        with get_vector_cursor() as cur:
-            cur.execute("UPDATE clauses SET embedding = %s WHERE id = %s",
-                        (embedding, clause_id))
+    Register the pgvector psycopg2 adapter on *conn* so plain Python
+    list[float] values are accepted as query parameters.
 
     Raises:
         ContractExError: If pgvector Python package is not installed
@@ -208,8 +218,30 @@ def get_vector_cursor(dict_cursor: bool = False, config: dict | None = None):
             "pgvector not installed. Install with: pip install 'contractex[storage]'"
         ) from e
 
+    register_vector(conn)
+
+
+@contextmanager
+def get_vector_cursor(
+    dict_cursor: bool = False, config: dict[str, Any] | None = None
+) -> Iterator[Any]:
+    """
+    Context manager for database cursor with pgvector types registered.
+
+    Use this instead of get_cursor() for any query that reads or writes
+    VECTOR columns. Registers the pgvector psycopg2 adapter (see
+    ``register_vector_types``).
+
+    Usage:
+        with get_vector_cursor() as cur:
+            cur.execute("UPDATE clauses SET embedding = %s WHERE id = %s",
+                        (embedding, clause_id))
+
+    Raises:
+        ContractExError: If pgvector Python package is not installed
+    """
     with get_connection(config) as conn:
-        register_vector(conn)
+        register_vector_types(conn)
         cursor_factory = RealDictCursor if dict_cursor else None
         cursor = conn.cursor(cursor_factory=cursor_factory)
         try:

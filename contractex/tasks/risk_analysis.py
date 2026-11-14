@@ -1,4 +1,4 @@
-"""Risk analysis task — wraps RiskAnalyzer as a pipeline stage."""
+"""Risk analysis task — wraps LLMRiskAnalyzer as a pipeline stage."""
 
 from __future__ import annotations
 
@@ -14,6 +14,13 @@ class RiskAnalysisTask(LegalTask):
     """
     Identify risk flags in contract text and write them to
     ``doc.extracted["risks"]``.
+
+    The keyword rules always run.  If the model call fails, their results are
+    still returned and the failure is listed in
+    ``doc.extracted["risk_warnings"]`` (empty when the model answered).
+
+    After a ``contract_extraction`` task that already analysed risks, those
+    results are reused and the model is not asked again.
 
     Parameters
     ----------
@@ -40,7 +47,7 @@ class RiskAnalysisTask(LegalTask):
         if not doc.full_text:
             return doc
 
-        from contractex.core.analyzers import RiskAnalyzer
+        from contractex.core.analyzers import RISK_FAILURE, LLMRiskAnalyzer
         from contractex.core.models import Contract
 
         # Reuse clauses from a preceding contract_extraction task when present,
@@ -48,11 +55,16 @@ class RiskAnalysisTask(LegalTask):
         contract = Contract.model_validate(
             doc.extracted.get("contract") or {"full_text": doc.full_text}
         )
-        risks = RiskAnalyzer(llm_provider=self.llm_for(doc)).analyze(contract)
+        # prompt_versions names the prompts an extraction sent
+        if "risk_analysis" in contract.metadata.prompt_versions:
+            risks = contract.risks
+        else:
+            risks = LLMRiskAnalyzer(llm_provider=self.llm_for(doc)).analyze(contract)
+        warnings = [w for w in contract.metadata.warnings if w.startswith(RISK_FAILURE)]
 
         doc = doc.model_copy(
             update={
-                "extracted": {**doc.extracted, "risks": risks},
+                "extracted": {**doc.extracted, "risks": risks, "risk_warnings": warnings},
             }
         )
         return doc

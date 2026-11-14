@@ -23,7 +23,11 @@ _RISK_TEXT_CHARS = 20_000
 _VALID_SEVERITIES = {s.value for s in RiskSeverity}
 
 
-class RiskAnalyzer:
+# Start of the warning recorded in Contract.metadata.warnings when the model call fails
+RISK_FAILURE = "LLM risk analysis failed"
+
+
+class LLMRiskAnalyzer:
     """
     Analyzer for detecting risks in contracts using rule-based and LLM approaches.
 
@@ -160,6 +164,9 @@ class RiskAnalyzer:
         Uses the contract's full text (up to _RISK_TEXT_CHARS characters) so that
         contextual risks — e.g. a liability cap that is unreasonably low given the
         contract value — can be identified.
+
+        A failed call returns no LLM risks and is recorded in
+        ``contract.metadata.warnings``.
         """
         if self.llm_provider is None:
             return []
@@ -184,6 +191,9 @@ class RiskAnalyzer:
             llm_response = result  # type: ignore[assignment]
         except Exception as e:
             logger.warning("LLM-based risk analysis failed: %s — skipping", e)
+            # First line only: the rest of the error can quote the prompt
+            first_line = (str(e).splitlines() or [type(e).__name__])[0]
+            contract.metadata.warnings.append(f"{RISK_FAILURE}: {first_line}")
             return []
 
         risks: list[RiskFlag] = []
@@ -228,3 +238,17 @@ class RiskAnalyzer:
         """
         temp_contract = Contract(clauses=[clause])  # type: ignore[call-arg]
         return self.analyze(temp_contract)
+
+
+def __getattr__(name: str) -> object:
+    # RiskAnalyzer was renamed: the same name also meant contractex.analysis.RiskAnalyzer.
+    if name == "RiskAnalyzer":
+        import warnings
+
+        warnings.warn(
+            "contractex.core.analyzers.RiskAnalyzer is now LLMRiskAnalyzer; the old name will be removed.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return LLMRiskAnalyzer
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

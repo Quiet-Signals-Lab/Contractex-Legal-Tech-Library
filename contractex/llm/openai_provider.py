@@ -5,7 +5,8 @@ from __future__ import annotations
 import logging
 import os
 import time
-from typing import cast
+from collections.abc import Callable, Iterator
+from typing import Any, TypeVar, cast
 
 from pydantic import BaseModel
 
@@ -13,6 +14,8 @@ from contractex.exceptions import LLMProviderError
 from contractex.llm.base import LLMProvider
 
 logger = logging.getLogger(__name__)
+
+_T = TypeVar("_T")
 
 # Errors that warrant a retry (rate limits, network, server errors)
 try:
@@ -98,7 +101,9 @@ class OpenAIProvider(LLMProvider):
             )
         self.client = OpenAI(api_key=api_key)
 
-    def _call_with_retry(self, fn, label: str, max_retries: int = 3, base_delay: float = 1.0):
+    def _call_with_retry(
+        self, fn: Callable[[], _T], label: str, max_retries: int = 3, base_delay: float = 1.0
+    ) -> _T:
         """
         Call fn() with exponential backoff on transient OpenAI errors.
 
@@ -139,7 +144,7 @@ class OpenAIProvider(LLMProvider):
     ) -> BaseModel:
         """Extract structured data using OpenAI's structured output feature."""
 
-        def _call():
+        def _call() -> BaseModel:
             response = self.client.beta.chat.completions.parse(
                 model=self._model,
                 messages=[
@@ -150,18 +155,17 @@ class OpenAIProvider(LLMProvider):
                 temperature=temperature,
                 max_tokens=max_tokens or self._max_tokens,
             )
-            parsed = response.choices[0].message.parsed
+            parsed: BaseModel | None = response.choices[0].message.parsed
             if parsed is None:
                 raise LLMProviderError("OpenAI returned None for parsed response")
             return parsed
 
-        return self._call_with_retry(_call, "OpenAI structured extraction")  # type: ignore[no-any-return]
+        return self._call_with_retry(_call, "OpenAI structured extraction")
 
     def stream_complete(
-        self, prompt: str, temperature: float = 0.7, max_tokens: int | None = None, **kwargs
-    ):
+        self, prompt: str, temperature: float = 0.7, max_tokens: int | None = None, **kwargs: Any
+    ) -> Iterator[str]:
         """Stream a text completion from OpenAI token-by-token."""
-        from collections.abc import Iterator
 
         def _generate() -> Iterator[str]:
             stream = self.client.chat.completions.create(
@@ -180,11 +184,11 @@ class OpenAIProvider(LLMProvider):
         return _generate()
 
     def complete(
-        self, prompt: str, temperature: float = 0.7, max_tokens: int | None = None, **kwargs
+        self, prompt: str, temperature: float = 0.7, max_tokens: int | None = None, **kwargs: Any
     ) -> str:
         """Get text completion from OpenAI."""
 
-        def _call():
+        def _call() -> str:
             response = self.client.chat.completions.create(
                 model=self._model,
                 messages=[{"role": "user", "content": prompt}],
@@ -197,7 +201,7 @@ class OpenAIProvider(LLMProvider):
                 raise LLMProviderError("OpenAI returned empty response")
             return cast(str, content)
 
-        return self._call_with_retry(_call, "OpenAI completion")  # type: ignore[no-any-return]
+        return self._call_with_retry(_call, "OpenAI completion")
 
     def estimate_cost(self, text: str) -> float:
         """Estimate cost for processing text."""
