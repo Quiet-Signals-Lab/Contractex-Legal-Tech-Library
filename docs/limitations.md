@@ -25,9 +25,12 @@ making the rest credible.  Where a limit is measured, the
 - **Labels can be wrong.**  A value that fits several patterns gets one label.
   A two-letter passport number, for example, is labelled `IBAN_CODE`.  It is
   still redacted.
-- **Presidio itself is not benchmarked here**, and its detection depends on
-  the spaCy model installed.  The test suite checks, against the real engine,
-  that identifiers the patterns catch are still caught with Presidio on.
+- **With Presidio, about one in five person-name tokens is left**, most postal
+  addresses are only partly redacted, and account, policy and case numbers
+  are mostly not detected.  The [benchmarks](benchmarks.md) measure this on
+  980 synthetic English documents; real documents are likely to leave more.
+  Detection depends on the spaCy model installed, and Presidio is used in
+  English only.
 
 ## Privacy enforcement
 

@@ -112,3 +112,17 @@ False positives on non-PII distractors: 0 of 224.  EvalHarness.run_privacy() on 
 | rag | confidential | sent_redacted | sent_redacted |
 | rag | restricted | excluded | sent_redacted |
 | rag | secret | excluded | excluded |
+
+### Personal data left after redaction
+
+980 synthetic English documents (386,524 words) with labelled personal data, redacted as the router redacts a `confidential` prompt.  A token is left when any of its characters is not redacted; lower is better.  Data: Hepburn, A. (2026). Solander Detection Benchmark v1.2, sealed synthetic track. Quiet Signals Lab. https://doi.org/10.5281/zenodo.23594288, CC BY 4.0.  Measured with presidio-analyzer 2.2.366, spaCy 3.8.18 and en_core_web_lg 3.8.0 by `python -m benchmarks.detection`.
+
+| Labelled | Tokens | Left: built-in patterns | Left: with Presidio |
+|---|---|---|---|
+| Person names | 17744 | 99.2% | 18.0% |
+| Postal addresses | 5012 | 100.0% | 62.5% |
+| Reference numbers (accounts, policies, cases) | 510 | 95.7% | 92.2% |
+| Places | 676 | 100.0% | 22.2% |
+| Organisations (not in the default entity set) | 9652 | 99.8% | 93.3% |
+
+False positives (a person or place detected where nothing is labelled): built-in patterns 0.00 per 1,000 words · with Presidio 0.31 per 1,000 words.  The dataset does not label email addresses or phone numbers; with Presidio, 871 EMAIL_ADDRESS, 14 IBAN_CODE, 2 PASSPORT_NUMBER, 181 PHONE_NUMBER detections fall outside its labels and are counted neither way.
