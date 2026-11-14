@@ -79,13 +79,13 @@ making the rest credible.  Where a limit is measured, the
 ## Tasks
 
 - `summarization`, `timeline` and `obligations` read only the first 12,000
-  characters of a document, and `comparison` the first 8,000 of each.  Longer
-  documents are truncated silently.
+  characters of a document, and `comparison` the first 8,000 of each.  When a
+  document is longer, the task is listed in `doc.extracted["truncated"]` and a
+  warning is logged; the rest of the document is not read.
 - `classification` is keyword matching.
 - Citation extraction covers US case citations, U.S.C., C.F.R., EU
-  regulations and directives, and a few acronyms.  `CitationTask(use_llm=True)`
-  currently has no effect.
-- `risk_analysis` accepts a `severity_threshold` but does not apply it.
+  regulations and directives, and a few acronyms.  Citations are not
+  normalised; `CitationTask(use_llm=True)` is deprecated and does nothing.
 - `ObligationTimeline` resolves only deadlines counted from the effective
   date.  Business days, and periods counted from another event ("after
   termination"), are left unresolved.

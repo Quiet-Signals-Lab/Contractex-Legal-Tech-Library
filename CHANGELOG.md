@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `summarization`, `timeline`, `obligations` and `comparison` read only the
+  start of a long document.  They now say so: the task is listed in
+  `doc.extracted["truncated"]` and a warning is logged.  It used to be
+  silent.
+- `risk_analysis` applies `severity_threshold`; it was accepted and ignored.
+  The default is now `"info"`, which keeps every risk, as before.
+- The README states where privacy enforcement stops, not only the
+  limitations page.
+
+### Deprecated
+
+- `CitationTask(use_llm=True)`: it never had an effect, and no longer marks
+  the task as calling a model.
+
 ## [0.6.0] - 2026-11-14
 
 Fixes from a whole-repository audit.  Several change results that were

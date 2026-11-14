@@ -42,10 +42,17 @@ pip install contractex
 
 ## Where it stops
 
-Without [Presidio](https://microsoft.github.io/presidio/) installed, names are
-not detected.  Scanned PDFs need OCR.  Chunking and citation patterns are
-English-centric.  The [Limitations](https://quietsignalslab.com/contractex/docs/limitations/)
-page lists everything known.
+Privacy is enforced on model calls made through the built-in tasks,
+pipelines, retrieval and the router.  Code that calls `ContractExtractor` or a
+provider directly is not covered.  "Local" means a `LocalProvider`; where its
+Ollama host runs is not checked.  Without
+[Presidio](https://microsoft.github.io/presidio/) installed, names are not
+detected.
+
+Scanned PDFs need OCR.  Chunking and citation patterns are English-centric.
+Extraction accuracy per model is not yet benchmarked.  The
+[Limitations](https://quietsignalslab.com/contractex/docs/limitations/) page
+lists everything known.
 
 ## Start here
 

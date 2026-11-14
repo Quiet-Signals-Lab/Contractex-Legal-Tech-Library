@@ -14,7 +14,7 @@ The pipeline uses it to refuse model-calling tasks on
 | `citation` | no | `citations` | Regular expressions for US case citations, U.S.C., C.F.R., EU regulations and directives, and acronyms such as GDPR | Other citation formats are silently absent. |
 | `classification` | no | `cuad_labels` | Keyword matching against CUAD clause types | A label means an indicative phrase occurs, not that the clause exists. |
 | `ner` | no | `ner_entities` | spaCy (`contractex[spacy]` plus a spaCy model); a list of `{text, label, start, end}` | As good as the spaCy model. |
-| `summarization` | yes | `summary` | One completion over the first 12,000 characters | Returned as-is; nothing is validated.  Longer documents are truncated. |
+| `summarization` | yes | `summary` | One completion over the first 12,000 characters | Returned as-is; nothing is validated.  A longer document is cut and the task is listed in `doc.extracted["truncated"]`; the same holds for `timeline`, `obligations` and `comparison`. |
 | `timeline` | yes | `timeline` | One structured call over the first 12,000 characters | Output that does not fit the schema raises an error; nothing is repaired. |
 | `obligations` | yes | `obligations` | One structured call over the first 12,000 characters | As for `timeline`. |
 | `comparison` | yes | `comparison` | One structured call over the first 8,000 characters of each document (`doc_b=` keyword) | As for `timeline`.  Both documents' profiles are enforced. |

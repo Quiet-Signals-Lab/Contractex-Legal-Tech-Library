@@ -9,6 +9,9 @@ from contractex.core.legal_document import DocType
 from contractex.tasks.base import LegalTask
 from contractex.tasks.registry import TaskRegistry
 
+# Ascending
+_SEVERITIES = ["info", "low", "medium", "high", "critical"]
+
 
 class RiskAnalysisTask(LegalTask):
     """
@@ -27,8 +30,8 @@ class RiskAnalysisTask(LegalTask):
     llm_provider:
         LLM provider instance or name string.
     severity_threshold:
-        Minimum severity level to include (``"low"``, ``"medium"``,
-        ``"high"``, ``"critical"``).
+        Lowest severity to keep: ``"info"`` (the default, keeps everything),
+        ``"low"``, ``"medium"``, ``"high"`` or ``"critical"``.
     """
 
     task_id = "risk_analysis"
@@ -38,8 +41,13 @@ class RiskAnalysisTask(LegalTask):
     def __init__(
         self,
         llm_provider: Any | None = None,
-        severity_threshold: str = "low",
+        severity_threshold: str = "info",
     ) -> None:
+        if severity_threshold not in _SEVERITIES:
+            raise ValueError(
+                f"severity_threshold must be one of {', '.join(_SEVERITIES)}, "
+                f"got {severity_threshold!r}"
+            )
         self._llm_provider = llm_provider
         self._severity_threshold = severity_threshold
 
@@ -60,6 +68,8 @@ class RiskAnalysisTask(LegalTask):
             risks = contract.risks
         else:
             risks = LLMRiskAnalyzer(llm_provider=self.llm_for(doc)).analyze(contract)
+        floor = _SEVERITIES.index(self._severity_threshold)
+        risks = [r for r in risks if _SEVERITIES.index(r.severity.value) >= floor]
         warnings = [w for w in contract.metadata.warnings if w.startswith(RISK_FAILURE)]
 
         doc = doc.model_copy(

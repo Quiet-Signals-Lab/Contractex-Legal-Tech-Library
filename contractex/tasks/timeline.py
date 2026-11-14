@@ -76,6 +76,7 @@ class TimelineTask(LegalTask):
                 "extracted": {
                     **doc.extracted,
                     "timeline": [e.model_dump() for e in result.events],
+                    **self._truncation(doc, 12_000),
                 },
             }
         )
