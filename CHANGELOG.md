@@ -185,7 +185,7 @@ Code that nothing in the library, its tests or its documentation used.
 ## [0.5.0] - 2026-09-12
 
 The first release since 0.3.1.  It includes the unpublished 0.4.0 work
-below, fixes privacy defects that affect every earlier version, and adds
+below, fixes privacy defects that affect 0.3.0 and 0.3.1, and adds
 reproducible benchmarks.
 
 ### Breaking changes
@@ -208,7 +208,8 @@ reproducible benchmarks.
 
 ### Security
 
-Privacy defects present in every published version:
+Privacy defects present in every published version with the privacy module
+(0.3.0 and 0.3.1):
 
 - Without Presidio, email addresses, US Social Security numbers, card
   numbers and IBANs were never redacted (regex scores fell below the
