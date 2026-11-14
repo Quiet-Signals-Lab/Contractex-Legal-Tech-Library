@@ -61,6 +61,14 @@ wrong before, so read "Changed" before upgrading.
   the audit backend's table.  `add_embeddings.sql` creates 384-dimension
   vectors, matching schema v2.
 - `PIIDetector(use_presidio=True)` raises `ImportError` without Presidio.
+- `risk_analysis` after a `contract_extraction` that already analysed risks
+  reuses those results; the risk prompt used to be sent twice.  A failed
+  model call is listed in `doc.extracted["risk_warnings"]`.
+- `Contract.metadata.prompt_versions` lists the prompts that run sent; it
+  used to list every known prompt, two of which nothing sends.
+- RAG: a difference in jurisdiction, authority or date between sources is
+  described to the model as a difference.  It used to be announced as
+  "conflicting positions" although the sources are never compared.
 - `CalibrationAnalyzer` uses mean confidence per bin and rejects values
   outside [0, 1]; `ClauseAwareChunker` rejects a non-positive size.
 - Section `end_char` offsets cover the section's own body.
@@ -103,6 +111,25 @@ wrong before, so read "Changed" before upgrading.
 
 ### Removed
 
+Code that nothing in the library, its tests or its documentation used.
+
+- `PrivacyProfile.redaction_strategy`, `retention_days`, `data_subject_ids`
+  and `consent_reference`.  They were stored and never read: the router
+  redacts with its own `PIIRedactor`, and nothing acted on the three fields
+  named after GDPR articles.  Profiles saved with them still load.
+- `contractex.storage.graph` (the knowledge graph) and the `graph` extra:
+  no tests, no callers, a Neo4j backend that returned nothing.
+- `CUADBenchmark`, deprecated in 0.5.0: it could not load the current CUAD
+  release.  The CUAD measurements are in `benchmarks/`.
+- `contractex.core.validators`, `contractex.utils.confidence`,
+  `contractex.taxonomy.schemas` (a clause-type registry nothing consulted).
+- Seven prompt templates that were never sent, and their versions.
+- `LegalDoc.merge()`: with one unprofiled document it could not know which
+  profile the result should carry.
+- `CurrencyNormalizer.extract_currency` and `format_amount`,
+  `EntityNormalizer.extract_legal_entity_type`, `TextNormalizer`.
+- `ClassificationError` and `ConfidenceThresholdError`, which were never
+  raised.
 - `contractex.core.embedder`: it imported a module that does not exist and
   could never be imported.
 

@@ -19,7 +19,7 @@ The pipeline uses it to refuse model-calling tasks on
 | `obligations` | yes | `obligations` | One structured call over the first 12,000 characters | As for `timeline`. |
 | `comparison` | yes | `comparison` | One structured call over the first 8,000 characters of each document (`doc_b=` keyword) | As for `timeline`.  Both documents' profiles are enforced. |
 | `contract_extraction` | yes | `contract` | `ContractExtractor`: document details, then clauses and financial terms per chunk, then risks | Items below `confidence_threshold` and failed model calls get a warning in `contract.metadata.warnings`; `ExtractionError` if every call fails. |
-| `risk_analysis` | yes, plus rules | `risks` | Keyword rules over extracted clauses, plus one model call over the first 20,000 characters | If the model call fails, only the rule results are returned (logged). |
+| `risk_analysis` | yes, plus rules | `risks`, `risk_warnings` | Keyword rules over extracted clauses, plus one model call over the first 20,000 characters.  After a `contract_extraction` that already analysed risks, its results are reused and the model is not asked again. | If the model call fails, the rule results are returned and the failure is listed in `risk_warnings`. |
 
 Model-calling tasks need a provider: an `LLMProvider` instance, or a model
 name (see [LLM providers](providers.md)).  There is no default, and a task
