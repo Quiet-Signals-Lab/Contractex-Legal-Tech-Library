@@ -44,8 +44,9 @@ pip install contractex
 
 Privacy is enforced on model calls made through the built-in tasks,
 pipelines, retrieval and the router.  Code that calls `ContractExtractor` or a
-provider directly is not covered.  "Local" means a `LocalProvider`; where its
-Ollama host runs is not checked.  Without
+provider directly is not covered.  "Local" means a `LocalProvider` whose
+Ollama server is on your machine or a private network and whose model is not
+an Ollama cloud model.  Without
 [Presidio](https://microsoft.github.io/presidio/) installed, names are not
 detected; with it, about one name token in five is still left, and most
 addresses and reference numbers are (see the

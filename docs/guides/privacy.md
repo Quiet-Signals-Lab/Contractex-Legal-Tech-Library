@@ -12,7 +12,7 @@ application remembering to check a setting.
 |---|---|---|---|
 | `public` | any | nothing | — |
 | `confidential` | any | PII detected and redacted in the prompt | — |
-| `restricted` | `LocalProvider` only | PII detected and redacted in the prompt | `PrivacyRoutingError`, raised before the provider is called |
+| `restricted` | `LocalProvider` on this machine or a private network, not an Ollama cloud model | PII detected and redacted in the prompt | `PrivacyRoutingError`, raised before the provider is called |
 | `secret` | none | — | `PrivacyBlockedError`, raised before any prompt is built for a provider |
 
 Routing is derived from sensitivity.  `llm_routing` can make it stricter, for
@@ -185,8 +185,10 @@ point above.
 
 - The router trusts the profile.  Classifying a document's sensitivity is the
   caller's job.
-- `local_only` means "a `LocalProvider` instance".  The router does not check
-  where that provider's Ollama host runs.
+- `local_only` checks where a `LocalProvider`'s Ollama host resolves, and
+  refuses Ollama cloud models (`:cloud` or `-cloud` tags), which a local
+  Ollama server forwards to ollama.com.  It does not see what the Ollama
+  server itself does with a request.
 - Without Presidio, names, places and national identifiers are not detected,
   so they reach the model in `confidential` prompts.
 - Only text that goes through the router is protected.  See

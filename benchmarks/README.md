@@ -151,8 +151,8 @@ accuracy on the same policy.
   configure Presidio for other languages.  The dataset's builder and this
   library's maintainer are the same person.
 - **The routing matrix uses stub providers.**  It verifies the library's
-  enforcement logic, not network behaviour, and it trusts any `LocalProvider`
-  regardless of the host it points at, as the router does.
+  enforcement logic, not network behaviour.  Its `LocalProvider` stub points
+  at `localhost`.
 
 ## Licensing and attribution
 

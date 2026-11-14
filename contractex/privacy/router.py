@@ -14,8 +14,10 @@ Routing flow
 2. If routing is ``"blocked"`` → raise ``PrivacyBlockedError`` before any
    prompt reaches the provider.
 3. If routing is ``"local_only"`` → the provider must be a ``LocalProvider``
-   instance; otherwise raise ``PrivacyRoutingError``.  The router does not
-   check where a ``LocalProvider``'s Ollama host runs.
+   whose Ollama host resolves only to loopback or private-network addresses,
+   running a model that is not an Ollama cloud model (``:cloud`` or
+   ``-cloud`` tag, which the local server forwards to ollama.com); otherwise
+   raise ``PrivacyRoutingError``.
 4. If ``sensitivity`` is ``"confidential"`` or ``"restricted"`` (and the caller
    has not marked the text as already redacted) → detect and redact PII in
    *this* prompt.  Every call is redacted independently.
@@ -45,9 +47,12 @@ Usage
 from __future__ import annotations
 
 import functools
+import ipaddress
 import logging
+import socket
 from collections.abc import Iterator
 from typing import Any, cast
+from urllib.parse import urlsplit
 
 from pydantic import BaseModel
 
@@ -276,11 +281,10 @@ class PrivacyAwareLLMRouter:
                 f"llm_routing={profile.effective_routing!r})."
             )
 
-        if profile.is_local_only and not isinstance(provider, LocalProvider):
-            raise PrivacyRoutingError(
-                f"Document requires local-only routing but provider is "
-                f"'{type(provider).__name__}'.  Use contractex.llm.LocalProvider (Ollama)."
-            )
+        if profile.is_local_only:
+            reason = _not_local(provider)
+            if reason:
+                raise PrivacyRoutingError(f"Document requires local-only routing but {reason}")
 
     def _restore(self, result: Any, redaction_map: RedactionMap) -> Any:
         """Replace placeholders in a string or in every string of a model."""
@@ -303,6 +307,39 @@ class PrivacyAwareLLMRouter:
 def default_router() -> PrivacyAwareLLMRouter:
     """The router used by built-in tasks that are not given one explicitly."""
     return PrivacyAwareLLMRouter()
+
+
+def _not_local(provider: LLMProvider) -> str | None:
+    """Why *provider* may not see a local-only document, or ``None`` if it may."""
+    if not isinstance(provider, LocalProvider):
+        return (
+            f"provider is '{type(provider).__name__}'.  Use contractex.llm.LocalProvider (Ollama)."
+        )
+    # Ollama names its cloud models with a ":cloud" tag (formerly "-cloud");
+    # a local Ollama server forwards them to ollama.com.
+    model = getattr(provider, "model", "")
+    tag = model.rpartition(":")[2]
+    if tag == "cloud" or tag.endswith("-cloud"):
+        return f"model {model!r} is an Ollama cloud model, which runs on ollama.com."
+    # A subclass that skips LocalProvider.__init__ has no host to check
+    host = getattr(provider, "host", None)
+    if not host:
+        return "its Ollama host is not set, so it cannot be checked."
+    hostname = urlsplit(host if "://" in host else f"http://{host}").hostname or ""
+    # shortcut: the name is resolved here and again by the Ollama client, so a
+    # DNS answer that changes in between is not caught; pin the address if
+    # this must hold against a hostile DNS server.
+    try:
+        addresses = [ipaddress.ip_address(hostname)]
+    except ValueError:
+        try:
+            addresses = [ipaddress.ip_address(a[4][0]) for a in socket.getaddrinfo(hostname, None)]
+        except (OSError, ValueError):
+            return f"its Ollama host {host!r} could not be resolved to check that it is local."
+    public = [str(a) for a in addresses if a.is_global]
+    if public:
+        return f"its Ollama host {host!r} is at a public address ({public[0]})."
+    return None
 
 
 def _language(doc: Any) -> str:

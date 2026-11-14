@@ -35,7 +35,9 @@ class _CountingSpy(SpyProvider):
 
 
 class _CountingLocalSpy(_CountingSpy, SpyLocalProvider):
-    pass
+    def __init__(self) -> None:
+        SpyLocalProvider.__init__(self)
+        self.counted = []
 
 
 def _doc(sensitivity: str) -> LegalDoc:

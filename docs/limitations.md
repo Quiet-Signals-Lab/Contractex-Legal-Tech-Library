@@ -36,8 +36,11 @@ making the rest credible.  Where a limit is measured, the
 
 - The router trusts the document's profile.  Deciding sensitivity is up to
   you.
-- `local_only` means "a `LocalProvider` instance".  The router does not check
-  whether its Ollama host is actually on your machine.
+- `local_only` accepts a `LocalProvider` whose Ollama host resolves only to
+  loopback or private-network addresses and whose model is not an Ollama cloud
+  model (a `:cloud` or `-cloud` tag).  A server on your own network counts as
+  local.  The host name is resolved for the check and again by the Ollama
+  client, so a DNS answer that changes in between is not caught.
 - Only calls that go through the router are protected: the built-in tasks,
   `TaskPipeline`, `LegalRAGPipeline`, and code that uses `router.route()` or
   `router.guard()`.  Calling `ContractExtractor`, the analysers or a provider

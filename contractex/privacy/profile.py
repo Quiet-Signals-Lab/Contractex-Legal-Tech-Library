@@ -14,7 +14,9 @@ Sensitivity levels (ascending restriction)
 LLM routing values
 ------------------
 * ``"any"``          — use any configured provider.
-* ``"local_only"``   — route to ``LocalProvider`` (Ollama) only.
+* ``"local_only"``   — route only to a ``LocalProvider`` (Ollama) on this
+  machine or a private network, running a model that is not an Ollama cloud
+  model.
 * ``"blocked"``      — do not send to any LLM; raise ``PrivacyBlockedError``.
 
 The ``llm_routing`` field is normally derived from ``sensitivity``.  Callers
