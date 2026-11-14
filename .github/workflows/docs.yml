@@ -59,6 +59,10 @@ jobs:
           mkdir -p website/contractex/docs
           rsync -a --delete site/ website/contractex/docs/
           cd website
+          # The site's pages link to files, not folders (its ci/link-files.sh
+          # check, which its deploy runs first).  MkDocs writes folder links,
+          # so rewrite them with the site's own tool before committing.
+          python3 tools/link_files.py
           git config user.name "contractex-docs"
           git config user.email "hello@quietsignalslab.com"
           git add contractex/docs
