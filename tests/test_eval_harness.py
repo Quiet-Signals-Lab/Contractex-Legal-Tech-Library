@@ -447,10 +447,3 @@ class TestGateCannotPassOnUnscoredCases:
             metrics.assert_min_case_accuracy(0.5)
         with pytest.raises(AssertionError):
             metrics.assert_min_field_accuracy(0.5)
-
-
-def test_cuad_benchmark_is_deprecated():
-    from contractex.eval.benchmark import CUADBenchmark
-
-    with pytest.warns(DeprecationWarning, match="deprecated"):
-        CUADBenchmark(extractor=lambda text: [])

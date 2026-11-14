@@ -49,10 +49,6 @@ class PlaybookFlag:
 # legacy Contract model and any future extraction result type.
 
 
-class _HasClauses:
-    """Protocol: any object with a .clauses attribute (list of Clause-like)."""
-
-
 # ---------------------------------------------------------------------------
 # Risk analyzer
 # ---------------------------------------------------------------------------

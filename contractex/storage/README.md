@@ -248,7 +248,6 @@ contractex/storage/
 ├── schema.sql           # Database schema (idempotent)
 ├── schema_v2.sql        # Next schema; no Python API yet
 ├── migrations/          # add_embeddings.sql, v1_to_v2.sql
-├── graph.py             # Knowledge graph (contractex[graph])
 ├── setup.py             # One-time initialization script
 ├── setup.sh             # Runs setup.py
 └── README.md            # This file

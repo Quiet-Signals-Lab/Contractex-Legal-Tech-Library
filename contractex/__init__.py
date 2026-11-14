@@ -69,7 +69,7 @@ from contractex.core.models import (
 )
 
 # Eval
-from contractex.eval import CalibrationAnalyzer, CUADBenchmark
+from contractex.eval import CalibrationAnalyzer
 from contractex.exceptions import (
     ContractExError,
     DocumentLoadError,
@@ -174,7 +174,6 @@ __all__ = [
     "StandardNDAPlaybook",
     "SaaSPlaybook",
     # Eval
-    "CUADBenchmark",
     "CalibrationAnalyzer",
     # General legal document models
     "LegalDocument",

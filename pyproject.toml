@@ -56,9 +56,8 @@ spacy = ["spacy>=3.7.0"]
 # Storage and retrieval
 storage = ["psycopg2-binary>=2.9.9", "pgvector>=0.3.0"]
 rag = ["sentence-transformers>=2.0.0"]
-graph = ["networkx>=3.0.0", "neo4j>=5.0.0", "rdflib>=7.0.0"]
 all = [
-    "contractex[openai,anthropic,google,ollama,langchain,privacy,ocr,network,export,spacy,storage,rag,graph]",
+    "contractex[openai,anthropic,google,ollama,langchain,privacy,ocr,network,export,spacy,storage,rag]",
 ]
 dev = [
     "pytest>=8.0.0",
@@ -189,9 +188,9 @@ omit = [
 ]
 
 [tool.coverage.report]
-# Measured 74% without PostgreSQL (the integration tests are skipped there);
+# Measured 79% without PostgreSQL (the integration tests are skipped there);
 # raise this as coverage grows, never lower it to make a change pass.
-fail_under = 72
+fail_under = 77
 exclude_lines = [
     "pragma: no cover",
     "def __repr__",

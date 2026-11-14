@@ -41,11 +41,8 @@ making the rest credible.  Where a limit is measured, the
   directly bypasses it.
 - Streamed responses are redacted on the way out but not restored.
 - A `REPLACE` redaction map contains the original values in plaintext.
-- `PrivacyProfile` carries `redaction_strategy`, `retention_days`,
-  `data_subject_ids` and `consent_reference`.  They are stored with the
-  document and enforce nothing: the router redacts with the strategy of its
-  own `PIIRedactor`, and nothing deletes a document when its retention period
-  ends.
+- Contractex does not manage retention, erasure requests or consent records.
+  How PII is replaced is set on the router's `PIIRedactor`, not per document.
 
 ## Documents
 
@@ -88,15 +85,10 @@ making the rest credible.  Where a limit is measured, the
 - Citation extraction covers US case citations, U.S.C., C.F.R., EU
   regulations and directives, and a few acronyms.  `CitationTask(use_llm=True)`
   currently has no effect.
-- `risk_analysis` accepts a `severity_threshold` but does not apply it.  If
-  its model call fails, it returns the rule-based results with a log line and
-  no other signal.
+- `risk_analysis` accepts a `severity_threshold` but does not apply it.
 - `ObligationTimeline` resolves only deadlines counted from the effective
   date.  Business days, and periods counted from another event ("after
   termination"), are left unresolved.
-- `CUADBenchmark` in `contractex.eval` does not load the current CUAD release
-  and is deprecated.  The maintained CUAD measurements are in
-  [`benchmarks/`](benchmarks.md).
 
 ## Models and providers
 
@@ -129,8 +121,7 @@ making the rest credible.  Where a limit is measured, the
 - `sync_sources()` re-fetches every URL in full; it does not use conditional
   requests.
 - Conflict detection compares metadata (dates, jurisdiction, authority), not
-  what the sources say.  A jurisdiction or authority difference is still
-  presented to the model as conflicting positions.
+  what the sources say.  The model is told how the sources differ and asked to
+  present each position if they disagree; nothing checks whether they do.
 - The Postgres repository (`contractex[storage]`) writes the original
   `documents`/`clauses` schema.  `schema_v2.sql` has no Python API yet.
-- The knowledge graph (`contractex[graph]`) has no tests.
